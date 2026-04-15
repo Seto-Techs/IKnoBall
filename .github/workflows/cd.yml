@@ -1,0 +1,236 @@
+name: cd
+
+on:
+  pull_request:
+    branches: [dev]
+    types: [closed]
+
+env:
+  REGISTRY: ghcr.io
+  BE_IMAGE: seto-techs/iknoball-be
+  FE_IMAGE: seto-techs/iknoball-fe
+  ENV: staging
+  SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+
+jobs:
+  cd:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # =========================
+      # COLLECT COMMITS
+      # =========================
+      - name: Collect commits
+        id: collect
+        run: |
+          git fetch --prune --unshallow || true
+
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+
+            COMMITS_JSON=$(git log origin/$BASE_BRANCH..origin/$HEAD_BRANCH \
+              --pretty=format:'{"sha":"%h","author":"%an","date":"%ad","message":"%s","branch":"'$HEAD_BRANCH'"}' \
+              --date=iso | jq -s .)
+
+            SHA="${{ github.event.pull_request.head.sha }}"
+            MESSAGE="${{ github.event.pull_request.title }}"
+            AUTHOR="${{ github.event.pull_request.user.login }}"
+          else
+            BRANCH_NAME="${GITHUB_REF_NAME##*/}" # ambil branch terakhir dari ref
+
+            SHA=$(git log -1 --pretty=format:%h)
+            MESSAGE=$(git log -1 --pretty=format:%s)
+            AUTHOR=$(git log -1 --pretty=format:%an)
+
+            # Ambil source branch via GitHub API (lebih robust handle squash/rebase/custom msg)
+            PR_BRANCH=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].head.ref')
+            
+            if [ -n "$PR_BRANCH" ] && [ "$PR_BRANCH" != "null" ]; then
+              JSON_BRANCH="$PR_BRANCH"
+            else
+              JSON_BRANCH="$BRANCH_NAME"
+            fi
+
+            COMMITS_JSON=$(git log ${{ github.event.before }}..${{ github.sha }} \
+              --pretty=format:'{"sha":"%h","author":"%an","date":"%ad","message":"%s","branch":"'$JSON_BRANCH'"}' \
+              --date=iso | jq -s .)
+          fi
+
+          # Encode JSON ke base64 supaya aman simpen di GITHUB_ENV
+          COMMITS_BASE64=$(echo "$COMMITS_JSON" | base64 | tr -d '\n')
+
+          echo "SHA=$SHA" >> $GITHUB_ENV
+          echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
+          echo "AUTHOR=$AUTHOR" >> $GITHUB_ENV
+          echo "COMMITS_JSON_BASE64=$COMMITS_BASE64" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # =========================
+      # WORKFLOW META
+      # =========================
+      - name: Set metadata
+        run: |
+          echo "WORKFLOW=CD – DuitRapi" >> $GITHUB_ENV
+          echo "STATUS=RUNNING" >> $GITHUB_ENV
+          echo "STAGE=deploy" >> $GITHUB_ENV
+          echo "START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_ENV
+          echo "LOGS_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
+
+      # =========================
+      # CREATE NOTION RUN
+      # =========================
+      - name: Create Notion Run
+        id: notion
+        run: |
+          # decode base64 ke environment variable
+          export COMMITS_JSON=$(echo "$COMMITS_JSON_BASE64" | base64 --decode)
+
+          PAGE_ID=$(node --input-type=module -e "
+            import { createRunWithCommits } from './backend/notion-log.mjs';
+
+            const pageId = await createRunWithCommits({
+              workflow: process.env.WORKFLOW,
+              branch: process.env.BRANCH,
+              env: process.env.ENV,
+              status: 'BUILDING',
+              stage: 'build',
+              start: process.env.START,
+              logsUrl: process.env.LOGS_URL,
+              author: process.env.AUTHOR,
+              message: process.env.MESSAGE,
+              commitsJson: process.env.COMMITS_JSON
+            });
+
+            process.stdout.write(pageId);
+          ")
+          echo "page_id=$PAGE_ID" >> $GITHUB_OUTPUT
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          WORKFLOW: ${{ env.WORKFLOW }}
+          ENV: ${{ env.ENV }}
+          BRANCH: ${{ env.SOURCE_BRANCH }}
+          AUTHOR: ${{ env.AUTHOR }}
+          MESSAGE: ${{ env.MESSAGE }}
+          COMMITS_JSON_BASE64: ${{ env.COMMITS_JSON_BASE64 }}
+          START: ${{ env.START }}
+          LOGS_URL: ${{ env.LOGS_URL }}
+
+
+      # =========================
+      # BUILD & PUSH DOCKER
+      # =========================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push BE
+        if: env.SOURCE_BRANCH == 'be'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ env.ENV }}
+          build-args: |
+            DATABASE_URL=${{ secrets.DATABASE_URL_STAGING }}
+            DATABASE_URL_SHADOW=${{ secrets.DATABASE_URL_SHADOW }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push FE
+        if: env.SOURCE_BRANCH == 'fe'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.FE_IMAGE }}:${{ env.ENV }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # =========================
+      # MARK DEPLOYING
+      # =========================
+      - name: Mark DEPLOYING
+        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe'
+        run: |
+          node --input-type=module -e "
+            import { updateRun } from './backend/notion-log.mjs';
+
+            await updateRun('${{ steps.notion.outputs.page_id }}', {
+              status: 'DEPLOYING',
+              stage: 'deploy'
+            });
+          "
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+
+      # =========================
+      # DEPLOY VIA SSH
+      # =========================
+      - name: Deploy
+        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 2233
+          script: |
+            cd /github/iknoball/${{ env.ENV }}
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+
+            if [ "${{ env.SOURCE_BRANCH }}" = "be" ]; then
+              docker compose pull api redis
+              docker compose up -d api redis
+            elif [ "${{ env.SOURCE_BRANCH }}" = "fe" ]; then
+              docker compose pull web
+              docker compose up -d web
+            else
+              docker compose pull
+              docker compose up -d
+            fi
+
+      # =========================
+      # MARK FINAL STATUS
+      # =========================
+      - name: Mark FINAL STATUS
+        if: always()
+        run: |
+          node --input-type=module -e "
+            import { updateRun } from './backend/notion-log.mjs';
+
+            const status = '${{ job.status }}' === 'success' ? 'SUCCESS' : 'FAILED';
+
+            await updateRun('${{ steps.notion.outputs.page_id }}', {
+              status,
+              stage: status === 'SUCCESS' ? 'done' : 'failed',
+              end: new Date().toISOString()
+            });
+          "
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          
