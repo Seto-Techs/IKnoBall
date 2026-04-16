@@ -2,15 +2,16 @@ name: cd
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
     types: [closed]
 
 env:
   REGISTRY: ghcr.io
   BE_IMAGE: seto-techs/iknoball-be
   FE_IMAGE: seto-techs/iknoball-fe
-  ENV: staging
   SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+  TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+  ENV: ${{ github.event.pull_request.base.ref == 'main' && 'prod' || 'staging' }}
 
 jobs:
   cd:
@@ -145,7 +146,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push BE
-        if: env.SOURCE_BRANCH == 'be'
+        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'dev'
         uses: docker/build-push-action@v5
         with:
           context: ./backend
@@ -153,13 +154,13 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ env.ENV }}
           build-args: |
-            DATABASE_URL=${{ secrets.DATABASE_URL_STAGING }}
+            DATABASE_URL=${{ env.TARGET_BRANCH == 'main' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
             DATABASE_URL_SHADOW=${{ secrets.DATABASE_URL_SHADOW }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build & push FE
-        if: env.SOURCE_BRANCH == 'fe'
+        if: env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'dev'
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
@@ -173,7 +174,7 @@ jobs:
       # MARK DEPLOYING
       # =========================
       - name: Mark DEPLOYING
-        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe'
+        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'dev'
         run: |
           node --input-type=module -e "
             import { updateRun } from './backend/notion-log.mjs';
@@ -191,7 +192,7 @@ jobs:
       # DEPLOY VIA SSH
       # =========================
       - name: Deploy
-        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe'
+        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'dev'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
