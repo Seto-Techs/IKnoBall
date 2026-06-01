@@ -1,0 +1,8 @@
+enum ScheduleTeamSide {
+  home
+  away
+}
+
+enum OAuthProvider {
+  discord
+}
