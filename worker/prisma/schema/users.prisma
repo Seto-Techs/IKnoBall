@@ -1,0 +1,30 @@
+model User {
+  id                String             @id @default(uuid())
+  email             String?            @unique
+  displayName       String?
+
+  identities        UserIdentity[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@map("users")
+}
+
+model UserIdentity {
+  id             String        @id @default(uuid())
+  userId         String
+  provider       OAuthProvider
+  providerUserId String
+  username       String?
+  avatarUrl      String?
+  rawProfileJson Json?
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("user_identities")
+}
