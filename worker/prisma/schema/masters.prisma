@@ -1,0 +1,47 @@
+model Team {
+  id              String            @id @default(uuid())
+  externalId      String            @unique
+  name            String
+  fullName        String
+  abbreviation   String
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("teams")
+}
+
+model Player {
+  id              String            @id @default(uuid())
+  externalId      String            @unique
+  firstName       String
+  lastName        String
+  displayName     String?
+  slug            String?
+  position        String?
+  teamId          Int?
+  teamSlug        String?
+  isDefunct       Boolean?
+  teamCity        String?
+  teamName        String?
+  teamAbbr        String?
+  jersey          String?
+  height          String?
+  weight          String?
+  college         String?
+  country         String?
+  draftYear       Int?
+  draftRound      Int?
+  draftPick       Int?
+  rosterStatus    Float?
+  careerFrom      String?
+  careerTo        String?
+
+  seasonStats     PlayerSeasonStats[]
+  scheduleBoxScorePlayers ScheduleBoxScorePlayer[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("players")
+}
