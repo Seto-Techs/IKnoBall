@@ -12,7 +12,7 @@ async function bootstrap() {
 
   const scheduleSync = app.get(ScheduleSyncService);
   void scheduleSync.syncScheduleForToday().catch((error) => {
-    const logger = app.get(Logger);
+    const logger = new Logger('Bootstrap');
     logger.error('schedule sync failed on start', error as Error);
   });
 
@@ -20,4 +20,4 @@ async function bootstrap() {
 }
 
 bootstrap();
-// 
+//  
