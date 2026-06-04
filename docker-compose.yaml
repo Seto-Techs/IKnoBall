@@ -1,4 +1,5 @@
 version: "3.9"
+name: iknoball
 
 services:
   api:
@@ -22,6 +23,17 @@ services:
       - .env
     ports:
       - "127.0.0.1:21009:3000"
+    restart: unless-stopped
+    networks:
+      - app_net
+
+  worker:
+    image: ghcr.io/seto-techs/iknoball-worker:${IMAGE_TAG}
+    container_name: iknoball-worker
+    env_file:
+      - .env
+    depends_on:
+      - redis
     restart: unless-stopped
     networks:
       - app_net
