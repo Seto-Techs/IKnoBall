@@ -67,7 +67,11 @@ export class ScheduleSyncService {
       return;
     }
 
-    await this.upsertScheduleGames(scheduleDay.id, today, daySchedule.games);
+    await this.upsertScheduleGames(scheduleDay.id, today, daySchedule.games, 0, daySchedule.games.length);
+    await this.cleanupStaleGames(
+      scheduleDay.id,
+      daySchedule.games.map((g) => g.gameId),
+    );
     await this.saveRedisGameIds(today, daySchedule.games.map((game) => game.gameId));
 
     await this.cleanupRedisIfFinal(today);
@@ -89,9 +93,11 @@ export class ScheduleSyncService {
     this.logger.log(`syncScheduleAll start season=${season} league=${leagueId}`);
 
     const response = await this.nbaScheduleClient.fetchLeagueSchedule(season, leagueId);
-    let totalGames = 0;
+    const allDays = response.leagueSchedule.gameDates;
+    const totalGames = allDays.reduce((sum, d) => sum + d.games.length, 0);
+    let processed = 0;
 
-    for (const daySchedule of response.leagueSchedule.gameDates) {
+    for (const daySchedule of allDays) {
       const normalizedDate = this.normalizeGameDate(daySchedule.gameDate);
       if (!normalizedDate) {
         this.logger.warn(`syncScheduleAll skip invalid date=${daySchedule.gameDate}`);
@@ -113,19 +119,66 @@ export class ScheduleSyncService {
         continue;
       }
 
-      await this.upsertScheduleGames(scheduleDay.id, normalizedDate, daySchedule.games);
+      await this.upsertScheduleGames(scheduleDay.id, normalizedDate, daySchedule.games, processed, totalGames);
+      processed += daySchedule.games.length;
+      await this.cleanupStaleGames(
+        scheduleDay.id,
+        daySchedule.games.map((g) => g.gameId),
+      );
       await this.syncLiveGamesToRedis(response);
       await this.saveRedisGameIds(
         normalizedDate,
         daySchedule.games.map((game) => game.gameId),
       );
       await this.cleanupRedisIfFinal(normalizedDate);
-      totalGames += daySchedule.games.length;
     }
 
     const spanSeconds = ((Date.now() - startedAt) / 1000).toFixed(2);
     this.logger.log(
-      `syncScheduleAll done days=${response.leagueSchedule.gameDates.length} games=${totalGames} span=${spanSeconds}s`,
+      `syncScheduleAll done days=${allDays.length} games=${totalGames} span=${spanSeconds}s`,
+    );
+  }
+
+  async syncScheduleAllForce() {
+    const season = process.env.NBA_CURRENT_SEASON || '';
+    const leagueId = process.env.NBA_LEAGUE_ID || '00';
+    if (!season) {
+      throw new Error('NBA_CURRENT_SEASON is required');
+    }
+
+    const startedAt = Date.now();
+    this.logger.log(`syncScheduleAllForce start season=${season} league=${leagueId}`);
+
+    const response = await this.nbaScheduleClient.fetchLeagueSchedule(season, leagueId);
+    const allDays = response.leagueSchedule.gameDates;
+    const totalGames = allDays.reduce((sum, d) => sum + d.games.length, 0);
+    let processed = 0;
+
+    for (const daySchedule of allDays) {
+      const normalizedDate = this.normalizeGameDate(daySchedule.gameDate);
+      if (!normalizedDate) {
+        this.logger.warn(`syncScheduleAllForce skip invalid date=${daySchedule.gameDate}`);
+        continue;
+      }
+      const scheduleDay = await this.upsertScheduleDay(normalizedDate, response, '');
+
+      await this.upsertScheduleGames(scheduleDay.id, normalizedDate, daySchedule.games, processed, totalGames);
+      processed += daySchedule.games.length;
+      await this.cleanupStaleGames(
+        scheduleDay.id,
+        daySchedule.games.map((g) => g.gameId),
+      );
+      await this.syncLiveGamesToRedis(response);
+      await this.saveRedisGameIds(
+        normalizedDate,
+        daySchedule.games.map((game) => game.gameId),
+      );
+      await this.cleanupRedisIfFinal(normalizedDate);
+    }
+
+    const spanSeconds = ((Date.now() - startedAt) / 1000).toFixed(2);
+    this.logger.log(
+      `syncScheduleAllForce done days=${allDays.length} games=${totalGames} span=${spanSeconds}s`,
     );
   }
 
@@ -266,10 +319,12 @@ export class ScheduleSyncService {
     scheduleDayId: string,
     today: string,
     games: ScheduleGameInput[],
+    processedOffset: number,
+    totalGames: number,
   ) {
     const gameDate = this.dateFromYmd(today);
 
-    for (const game of games) {
+    for (const [i, game] of games.entries()) {
       const data = {
         scheduleDayId,
         gameId: game.gameId,
@@ -348,11 +403,28 @@ export class ScheduleSyncService {
           })),
         });
       }
+
+      this.logger.log(
+        `syncSchedule game=${game.gameId} home=${game.homeTeam?.teamTricode ?? '?'}@away=${game.awayTeam?.teamTricode ?? '?'} series="${game.seriesText || '-'}" [${processedOffset + i + 1}/${totalGames}]`,
+      );
     }
   }
 
   private redisKey(date: string) {
     return `nba:schedule:${date}`;
+  }
+
+  private async cleanupStaleGames(scheduleDayId: string, currentGameIds: string[]) {
+    const deleted = await this.prisma.scheduleGame.deleteMany({
+      where: {
+        scheduleDayId,
+        gameId: { notIn: currentGameIds },
+        gameStatus: { not: 3 },
+      },
+    });
+    if (deleted.count > 0) {
+      this.logger.log(`cleanupStaleGames removed=${deleted.count} stale games`);
+    }
   }
 
   private async saveRedisGameIds(date: string, gameIds: string[]) {
