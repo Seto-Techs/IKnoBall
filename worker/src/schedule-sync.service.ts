@@ -42,6 +42,9 @@ export class ScheduleSyncService {
     const daySchedule = response.leagueSchedule.gameDates.find(
       (entry) => this.normalizeGameDate(entry.gameDate) === today,
     );
+
+    await this.syncLiveGamesToRedis(response);
+
     if (!daySchedule) {
       this.logger.log(`syncSchedule skip date=${today} no games`);
       return;
@@ -65,7 +68,6 @@ export class ScheduleSyncService {
     }
 
     await this.upsertScheduleGames(scheduleDay.id, today, daySchedule.games);
-    await this.scheduleLiveBoxscoreJobs(daySchedule.games);
     await this.saveRedisGameIds(today, daySchedule.games.map((game) => game.gameId));
 
     await this.cleanupRedisIfFinal(today);
@@ -112,7 +114,7 @@ export class ScheduleSyncService {
       }
 
       await this.upsertScheduleGames(scheduleDay.id, normalizedDate, daySchedule.games);
-      await this.scheduleLiveBoxscoreJobs(daySchedule.games);
+      await this.syncLiveGamesToRedis(response);
       await this.saveRedisGameIds(
         normalizedDate,
         daySchedule.games.map((game) => game.gameId),
@@ -375,27 +377,45 @@ export class ScheduleSyncService {
     }
   }
 
-  private async scheduleLiveBoxscoreJobs(games: ScheduleGameInput[]) {
+  private async syncLiveGamesToRedis(response: NbaScheduleResponse) {
     const intervalMs = Number(process.env.NBA_LIVE_BOXSCORE_INTERVAL_MS || '120000');
     if (!intervalMs || intervalMs <= 0) {
       return;
     }
 
-    for (const game of games) {
-      if (!game.gameId || game.gameStatus === 3) {
-        continue;
-      }
+    const now = Date.now();
+    const windowStart = now - 6 * 60 * 60 * 1000;
+    const windowEnd = now + 24 * 60 * 60 * 1000;
 
-      if (game.gameStatus !== 2 && !this.hasTipoffPassed(game)) {
-        continue;
-      }
+    const client = this.redisService.getClient();
+    const pipeline = client.pipeline();
+    let added = 0;
 
-      const startAt = this.parseGameDateTimeUtc(game.gameDateTimeUTC);
-      if (!startAt) {
-        continue;
-      }
+    for (const dateGroup of response.leagueSchedule.gameDates) {
+      for (const game of dateGroup.games) {
+        if (!game.gameId) continue;
 
-      await this.queueService.upsertLiveBoxscoreScheduler(game.gameId, startAt, intervalMs);
+        const tipoff = this.parseGameDateTimeUtc(game.gameDateTimeUTC);
+        if (!tipoff) continue;
+
+        const tipoffMs = tipoff.getTime();
+        if (tipoffMs < windowStart || tipoffMs > windowEnd) continue;
+
+        pipeline.sadd('nba:live:games', game.gameId);
+        pipeline.hset(`nba:live:meta:${game.gameId}`, {
+          gameDateTimeUTC: game.gameDateTimeUTC || '',
+          gameStatus: String(game.gameStatus),
+        });
+        added++;
+      }
+    }
+
+    if (added > 0) {
+      await pipeline.exec();
+      await this.queueService.upsertCheckLiveBoxscoreScheduler(intervalMs);
+      this.logger.log(`syncLiveGames added=${added} games`);
+    } else {
+      this.logger.log('syncLiveGames no games in window');
     }
   }
 
@@ -410,11 +430,4 @@ export class ScheduleSyncService {
     return parsed;
   }
 
-  private hasTipoffPassed(game: ScheduleGameInput) {
-    const tipoff = this.parseGameDateTimeUtc(game.gameDateTimeUTC);
-    if (!tipoff) {
-      return false;
-    }
-    return tipoff.getTime() <= Date.now();
-  }
 }
