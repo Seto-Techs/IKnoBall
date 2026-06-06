@@ -6,7 +6,7 @@ export const QUEUE_NAMES = {
   syncPlayers: 'syncPlayers',
   crawlPlayerCareer: 'crawlPlayerCareer',
   syncSchedule: 'syncSchedule',
-  liveBoxscore: 'liveBoxscore',
+  checkLiveBoxscore: 'checkLiveBoxscore',
 };
 
 @Injectable()
@@ -14,14 +14,14 @@ export class QueueService {
   private readonly syncPlayersQueue: Queue;
   private readonly crawlPlayerCareerQueue: Queue;
   private readonly syncScheduleQueue: Queue;
-  private readonly liveBoxscoreQueue: Queue;
+  private readonly checkLiveBoxscoreQueue: Queue;
 
   constructor(private readonly redisService: RedisService) {
     const connection = this.redisService.getClient();
     this.syncPlayersQueue = new Queue(QUEUE_NAMES.syncPlayers, { connection });
     this.crawlPlayerCareerQueue = new Queue(QUEUE_NAMES.crawlPlayerCareer, { connection });
     this.syncScheduleQueue = new Queue(QUEUE_NAMES.syncSchedule, { connection });
-    this.liveBoxscoreQueue = new Queue(QUEUE_NAMES.liveBoxscore, { connection });
+    this.checkLiveBoxscoreQueue = new Queue(QUEUE_NAMES.checkLiveBoxscore, { connection });
   }
 
   async enqueueSyncPlayers(jobId = 'syncPlayers') {
@@ -68,33 +68,21 @@ export class QueueService {
     );
   }
 
-  async upsertLiveBoxscoreScheduler(gameId: string, startAt: Date, intervalMs: number) {
-    const schedulerId = this.liveBoxscoreSchedulerId(gameId);
-    const startDate = Math.max(startAt.getTime(), Date.now());
-    await this.liveBoxscoreQueue.upsertJobScheduler(
-      schedulerId,
+  async upsertCheckLiveBoxscoreScheduler(intervalMs: number) {
+    await this.checkLiveBoxscoreQueue.upsertJobScheduler(
+      'check-live-boxscore',
+      { every: intervalMs, startDate: Date.now() },
       {
-        every: intervalMs,
-        startDate,
-      },
-      {
-        name: 'liveBoxscore',
-        data: { gameId },
-        opts: {
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
+        name: 'checkLiveBoxscore',
+        data: {},
+        opts: { removeOnComplete: true, removeOnFail: false },
       },
     );
   }
 
-  async removeLiveBoxscoreScheduler(gameId: string) {
-    const schedulerId = this.liveBoxscoreSchedulerId(gameId);
-    const scheduler = await this.liveBoxscoreQueue.jobScheduler;
-    await scheduler.removeJobScheduler(schedulerId);
+  async removeCheckLiveBoxscoreScheduler() {
+    const scheduler = await this.checkLiveBoxscoreQueue.jobScheduler;
+    await scheduler.removeJobScheduler('check-live-boxscore');
   }
 
-  private liveBoxscoreSchedulerId(gameId: string) {
-    return `live-boxscore:${gameId}`;
-  }
 }

@@ -117,12 +117,43 @@ export class BoxscoreCrawlerService {
       },
     });
 
+    if (summary.boxScoreSummary.gameStatus === 3) {
+      await this.updateSeriesTextForSeries(gameId);
+    }
+
     await this.writeRedis(gameId, {
       boxScoreTraditional: this.pickTraditional(traditional),
       boxScoreSummary: this.pickSummary(summary),
     }, ttlSeconds);
 
     return summary.boxScoreSummary.gameStatus ?? null;
+  }
+
+  private async updateSeriesTextForSeries(gameId: string) {
+    const game = await this.prisma.scheduleGame.findUnique({
+      where: { gameId },
+      select: {
+        gameLabel: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        seriesText: true,
+      },
+    });
+
+    if (!game || !game.gameLabel || !game.homeTeamId || !game.awayTeamId || !game.seriesText) {
+      return;
+    }
+
+    await this.prisma.scheduleGame.updateMany({
+      where: {
+        gameLabel: game.gameLabel,
+        OR: [
+          { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
+          { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
+        ],
+      },
+      data: { seriesText: game.seriesText },
+    });
   }
 
   private async fetchGameBoxscore(gameId: string) {
