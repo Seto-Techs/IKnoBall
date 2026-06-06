@@ -9,6 +9,7 @@
     "run:sync": "node dist/run-sync.js",
     "sync:schedule": "node dist/run-schedule-today.js",
     "sync:schedule:all": "node dist/run-schedule-all.js",
+    "sync:schedule:force": "node dist/run-schedule-all-force.js",
     "sync:boxscore": "node dist/run-boxscore.js",
     "prisma:generate": "prisma generate --schema ./prisma/schema"
   },
