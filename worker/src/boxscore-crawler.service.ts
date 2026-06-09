@@ -140,7 +140,22 @@ export class BoxscoreCrawlerService {
       },
     });
 
-    if (!game || !game.gameLabel || !game.homeTeamId || !game.awayTeamId || !game.seriesText) {
+    if (!game || !game.gameLabel || !game.homeTeamId || !game.awayTeamId) {
+      return;
+    }
+
+    let seriesText = game.seriesText;
+    try {
+      const boxscoreSummary = await this.boxscoreClient.fetchBoxScoreSummary(gameId);
+      const apiSeriesText = boxscoreSummary.boxScoreSummary.seriesText;
+      if (apiSeriesText) {
+        seriesText = apiSeriesText;
+      }
+    } catch (error) {
+      this.logger.warn(`seriesText fetch failed game=${gameId}, using DB value`);
+    }
+
+    if (!seriesText) {
       return;
     }
 
@@ -152,8 +167,26 @@ export class BoxscoreCrawlerService {
           { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
         ],
       },
-      data: { seriesText: game.seriesText },
+      data: { seriesText },
     });
+
+    const seriesGames = await this.prisma.scheduleGame.findMany({
+      where: {
+        gameLabel: game.gameLabel,
+        OR: [
+          { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
+          { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (seriesGames.length > 0) {
+      await this.prisma.scheduleBoxScoreSummary.updateMany({
+        where: { scheduleGameId: { in: seriesGames.map(g => g.id) } },
+        data: { seriesText },
+      });
+    }
   }
 
   private async fetchGameBoxscore(gameId: string) {
@@ -504,7 +537,7 @@ export class BoxscoreCrawlerService {
         seriesGameNumber: summary.seriesGameNumber,
         gameLabel: summary.gameLabel,
         gameSubLabel: summary.gameSubLabel,
-        seriesText: summary.seriesText,
+        seriesText: summary.seriesText || undefined,
         ifNecessary: summary.ifNecessary,
         isNeutral: summary.isNeutral,
         arenaId: summary.arena?.arenaId ?? null,
