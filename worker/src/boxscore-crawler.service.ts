@@ -137,6 +137,7 @@ export class BoxscoreCrawlerService {
         homeTeamId: true,
         awayTeamId: true,
         seriesText: true,
+        seriesGameNumber: true,
       },
     });
 
@@ -159,36 +160,43 @@ export class BoxscoreCrawlerService {
       return;
     }
 
-    await this.prisma.scheduleGame.updateMany({
+    const currentNum = parseInt(game.seriesGameNumber?.replace(/\D/g, '') ?? '', 10);
+    const hasNum = !isNaN(currentNum);
+
+    const allSeriesGames = await this.prisma.scheduleGame.findMany({
       where: {
         gameLabel: game.gameLabel,
-        gameStatus: { not: 3 },
         OR: [
           { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
           { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
         ],
       },
+      select: { id: true, gameId: true, seriesGameNumber: true },
+    });
+
+    const toUpdate = allSeriesGames.filter(g => {
+      if (g.gameId === gameId) return false;
+      if (!hasNum) return true;
+      const gn = parseInt(g.seriesGameNumber?.replace(/\D/g, '') ?? '', 10);
+      if (isNaN(gn)) return true;
+      return gn > currentNum;
+    });
+
+    if (toUpdate.length === 0) {
+      return;
+    }
+
+    const ids = toUpdate.map(g => g.id);
+
+    await this.prisma.scheduleGame.updateMany({
+      where: { id: { in: ids } },
       data: { seriesText },
     });
 
-    const seriesGames = await this.prisma.scheduleGame.findMany({
-      where: {
-        gameLabel: game.gameLabel,
-        gameStatus: { not: 3 },
-        OR: [
-          { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
-          { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
-        ],
-      },
-      select: { id: true },
+    await this.prisma.scheduleBoxScoreSummary.updateMany({
+      where: { scheduleGameId: { in: ids } },
+      data: { seriesText },
     });
-
-    if (seriesGames.length > 0) {
-      await this.prisma.scheduleBoxScoreSummary.updateMany({
-        where: { scheduleGameId: { in: seriesGames.map(g => g.id) } },
-        data: { seriesText },
-      });
-    }
   }
 
   private async fetchGameBoxscore(gameId: string) {
