@@ -162,6 +162,7 @@ export class BoxscoreCrawlerService {
     await this.prisma.scheduleGame.updateMany({
       where: {
         gameLabel: game.gameLabel,
+        gameStatus: { not: 3 },
         OR: [
           { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
           { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
@@ -173,6 +174,7 @@ export class BoxscoreCrawlerService {
     const seriesGames = await this.prisma.scheduleGame.findMany({
       where: {
         gameLabel: game.gameLabel,
+        gameStatus: { not: 3 },
         OR: [
           { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
           { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
