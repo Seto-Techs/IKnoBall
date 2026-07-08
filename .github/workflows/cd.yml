@@ -204,33 +204,39 @@ jobs:
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
 
       # =========================
-      # DEPLOY VIA SSH
+      # DEPLOY VIA DOKPLOY
       # =========================
       - name: Deploy
         if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'worker' || env.SOURCE_BRANCH == 'dev'
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 2233
-          script: |
-            cd /github/iknoball/${{ env.ENV }}
-            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PROJECT_NAME="iknoball"
+          COMPOSE_NAME="staging"
 
-            if [ "${{ env.SOURCE_BRANCH }}" = "be" ]; then
-              docker compose pull api redis
-              docker compose up -d api redis
-            elif [ "${{ env.SOURCE_BRANCH }}" = "fe" ]; then
-              docker compose pull web
-              docker compose up -d web
-            elif [ "${{ env.SOURCE_BRANCH }}" = "worker" ]; then
-              docker compose pull worker
-              docker compose up -d worker
-            else
-              docker compose pull
-              docker compose up -d
-            fi
+          PROJECTS=$(curl -s -X GET \
+            "${{ secrets.DOKPLOY_HOST }}/api/project.all" \
+            -H "accept: application/json" \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}")
+
+          COMPOSE_ID=$(echo "$PROJECTS" | jq -r "
+            .[] | select(.name == \"$PROJECT_NAME\") |
+            .environments[].compose[] |
+            select(.name == \"$COMPOSE_NAME\") |
+            .composeId
+          ")
+
+          if [ -z "$COMPOSE_ID" ]; then
+            echo "ERROR: compose $COMPOSE_NAME not found in project $PROJECT_NAME"
+            exit 1
+          fi
+
+          echo "Deploying composeId: $COMPOSE_ID"
+
+          curl -s -X POST \
+            "${{ secrets.DOKPLOY_HOST }}/api/compose.deploy" \
+            -H "accept: application/json" \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"composeId\": \"$COMPOSE_ID\"}"
 
       # =========================
       # MARK FINAL STATUS
