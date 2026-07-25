@@ -78,6 +78,10 @@ export class EmailService {
     })
   }
 
+  /**
+   * Send a verification email. Template defaults use the configured app name.
+   * Pass optional props to override individual template fields.
+   */
   async sendVerifyEmail(params: {
     to: string
     name: string
@@ -85,22 +89,84 @@ export class EmailService {
     subject: string
     fromKey: EmailFromKey
     from?: string
+    appName?: string
+    title?: string
+    bodyText?: string
+    buttonText?: string
+    footerText?: string
   }) {
+    const appName = params.appName ?? this.config.get<string>('emailQueue.fromName') ?? 'IKnoBall'
     const props: EmailTemplateProps = {
-      title: 'Activate your DuitRapi account',
+      title: params.title ?? `Verify your ${appName} account`,
       greeting: `Hello ${params.name},`,
-      bodyText: 'We received a request to verify your email address. Click the button below to confirm your account and get started managing your finances securely.',
-      buttonText: 'Activate Account',
+      bodyText: params.bodyText ?? `We received a request to verify your email address. Click the button below to confirm your account and get started.`,
+      buttonText: params.buttonText ?? 'Verify Account',
       buttonUrl: params.link,
-      footerText: 'If you didn\'t request this, you can safely ignore this email.',
+      footerText: params.footerText ?? `If you didn't request this, you can safely ignore this email.`,
       iconType: 'verify',
     }
 
     const html = await renderEmail(
       React.createElement(EmailTemplate, props),
     )
-  
-    // return html.toString()
+
+    const queueConfig = this.getEmailQueueConfig()
+    const fromAddress = queueConfig.fromAddressMap[params.fromKey]
+    if (!fromAddress) {
+      throw new Error(`Email from address not found for key: ${params.fromKey}`)
+    }
+
+    const payload: InvoiceEmailPayload = {
+      from: {
+        address: fromAddress,
+        name: queueConfig.fromName,
+      },
+      to: [
+        {
+          email_address: {
+            address: params.to,
+            name: params.name?.trim() || params.to,
+          },
+        },
+      ],
+      subject: params.subject,
+      htmlbody: html,
+      internal_token: queueConfig.internalToken,
+    }
+
+    await this.enqueueEmail(payload)
+
+    return {
+      queued: true,
+    }
+  }
+
+  /**
+   * Send a password-reset email with a reset link.
+   */
+  async sendPasswordResetEmail(params: {
+    to: string
+    name: string
+    link: string
+    subject: string
+    fromKey: EmailFromKey
+    from?: string
+    appName?: string
+  }) {
+    const appName = params.appName ?? this.config.get<string>('emailQueue.fromName') ?? 'IKnoBall'
+    const props: EmailTemplateProps = {
+      title: `Reset your ${appName} password`,
+      greeting: `Hello ${params.name},`,
+      bodyText: `We received a request to reset your ${appName} password. Click the button below to set a new password. This link expires in 1 hour.`,
+      buttonText: 'Reset Password',
+      buttonUrl: params.link,
+      footerText: `If you didn't request this, you can safely ignore this email.`,
+      iconType: 'reset',
+    }
+
+    const html = await renderEmail(
+      React.createElement(EmailTemplate, props),
+    )
 
     const queueConfig = this.getEmailQueueConfig()
     const fromAddress = queueConfig.fromAddressMap[params.fromKey]
