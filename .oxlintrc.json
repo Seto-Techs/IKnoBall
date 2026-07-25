@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true,
+    "jest": true
+  },
+  "ignorePatterns": [".turbo/**", "**/dist/**", "**/coverage/**", "**/node_modules/**"],
+  "rules": {
+    "typescript/no-explicit-any": "off"
+  }
+}
