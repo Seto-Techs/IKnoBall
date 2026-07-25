@@ -49,6 +49,10 @@ export class PrismaService
     return this.prisma.categories;
   }
 
+
+  get sessions() {
+    return this.prisma.userSession;
+  }
   async testConnection(): Promise<void> {
     await this.prisma.$queryRaw`SELECT 1`;
   }
