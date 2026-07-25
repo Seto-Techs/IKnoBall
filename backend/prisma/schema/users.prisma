@@ -6,6 +6,10 @@ model Users {
   isVerified  Boolean  @default(false) @map("is_verified")
   verifiedAt   DateTime? @map("verified_at")
   isActive    Boolean  @default(true) @map("is_active")
+
+  resetToken              String?  @map("reset_token")
+  resetTokenExpiry        DateTime? @map("reset_token_expiry")
+
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @map("updated_at")
 
@@ -13,6 +17,6 @@ model Users {
   expenses     Expenses[]
   incomes      Incomes[]
   categories   Categories[]
-
+  sessions     UserSession[]
   @@map("users")
 }
