@@ -1,20 +1,44 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, HttpStatus,
-  Param, Post, Req, UseGuards,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+  UsePipes,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiCreatedResponse, ApiOkResponse, ApiBadRequestResponse, ApiUnauthorizedResponse, ApiConflictResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiConflictResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ContextService } from '../helper/context/context.service';
-import {
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import type {
   RegisterDto,
   VerifyEmailDto,
   ResendVerificationDto,
   LoginDto,
-  ForgotPasswordDto,
-  ResetPasswordDto,
   RefreshDto,
+} from './auth.dto';
+import {
+  registerSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
+  loginSchema,
+  refreshSchema,
 } from './auth.dto';
 
 @ApiTags('Authentication')
@@ -26,7 +50,11 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user', description: 'Creates a user account and sends a verification email.' })
+  @UsePipes(new ZodValidationPipe(registerSchema))
+  @ApiOperation({
+    summary: 'Register a new user',
+    description: 'Creates a user account and sends a verification email.',
+  })
   @ApiCreatedResponse({ description: 'User registered successfully, verification email sent.' })
   @ApiConflictResponse({ description: 'Email already registered' })
   @HttpCode(HttpStatus.CREATED)
@@ -35,7 +63,11 @@ export class AuthController {
   }
 
   @Post('verify-email')
-  @ApiOperation({ summary: 'Verify email address', description: 'Verifies a user email using the token sent during registration.' })
+  @ApiOperation({
+    summary: 'Verify email address',
+    description: 'Verifies a user email using the token sent during registration.',
+  })
+  @UsePipes(new ZodValidationPipe(verifyEmailSchema))
   @ApiOkResponse({ description: 'Email verified successfully' })
   @ApiBadRequestResponse({ description: 'Invalid or expired verification token' })
   @HttpCode(HttpStatus.OK)
@@ -44,15 +76,26 @@ export class AuthController {
   }
 
   @Post('resend-verification')
-  @ApiOperation({ summary: 'Resend verification email', description: 'Sends a new verification email if the email is registered and not yet verified (always returns 200 to prevent email enumeration).' })
-  @ApiOkResponse({ description: 'If that email is registered, a new verification link has been sent.' })
+  @ApiOperation({
+    summary: 'Resend verification email',
+    description:
+      'Sends a new verification email if the email is registered and not yet verified (always returns 200 to prevent email enumeration).',
+  })
+  @UsePipes(new ZodValidationPipe(resendVerificationSchema))
+  @ApiOkResponse({
+    description: 'If that email is registered, a new verification link has been sent.',
+  })
   @HttpCode(HttpStatus.OK)
   async resendVerification(@Body() dto: ResendVerificationDto) {
     return this.authService.resendVerification(dto);
   }
 
   @Post('login')
-  @ApiOperation({ summary: 'Log in', description: 'Authenticates and creates a session. Returns access token + refresh token.' })
+  @ApiOperation({
+    summary: 'Log in',
+    description: 'Authenticates and creates a session. Returns access token + refresh token.',
+  })
+  @UsePipes(new ZodValidationPipe(loginSchema))
   @ApiOkResponse({ description: 'Login successful' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials, deactivated, or unverified' })
   @HttpCode(HttpStatus.OK)
@@ -63,7 +106,11 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Refresh access token', description: 'Exchanges a valid refresh token for a new access + refresh token pair.' })
+  @ApiOperation({
+    summary: 'Refresh access token',
+    description: 'Exchanges a valid refresh token for a new access + refresh token pair.',
+  })
+  @UsePipes(new ZodValidationPipe(refreshSchema))
   @ApiOkResponse({ description: 'Token refreshed' })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   @HttpCode(HttpStatus.OK)
@@ -85,7 +132,10 @@ export class AuthController {
   @Get('sessions')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List active sessions', description: 'Lists all active sessions for the authenticated user.' })
+  @ApiOperation({
+    summary: 'List active sessions',
+    description: 'Lists all active sessions for the authenticated user.',
+  })
   @ApiOkResponse({ description: 'List of sessions' })
   @HttpCode(HttpStatus.OK)
   async listSessions() {
@@ -96,7 +146,10 @@ export class AuthController {
   @Get('sessions/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get session detail', description: 'Returns details for a specific session.' })
+  @ApiOperation({
+    summary: 'Get session detail',
+    description: 'Returns details for a specific session.',
+  })
   @ApiOkResponse({ description: 'Session detail' })
   @ApiBadRequestResponse({ description: 'Session not found' })
   @HttpCode(HttpStatus.OK)
@@ -108,7 +161,10 @@ export class AuthController {
   @Delete('sessions/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete session', description: 'Revokes a specific session (logs out that device).' })
+  @ApiOperation({
+    summary: 'Delete session',
+    description: 'Revokes a specific session (logs out that device).',
+  })
   @ApiOkResponse({ description: 'Session revoked' })
   @ApiBadRequestResponse({ description: 'Session not found' })
   @HttpCode(HttpStatus.OK)
