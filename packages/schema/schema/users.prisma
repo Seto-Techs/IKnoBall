@@ -13,10 +13,6 @@ model Users {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @map("updated_at")
 
-  wallets      Wallets[]
-  expenses     Expenses[]
-  incomes      Incomes[]
-  categories   Categories[]
   sessions     UserSession[]
   @@map("users")
 }

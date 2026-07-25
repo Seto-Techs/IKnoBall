@@ -29,25 +29,10 @@ export class PrismaService
     return this.prisma.users;
   }
 
-  get wallets() {
-    return this.prisma.wallets;
-  }
-
   get activityLogs() {
     return this.prisma.activityLogs;
   }
 
-  get incomes() {
-    return this.prisma.incomes;
-  }
-
-  get expenses() {
-    return this.prisma.expenses;
-  }
-
-  get categories() {
-    return this.prisma.categories;
-  }
 
 
   get sessions() {
