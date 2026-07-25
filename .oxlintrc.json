@@ -5,7 +5,7 @@
     "browser": true,
     "node": true,
     "es2022": true,
-    "jest": true
+    "vitest": true
   },
   "ignorePatterns": [".turbo/**", "**/dist/**", "**/coverage/**", "**/node_modules/**"],
   "rules": {

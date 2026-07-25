@@ -1,21 +1,26 @@
+import { vi } from 'vitest';
+
+vi.mock('jsonwebtoken', () => ({
+  sign: vi.fn(),
+  verify: vi.fn(),
+  decode: vi.fn(),
+}));
+
 import { JwtHelperService } from './jwt.service';
 import * as jwt from 'jsonwebtoken';
 
-// Mock jsonwebtoken
-jest.mock('jsonwebtoken', () => ({
-  sign: jest.fn(),
-  verify: jest.fn(),
-  decode: jest.fn(),
-}));
+const configService = { get: vi.fn() };
+
+const createService = () => new JwtHelperService(configService as never);
 
 describe('JwtHelperService', () => {
   let service: JwtHelperService;
   const mockSecretKey = 'test-secret-key';
 
   beforeEach(() => {
-    process.env.JWT_SECRET = mockSecretKey;
-    service = new JwtHelperService();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    configService.get.mockReturnValue(mockSecretKey);
+    service = createService();
   });
 
   describe('Definition', () => {
@@ -27,10 +32,10 @@ describe('JwtHelperService', () => {
       expect(service['secretKey']).toBe(mockSecretKey);
     });
 
-    it('should fallback to "secret" if JWT_SECRET not set', () => {
-      delete process.env.JWT_SECRET;
-      const newService = new JwtHelperService();
-      expect(newService['secretKey']).toBe('secret');
+    it('should use undefined when JWT_SECRET is absent', () => {
+      configService.get.mockReturnValue(undefined);
+      const newService = createService();
+      expect(newService['secretKey']).toBeUndefined();
     });
   });
 
@@ -40,7 +45,7 @@ describe('JwtHelperService', () => {
         const payload = { sub: 'ACC-123', name: 'John Doe', role: 2 };
         const mockToken = 'signed-jwt-token';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload);
 
@@ -53,7 +58,7 @@ describe('JwtHelperService', () => {
         const options = { expiresIn: '30m' };
         const mockToken = 'signed-jwt-token-with-expiry';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -66,7 +71,7 @@ describe('JwtHelperService', () => {
         const options = { expiresIn: '1h' };
         const mockToken = 'jwt-with-1h-expiry';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -79,7 +84,7 @@ describe('JwtHelperService', () => {
         const options = { algorithm: 'HS512' as jwt.Algorithm };
         const mockToken = 'jwt-hs512';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -92,7 +97,7 @@ describe('JwtHelperService', () => {
         const options = { issuer: 'my-app' };
         const mockToken = 'jwt-with-issuer';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -105,7 +110,7 @@ describe('JwtHelperService', () => {
         const options = { audience: 'api-users' };
         const mockToken = 'jwt-with-audience';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -122,7 +127,7 @@ describe('JwtHelperService', () => {
         };
         const mockToken = 'jwt-with-multiple-options';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -134,7 +139,7 @@ describe('JwtHelperService', () => {
         const payload = { sub: 'ACC-123', jti: 'unique-jti-123' };
         const mockToken = 'jwt-with-jti';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload);
 
@@ -148,7 +153,7 @@ describe('JwtHelperService', () => {
         const payload = {};
         const mockToken = 'jwt-empty-payload';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload);
 
@@ -169,7 +174,7 @@ describe('JwtHelperService', () => {
         };
         const mockToken = 'jwt-nested-payload';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload);
 
@@ -184,7 +189,7 @@ describe('JwtHelperService', () => {
         };
         const mockToken = 'jwt-with-arrays';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload);
 
@@ -197,7 +202,7 @@ describe('JwtHelperService', () => {
         const options = { expiresIn: '365d' };
         const mockToken = 'jwt-long-expiry';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -210,7 +215,7 @@ describe('JwtHelperService', () => {
         const options = { expiresIn: 3600 }; // 1 hour in seconds
         const mockToken = 'jwt-numeric-expiry';
 
-        (jwt.sign as jest.Mock).mockReturnValue(mockToken);
+        (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
 
         const result = service.sign(payload, options);
 
@@ -226,7 +231,7 @@ describe('JwtHelperService', () => {
         const token = 'valid-jwt-token';
         const mockPayload = { sub: 'ACC-123', name: 'John Doe', role: 2 };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -245,7 +250,7 @@ describe('JwtHelperService', () => {
           exp: 1234569690,
         };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -267,7 +272,7 @@ describe('JwtHelperService', () => {
           aud: 'api',
         };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -281,7 +286,7 @@ describe('JwtHelperService', () => {
       it('should throw error for invalid token', () => {
         const token = 'invalid-token';
 
-        (jwt.verify as jest.Mock).mockImplementation(() => {
+        (jwt.verify as ReturnType<typeof vi.fn>).mockImplementation(() => {
           throw new Error('jwt malformed');
         });
 
@@ -291,7 +296,7 @@ describe('JwtHelperService', () => {
       it('should throw error for expired token', () => {
         const token = 'expired-token';
 
-        (jwt.verify as jest.Mock).mockImplementation(() => {
+        (jwt.verify as ReturnType<typeof vi.fn>).mockImplementation(() => {
           throw new Error('jwt expired');
         });
 
@@ -301,7 +306,7 @@ describe('JwtHelperService', () => {
       it('should throw error for token with invalid signature', () => {
         const token = 'token-wrong-signature';
 
-        (jwt.verify as jest.Mock).mockImplementation(() => {
+        (jwt.verify as ReturnType<typeof vi.fn>).mockImplementation(() => {
           throw new Error('invalid signature');
         });
 
@@ -311,7 +316,7 @@ describe('JwtHelperService', () => {
       it('should throw error for tampered token', () => {
         const token = 'tampered-token';
 
-        (jwt.verify as jest.Mock).mockImplementation(() => {
+        (jwt.verify as ReturnType<typeof vi.fn>).mockImplementation(() => {
           throw new Error('invalid token');
         });
 
@@ -321,7 +326,7 @@ describe('JwtHelperService', () => {
       it('should wrap any jwt error as "Invalid token"', () => {
         const token = 'problematic-token';
 
-        (jwt.verify as jest.Mock).mockImplementation(() => {
+        (jwt.verify as ReturnType<typeof vi.fn>).mockImplementation(() => {
           throw new Error('some jwt error');
         });
 
@@ -338,7 +343,7 @@ describe('JwtHelperService', () => {
           email: 'user+test@example.com',
         };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -350,7 +355,7 @@ describe('JwtHelperService', () => {
         const token = 'a'.repeat(1000);
         const mockPayload = { sub: 'ACC-123' };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -366,7 +371,7 @@ describe('JwtHelperService', () => {
           exp: now + 1,
         };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -384,7 +389,7 @@ describe('JwtHelperService', () => {
           another_field: 123,
         };
 
-        (jwt.verify as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.verify(token);
 
@@ -400,7 +405,7 @@ describe('JwtHelperService', () => {
         const token = 'jwt-token-to-decode';
         const mockPayload = { sub: 'ACC-123', name: 'John Doe', role: 2 };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -417,7 +422,7 @@ describe('JwtHelperService', () => {
           exp: 1234569690,
         };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -438,7 +443,7 @@ describe('JwtHelperService', () => {
           aud: 'api',
         };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -455,7 +460,7 @@ describe('JwtHelperService', () => {
           permissions: ['read', 'write'],
         };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -468,7 +473,7 @@ describe('JwtHelperService', () => {
       it('should return null for invalid token format', () => {
         const token = 'not-a-valid-jwt';
 
-        (jwt.decode as jest.Mock).mockReturnValue(null);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
         const result = service.decode(token);
 
@@ -479,7 +484,7 @@ describe('JwtHelperService', () => {
       it('should handle empty string token', () => {
         const token = '';
 
-        (jwt.decode as jest.Mock).mockReturnValue(null);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
         const result = service.decode(token);
 
@@ -498,7 +503,7 @@ describe('JwtHelperService', () => {
           },
         };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -513,7 +518,7 @@ describe('JwtHelperService', () => {
           roles: ['admin', 'user', 'moderator'],
         };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -525,7 +530,7 @@ describe('JwtHelperService', () => {
         const token = 'a'.repeat(2000);
         const mockPayload = { sub: 'ACC-123', data: 'x'.repeat(1000) };
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockPayload);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockPayload);
 
         const result = service.decode(token);
 
@@ -536,7 +541,7 @@ describe('JwtHelperService', () => {
         const token = 'jwt-header-only';
         const mockResult = 'header-string';
 
-        (jwt.decode as jest.Mock).mockReturnValue(mockResult);
+        (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(mockResult);
 
         const result = service.decode(token);
 
@@ -546,32 +551,19 @@ describe('JwtHelperService', () => {
   });
 
   describe('Secret Key Management', () => {
-    it('should use environment JWT_SECRET when available', () => {
-      process.env.JWT_SECRET = 'my-custom-secret';
-      const newService = new JwtHelperService();
-
-      expect(newService['secretKey']).toBe('my-custom-secret');
+    it('uses the configured JWT_SECRET', () => {
+      configService.get.mockReturnValue('my-custom-secret');
+      expect(createService()['secretKey']).toBe('my-custom-secret');
     });
 
-    it('should use default "secret" when JWT_SECRET not set', () => {
-      delete process.env.JWT_SECRET;
-      const newService = new JwtHelperService();
-
-      expect(newService['secretKey']).toBe('secret');
+    it('preserves an empty JWT_SECRET', () => {
+      configService.get.mockReturnValue('');
+      expect(createService()['secretKey']).toBe('');
     });
 
-    it('should handle empty JWT_SECRET', () => {
-      process.env.JWT_SECRET = '';
-      const newService = new JwtHelperService();
-
-      expect(newService['secretKey']).toBe('secret');
-    });
-
-    it('should handle JWT_SECRET with special characters', () => {
-      process.env.JWT_SECRET = 'my!@#$%^&*()secret';
-      const newService = new JwtHelperService();
-
-      expect(newService['secretKey']).toBe('my!@#$%^&*()secret');
+    it('preserves special characters in JWT_SECRET', () => {
+      configService.get.mockReturnValue('my!@#$%^&*()secret');
+      expect(createService()['secretKey']).toBe('my!@#$%^&*()secret');
     });
   });
 
@@ -580,8 +572,8 @@ describe('JwtHelperService', () => {
       const payload = { sub: 'ACC-123', name: 'John Doe', role: 2 };
       const mockToken = 'signed-token';
 
-      (jwt.sign as jest.Mock).mockReturnValue(mockToken);
-      (jwt.verify as jest.Mock).mockReturnValue(payload);
+      (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
+      (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(payload);
 
       const token = service.sign(payload);
       const verified = service.verify(token);
@@ -594,8 +586,8 @@ describe('JwtHelperService', () => {
       const payload = { sub: 'ACC-123', name: 'John Doe' };
       const mockToken = 'signed-token';
 
-      (jwt.sign as jest.Mock).mockReturnValue(mockToken);
-      (jwt.decode as jest.Mock).mockReturnValue(payload);
+      (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
+      (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(payload);
 
       const token = service.sign(payload);
       const decoded = service.decode(token);
@@ -609,9 +601,9 @@ describe('JwtHelperService', () => {
       const mockToken = 'workflow-token';
       const verifiedPayload = { ...payload, iat: 123, exp: 456 };
 
-      (jwt.sign as jest.Mock).mockReturnValue(mockToken);
-      (jwt.verify as jest.Mock).mockReturnValue(verifiedPayload);
-      (jwt.decode as jest.Mock).mockReturnValue(verifiedPayload);
+      (jwt.sign as ReturnType<typeof vi.fn>).mockReturnValue(mockToken);
+      (jwt.verify as ReturnType<typeof vi.fn>).mockReturnValue(verifiedPayload);
+      (jwt.decode as ReturnType<typeof vi.fn>).mockReturnValue(verifiedPayload);
 
       const token = service.sign(payload, { expiresIn: '30m' });
       const verified = service.verify(token);

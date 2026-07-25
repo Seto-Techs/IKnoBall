@@ -8,7 +8,6 @@ import {
 } from '@iknoball/database';
 import { and, eq, gte, inArray, or } from 'drizzle-orm';
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import {
   NbaBoxScoreClient,
   BoxScoreTraditionalResponse,
@@ -19,7 +18,7 @@ import {
   CdnBoxScoreResponse,
   CdnPlayerStats,
 } from './nba-cdn-boxscore.client';
-import { PrismaService } from './prisma.service';
+import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 
 type BoxScorePlayerStats = {
@@ -536,10 +535,8 @@ export class BoxscoreCrawlerService {
     };
   }
 
-  private toJsonInput(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
-    return value === null || value === undefined
-      ? Prisma.JsonNull
-      : (value as Prisma.InputJsonValue);
+  private toJsonInput(value: unknown) {
+    return value ?? null;
   }
 
   private async upsertSummary(
