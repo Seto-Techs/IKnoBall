@@ -1,13 +1,6 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { ZodType, ZodError } from 'zod';
+import { ZodError, type ZodType } from '@iknoball/schema/zod';
 
-/**
- * Validates input against a Zod schema.
- *
- * @example
- *   @Post()
- *   create(@Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserDto) { ... }
- */
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
   constructor(private schema: ZodType) {}

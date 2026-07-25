@@ -4,9 +4,13 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "default": "./dist/auth.js"
+    },
+    "./zod": {
+      "types": "./dist/zod.d.ts",
+      "default": "./dist/zod.js"
     }
   "dependencies": {
     "@prisma/client": "^7.7.0"

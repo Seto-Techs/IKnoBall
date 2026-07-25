@@ -9,7 +9,6 @@ import {
   Post,
   Req,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,21 +24,19 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ContextService } from '../helper/context/context.service';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import type {
-  RegisterDto,
-  VerifyEmailDto,
-  ResendVerificationDto,
-  LoginDto,
-  RefreshDto,
-} from './auth.dto';
+import { ZodBody } from '../common/decorators/zod-body.decorator';
 import {
-  registerSchema,
-  verifyEmailSchema,
-  resendVerificationSchema,
   loginSchema,
   refreshSchema,
-} from './auth.dto';
+  registerSchema,
+  resendVerificationSchema,
+  verifyEmailSchema,
+  type LoginInput,
+  type RefreshInput,
+  type RegisterInput,
+  type ResendVerificationInput,
+  type VerifyEmailInput,
+} from '@iknoball/schema/auth';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -50,7 +47,6 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @UsePipes(new ZodValidationPipe(registerSchema))
   @ApiOperation({
     summary: 'Register a new user',
     description: 'Creates a user account and sends a verification email.',
@@ -58,7 +54,7 @@ export class AuthController {
   @ApiCreatedResponse({ description: 'User registered successfully, verification email sent.' })
   @ApiConflictResponse({ description: 'Email already registered' })
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: RegisterDto) {
+  async register(@ZodBody(registerSchema) dto: RegisterInput) {
     return this.authService.register(dto);
   }
 
@@ -67,11 +63,10 @@ export class AuthController {
     summary: 'Verify email address',
     description: 'Verifies a user email using the token sent during registration.',
   })
-  @UsePipes(new ZodValidationPipe(verifyEmailSchema))
   @ApiOkResponse({ description: 'Email verified successfully' })
   @ApiBadRequestResponse({ description: 'Invalid or expired verification token' })
   @HttpCode(HttpStatus.OK)
-  async verifyEmail(@Body() dto: VerifyEmailDto) {
+  async verifyEmail(@ZodBody(verifyEmailSchema) dto: VerifyEmailInput) {
     return this.authService.verifyEmail(dto);
   }
 
@@ -81,12 +76,11 @@ export class AuthController {
     description:
       'Sends a new verification email if the email is registered and not yet verified (always returns 200 to prevent email enumeration).',
   })
-  @UsePipes(new ZodValidationPipe(resendVerificationSchema))
   @ApiOkResponse({
     description: 'If that email is registered, a new verification link has been sent.',
   })
   @HttpCode(HttpStatus.OK)
-  async resendVerification(@Body() dto: ResendVerificationDto) {
+  async resendVerification(@ZodBody(resendVerificationSchema) dto: ResendVerificationInput) {
     return this.authService.resendVerification(dto);
   }
 
@@ -95,11 +89,10 @@ export class AuthController {
     summary: 'Log in',
     description: 'Authenticates and creates a session. Returns access token + refresh token.',
   })
-  @UsePipes(new ZodValidationPipe(loginSchema))
   @ApiOkResponse({ description: 'Login successful' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials, deactivated, or unverified' })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(@ZodBody(loginSchema) dto: LoginInput, @Req() req: Request) {
     const userAgent = req.headers['user-agent'];
     const ip = req.ip ?? req.socket.remoteAddress;
     return this.authService.login(dto, userAgent, ip);
@@ -110,11 +103,10 @@ export class AuthController {
     summary: 'Refresh access token',
     description: 'Exchanges a valid refresh token for a new access + refresh token pair.',
   })
-  @UsePipes(new ZodValidationPipe(refreshSchema))
   @ApiOkResponse({ description: 'Token refreshed' })
   @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   @HttpCode(HttpStatus.OK)
-  async refresh(@Body() dto: RefreshDto) {
+  async refresh(@ZodBody(refreshSchema) dto: RefreshInput) {
     return this.authService.refresh(dto);
   }
 

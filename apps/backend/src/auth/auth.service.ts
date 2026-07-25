@@ -16,15 +16,15 @@ import { JwtHelperService } from '../helper/jwt/jwt.service';
 import { EmailService } from '../helper/email/email.service';
 import { RedisService } from '../helper/redis/redis.service';
 import { EMAIL_FROM_KEYS } from '../helper/email/email.constants';
-import {
-  RegisterDto,
-  VerifyEmailDto,
-  ResendVerificationDto,
-  LoginDto,
-  ForgotPasswordDto,
-  ResetPasswordDto,
-  RefreshDto,
-} from './auth.dto';
+import type {
+  ForgotPasswordInput,
+  LoginInput,
+  RefreshInput,
+  RegisterInput,
+  ResendVerificationInput,
+  ResetPasswordInput,
+  VerifyEmailInput,
+} from '@iknoball/schema/auth';
 
 const VERIFY_TTL_SEC = 15 * 60; // 15 minutes
 const TOKEN_PREFIX = 'verify:token:';
@@ -58,7 +58,7 @@ export class AuthService {
   // Registration & Verification
   // ───────────────────────────────
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterInput) {
     const [existing] = await this.database.db
       .select({ id: users.id })
       .from(users)
@@ -83,7 +83,7 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(dto: VerifyEmailDto) {
+  async verifyEmail(dto: VerifyEmailInput) {
     const tokenKey = `${TOKEN_PREFIX}${dto.token}`;
 
     const exists = await this.redis.keyExists(tokenKey);
@@ -116,7 +116,7 @@ export class AuthService {
     return { data: null, message: 'Email verified successfully' };
   }
 
-  async resendVerification(dto: ResendVerificationDto) {
+  async resendVerification(dto: ResendVerificationInput) {
     const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
 
     if (!user) {
@@ -150,7 +150,7 @@ export class AuthService {
   // Login (creates session)
   // ───────────────────────────────
 
-  async login(dto: LoginDto, userAgent?: string, ipAddress?: string) {
+  async login(dto: LoginInput, userAgent?: string, ipAddress?: string) {
     const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
 
     if (!user) {
@@ -208,7 +208,7 @@ export class AuthService {
   // Token Refresh (rotates session)
   // ───────────────────────────────
 
-  async refresh(dto: RefreshDto) {
+  async refresh(dto: RefreshInput) {
     const tokenHash = hashToken(dto.refreshToken);
     const refreshKey = `${SESSION_REFRESH_PREFIX}${tokenHash}`;
 
@@ -365,7 +365,7 @@ export class AuthService {
   // Forgot / Reset Password
   // ───────────────────────────────
 
-  async forgotPassword(dto: ForgotPasswordDto) {
+  async forgotPassword(dto: ForgotPasswordInput) {
     const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
 
     if (!user) {
@@ -393,7 +393,7 @@ export class AuthService {
     return { message: 'If that email is registered, a password reset link has been sent.' };
   }
 
-  async resetPassword(dto: ResetPasswordDto) {
+  async resetPassword(dto: ResetPasswordInput) {
     const [user] = await this.database.db
       .select()
       .from(users)
