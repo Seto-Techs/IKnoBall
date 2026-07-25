@@ -1,8 +1,10 @@
+import { playerSeasonStats, players } from '@iknoball/database';
+import { and, eq } from 'drizzle-orm';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import { RedisService } from '../redis.service';
 import { PlayerIndexClient } from '../player-index.client';
-import { PrismaService } from '../prisma.service';
+import { DatabaseService } from '../database.service';
 import { QueueService, QUEUE_NAMES } from '../queue.service';
 
 type PlayerDashboardRow = {
@@ -83,7 +85,7 @@ export class PlayerSeasonProcessor implements OnModuleInit {
   constructor(
     private readonly redisService: RedisService,
     private readonly playerIndexClient: PlayerIndexClient,
-    private readonly prisma: PrismaService,
+    private readonly database: DatabaseService,
     private readonly queueService: QueueService,
   ) {}
 
@@ -111,7 +113,10 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     }
     const startedAt = Date.now();
     this.logger.log(`crawlPlayerCareer start player=${playerExternalId}`);
-    const player = await this.prisma.player.findUnique({ where: { externalId: playerExternalId } });
+    const [player] = await this.database.db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.externalId, playerExternalId));
     if (!player) {
       this.logger.warn(`Player not found for externalId ${playerExternalId}`);
       return;
@@ -184,81 +189,31 @@ export class PlayerSeasonProcessor implements OnModuleInit {
 
       const season = row.GROUP_VALUE;
       if (season === currentSeason) {
-        await this.prisma.playerSeasonStats.upsert({
-          where: {
-            playerId_season_statsTimeframe: {
-              playerId,
-              season,
-              statsTimeframe,
-            },
-          },
-          update: {
-            gp: totals.gp,
-            wins: totals.wins,
-            losses: totals.losses,
-            fgPct: totals.fgPct,
-            fg3Pct: totals.fg3Pct,
-            ftPct: totals.ftPct,
-            ptsTotal: totals.ptsTotal,
-            rebTotal: totals.rebTotal,
-            astTotal: totals.astTotal,
-            ptsPerGame: totals.ptsPerGame,
-            rebPerGame: totals.rebPerGame,
-            astPerGame: totals.astPerGame,
-          },
-          create: {
-            playerId,
-            season,
-            gp: totals.gp,
-            wins: totals.wins,
-            losses: totals.losses,
-            fgPct: totals.fgPct,
-            fg3Pct: totals.fg3Pct,
-            ftPct: totals.ftPct,
-            ptsTotal: totals.ptsTotal,
-            rebTotal: totals.rebTotal,
-            astTotal: totals.astTotal,
-            ptsPerGame: totals.ptsPerGame,
-            rebPerGame: totals.rebPerGame,
-            astPerGame: totals.astPerGame,
-            statsTimeframe,
-          },
-        });
+        await this.database.db
+          .insert(playerSeasonStats)
+          .values({ playerId, season, statsTimeframe, ...totals })
+          .onConflictDoUpdate({
+            target: [playerSeasonStats.playerId, playerSeasonStats.season, playerSeasonStats.statsTimeframe],
+            set: totals,
+          });
         continue;
       }
 
-      const existing = await this.prisma.playerSeasonStats.findUnique({
-        where: {
-          playerId_season_statsTimeframe: {
-            playerId,
-            season,
-            statsTimeframe,
-          },
-        },
-      });
+      const [existing] = await this.database.db
+        .select({ id: playerSeasonStats.id })
+        .from(playerSeasonStats)
+        .where(and(
+          eq(playerSeasonStats.playerId, playerId),
+          eq(playerSeasonStats.season, season),
+          eq(playerSeasonStats.statsTimeframe, statsTimeframe),
+        ));
       if (existing) {
         continue;
       }
 
-      await this.prisma.playerSeasonStats.create({
-        data: {
-          playerId,
-          season,
-          gp: totals.gp,
-          wins: totals.wins,
-          losses: totals.losses,
-          fgPct: totals.fgPct,
-          fg3Pct: totals.fg3Pct,
-          ftPct: totals.ftPct,
-          ptsTotal: totals.ptsTotal,
-          rebTotal: totals.rebTotal,
-          astTotal: totals.astTotal,
-          ptsPerGame: totals.ptsPerGame,
-          rebPerGame: totals.rebPerGame,
-          astPerGame: totals.astPerGame,
-          statsTimeframe,
-        },
-      });
+      await this.database.db
+        .insert(playerSeasonStats)
+        .values({ playerId, season, statsTimeframe, ...totals });
     }
   }
 

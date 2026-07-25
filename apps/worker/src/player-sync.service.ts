@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { players } from '@iknoball/database';
+import { eq } from 'drizzle-orm';
 import { Cron } from '@nestjs/schedule';
 import { PlayerIndexClient } from './player-index.client';
-import { PrismaService } from './prisma.service';
+import { DatabaseService } from './database.service';
 import { QueueService } from './queue.service';
 
 type PlayerIndexRow = {
@@ -40,7 +41,7 @@ export class PlayerSyncService {
 
   constructor(
     private readonly playerIndexClient: PlayerIndexClient,
-    private readonly prisma: PrismaService,
+    private readonly database: DatabaseService,
     private readonly queueService: QueueService,
   ) {}
 
@@ -81,9 +82,12 @@ export class PlayerSyncService {
 
   private async upsertPlayer(player: PlayerIndexRow, currentSeason: string) {
     const externalId = String(player.PERSON_ID);
-    const existing = await this.prisma.player.findUnique({ where: { externalId } });
+    const [existing] = await this.database.db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.externalId, externalId));
 
-    const data: Prisma.PlayerUncheckedCreateInput = {
+    const data = {
       externalId,
       firstName: player.PLAYER_FIRST_NAME,
       lastName: player.PLAYER_LAST_NAME,
@@ -110,15 +114,12 @@ export class PlayerSyncService {
     };
 
     if (!existing) {
-      await this.prisma.player.create({ data });
+      await this.database.db.insert(players).values(data);
       await this.queueService.enqueuePlayerCareer(String(player.PERSON_ID));
       return;
     }
 
-    await this.prisma.player.update({
-      where: { externalId },
-      data,
-    });
+    await this.database.db.update(players).set(data).where(eq(players.externalId, externalId));
   }
 
   private toFloat(value: number | null) {

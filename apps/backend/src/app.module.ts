@@ -2,7 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaModule } from './helper/prisma/prisma.module';
+import { DatabaseModule } from './helper/database/database.module';
 import { JwtModule } from './helper/jwt/jwt.module';
 import { EmailModule } from './helper/email/email.module';
 import { ContextModule } from './helper/context/context.module';
@@ -13,7 +13,7 @@ import { emailConfig } from './helper/email/email.config';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [emailConfig] }),
-    PrismaModule,
+    DatabaseModule,
     JwtModule,
     EmailModule,
     ContextModule,

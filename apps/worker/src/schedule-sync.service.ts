@@ -1,8 +1,14 @@
+import {
+  scheduleDays,
+  scheduleGames,
+  schedulePointsLeaders,
+} from '@iknoball/database';
+import { and, eq, ne, notInArray } from 'drizzle-orm';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { createHash } from 'crypto';
 import { NbaScheduleClient, NbaScheduleResponse } from './nba-schedule.client';
-import { PrismaService } from './prisma.service';
+import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 import { QueueService } from './queue.service';
 
@@ -15,7 +21,7 @@ export class ScheduleSyncService {
 
   constructor(
     private readonly nbaScheduleClient: NbaScheduleClient,
-    private readonly prisma: PrismaService,
+    private readonly database: DatabaseService,
     private readonly redisService: RedisService,
     private readonly queueService: QueueService,
   ) {}
@@ -196,11 +202,6 @@ export class ScheduleSyncService {
     return createHash('sha256').update(json).digest('hex');
   }
 
-  private dateFromYmd(date: string) {
-    const [y, m, d] = date.split('-').map(Number);
-    return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  }
-
   private parseGameDate(date: string) {
     if (!date) {
       return null;
@@ -273,29 +274,29 @@ export class ScheduleSyncService {
     response: NbaScheduleResponse,
     hash: string,
   ): Promise<{ id: string; changed: boolean }> {
-    const existing = await this.prisma.scheduleDay.findUnique({
-      where: {
-        gameDate_seasonYear_leagueId: {
-          gameDate: this.dateFromYmd(today),
-          seasonYear: response.leagueSchedule.seasonYear,
-          leagueId: response.leagueSchedule.leagueId,
-        },
-      },
-    });
+    const [existing] = await this.database.db
+      .select({ id: scheduleDays.id, hash: scheduleDays.hash })
+      .from(scheduleDays)
+      .where(and(
+        eq(scheduleDays.gameDate, today),
+        eq(scheduleDays.seasonYear, response.leagueSchedule.seasonYear),
+        eq(scheduleDays.leagueId, response.leagueSchedule.leagueId),
+      ));
 
     const metaTime = this.toDate(response.meta.time) ?? new Date();
     if (!existing) {
-      const created = await this.prisma.scheduleDay.create({
-        data: {
-          gameDate: this.dateFromYmd(today),
+      const [created] = await this.database.db
+        .insert(scheduleDays)
+        .values({
+          gameDate: today,
           seasonYear: response.leagueSchedule.seasonYear,
           leagueId: response.leagueSchedule.leagueId,
           metaVersion: response.meta.version,
           metaRequest: response.meta.request,
           metaTime,
           hash,
-        },
-      });
+        })
+        .returning({ id: scheduleDays.id });
       return { id: created.id, changed: true };
     }
 
@@ -303,15 +304,16 @@ export class ScheduleSyncService {
       return { id: existing.id, changed: false };
     }
 
-    const updated = await this.prisma.scheduleDay.update({
-      where: { id: existing.id },
-      data: {
+    const [updated] = await this.database.db
+      .update(scheduleDays)
+      .set({
         metaVersion: response.meta.version,
         metaRequest: response.meta.request,
         metaTime,
         hash,
-      },
-    });
+      })
+      .where(eq(scheduleDays.id, existing.id))
+      .returning({ id: scheduleDays.id });
     return { id: updated.id, changed: true };
   }
 
@@ -322,7 +324,7 @@ export class ScheduleSyncService {
     processedOffset: number,
     totalGames: number,
   ) {
-    const gameDate = this.dateFromYmd(today);
+    const gameDate = today;
 
     for (const [i, game] of games.entries()) {
       const data = {
@@ -377,20 +379,19 @@ export class ScheduleSyncService {
         awayTeamSeed: game.awayTeam?.seed ?? null,
       };
 
-      const scheduleGame = await this.prisma.scheduleGame.upsert({
-        where: { gameId: game.gameId },
-        create: data,
-        update: data,
-        select: { id: true },
-      });
+      const [scheduleGame] = await this.database.db
+        .insert(scheduleGames)
+        .values(data)
+        .onConflictDoUpdate({ target: scheduleGames.gameId, set: data })
+        .returning({ id: scheduleGames.id });
 
-      await this.prisma.schedulePointsLeader.deleteMany({
-        where: { scheduleGameId: scheduleGame.id },
-      });
+      await this.database.db
+        .delete(schedulePointsLeaders)
+        .where(eq(schedulePointsLeaders.scheduleGameId, scheduleGame.id));
 
       if (game.pointsLeaders?.length) {
-        await this.prisma.schedulePointsLeader.createMany({
-          data: game.pointsLeaders.map((leader) => ({
+        await this.database.db.insert(schedulePointsLeaders).values(
+          game.pointsLeaders.map((leader) => ({
             scheduleGameId: scheduleGame.id,
             personId: leader.personId ?? null,
             firstName: leader.firstName ?? null,
@@ -401,7 +402,7 @@ export class ScheduleSyncService {
             teamTricode: leader.teamTricode ?? null,
             points: leader.points ?? null,
           })),
-        });
+        );
       }
 
       this.logger.log(
@@ -415,15 +416,16 @@ export class ScheduleSyncService {
   }
 
   private async cleanupStaleGames(scheduleDayId: string, currentGameIds: string[]) {
-    const deleted = await this.prisma.scheduleGame.deleteMany({
-      where: {
-        scheduleDayId,
-        gameId: { notIn: currentGameIds },
-        gameStatus: { not: 3 },
-      },
-    });
-    if (deleted.count > 0) {
-      this.logger.log(`cleanupStaleGames removed=${deleted.count} stale games`);
+    const deleted = await this.database.db
+      .delete(scheduleGames)
+      .where(and(
+        eq(scheduleGames.scheduleDayId, scheduleDayId),
+        ne(scheduleGames.gameStatus, 3),
+        currentGameIds.length ? notInArray(scheduleGames.gameId, currentGameIds) : undefined,
+      ))
+      .returning({ id: scheduleGames.id });
+    if (deleted.length > 0) {
+      this.logger.log(`cleanupStaleGames removed=${deleted.length} stale games`);
     }
   }
 
@@ -433,10 +435,10 @@ export class ScheduleSyncService {
   }
 
   private async cleanupRedisIfFinal(date: string) {
-    const allFinal = await this.prisma.scheduleGame.findMany({
-      where: { gameDate: this.dateFromYmd(date) },
-      select: { gameStatus: true },
-    });
+    const allFinal = await this.database.db
+      .select({ gameStatus: scheduleGames.gameStatus })
+      .from(scheduleGames)
+      .where(eq(scheduleGames.gameDate, date));
 
     if (!allFinal.length) {
       return;

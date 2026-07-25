@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "generate": "bun --filter '@iknoball/prisma' run generate",
-    "migrate": "bun --filter '@iknoball/prisma' run migrate",
+    "generate": "bun --filter '@iknoball/database' run generate",
+    "migrate": "bun --filter '@iknoball/database' run migrate",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "format": "oxfmt . --write",
