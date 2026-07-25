@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "lint": "oxlint .",
     "start": "node dist/main.js",
     "start:dev": "node --enable-source-maps --loader ts-node/esm src/main.ts",
     "dev": "bun run start:dev",
@@ -15,11 +16,11 @@
     "prisma:generate": "bun --filter '@iknoball/prisma' run generate"
   },
   "dependencies": {
+    "@iknoball/prisma": "workspace:*",
+    "@iknoball/schema": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/schedule": "^5.0.0",
-    "@iknoball/prisma": "workspace:*",
-    "@iknoball/schema": "workspace:*",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "bullmq": "^5.58.3",
