@@ -6,17 +6,20 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "start:dev": "node --enable-source-maps --loader ts-node/esm src/main.ts",
+    "dev": "bun run start:dev",
     "run:sync": "node dist/run-sync.js",
     "sync:schedule": "node dist/run-schedule-today.js",
     "sync:schedule:all": "node dist/run-schedule-all.js",
     "sync:schedule:force": "node dist/run-schedule-all-force.js",
     "sync:boxscore": "node dist/run-boxscore.js",
-    "prisma:generate": "prisma generate --schema ./prisma/schema"
+    "prisma:generate": "bun --filter '@iknoball/prisma' run generate"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/schedule": "^5.0.0",
+    "@iknoball/prisma": "workspace:*",
+    "@iknoball/schema": "workspace:*",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "bullmq": "^5.58.3",
@@ -28,6 +31,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.6",
     "prisma": "^7.7.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
