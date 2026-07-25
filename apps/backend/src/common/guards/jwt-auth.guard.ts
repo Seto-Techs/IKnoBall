@@ -49,7 +49,7 @@ export class JwtAuthGuard implements CanActivate {
         // Redis down — proceed with just the JWT
       }
     }
-
+    (request as any).user = payload;
     this.context.setUser(payload);
     return true;
   }

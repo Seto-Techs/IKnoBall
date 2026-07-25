@@ -22,6 +22,7 @@ export class OptionalAuthGuard implements CanActivate {
 
     try {
       const payload = this.jwt.verify(token);
+      (request as any).user = payload;
       this.context.setUser(payload);
     } catch {
       // Token invalid or expired — ignore for optional guard
