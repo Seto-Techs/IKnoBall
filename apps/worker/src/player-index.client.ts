@@ -143,7 +143,11 @@ export class PlayerIndexClient {
         return true;
       }
       const message = error.message.toLowerCase();
-      return message.includes('timeout') || message.includes('etimedout') || message.includes('econnreset');
+      return (
+        message.includes('timeout') ||
+        message.includes('etimedout') ||
+        message.includes('econnreset')
+      );
     }
     return false;
   }

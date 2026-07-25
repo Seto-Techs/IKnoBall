@@ -53,19 +53,12 @@ export class QueueService {
     );
   }
 
-  async enqueueSyncSchedule(
-    jobId = 'syncSchedule',
-    data: { mode?: 'today' | 'all' } = {},
-  ) {
-    await this.syncScheduleQueue.add(
-      'syncSchedule',
-      data,
-      {
-        jobId,
-        removeOnComplete: true,
-        removeOnFail: false,
-      },
-    );
+  async enqueueSyncSchedule(jobId = 'syncSchedule', data: { mode?: 'today' | 'all' } = {}) {
+    await this.syncScheduleQueue.add('syncSchedule', data, {
+      jobId,
+      removeOnComplete: true,
+      removeOnFail: false,
+    });
   }
 
   async upsertCheckLiveBoxscoreScheduler(intervalMs: number) {
@@ -84,5 +77,4 @@ export class QueueService {
     const scheduler = await this.checkLiveBoxscoreQueue.jobScheduler;
     await scheduler.removeJobScheduler('check-live-boxscore');
   }
-
 }

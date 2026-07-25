@@ -76,8 +76,8 @@ export function generateRefreshToken() {
 
 export function toBoolean(val: any): boolean {
   if (val === true || val === false) return val;
-  if (val === "true") return true;
-  if (val === "false") return false;
+  if (val === 'true') return true;
+  if (val === 'false') return false;
   if (val === 1) return true;
   if (val === 0) return false;
   return Boolean(val);
@@ -97,4 +97,3 @@ export function parseDate(dateStr: string): Date | null {
   if (isNaN(date.getTime())) return null;
   return date;
 }
-

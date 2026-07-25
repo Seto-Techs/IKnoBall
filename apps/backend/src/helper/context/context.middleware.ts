@@ -4,7 +4,7 @@ import { ContextService } from './context.service';
 
 @Injectable()
 export class ContextMiddleware implements NestMiddleware {
-  constructor(private readonly contextService: ContextService) { }
+  constructor(private readonly contextService: ContextService) {}
 
   use(req: Request, res: Response, next: NextFunction) {
     this.contextService.run(() => {

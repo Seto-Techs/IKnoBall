@@ -30,7 +30,7 @@ export class S3Service implements OnModuleInit {
 
   constructor() {
     this.region = process.env.AWS_REGION!;
-    this.base_url = process.env.AWS_BASE_URL!; 
+    this.base_url = process.env.AWS_BASE_URL!;
     this.accessKeyId = process.env.AWS_ACCESS_KEY_ID!;
     this.secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY!;
     this.bucket = process.env.AWS_BUCKET!;
@@ -203,10 +203,7 @@ export class S3Service implements OnModuleInit {
       this.logger.log(`Presigned upload URL generated for: ${key}`);
       return url;
     } catch (error) {
-      this.logger.error(
-        `Failed to generate presigned upload URL for ${key}:`,
-        error,
-      );
+      this.logger.error(`Failed to generate presigned upload URL for ${key}:`, error);
       throw error;
     }
   }
@@ -245,10 +242,7 @@ export class S3Service implements OnModuleInit {
       await this.s3Client.send(command);
       return true;
     } catch (error: any) {
-      if (
-        error.name === 'NotFound' ||
-        error.$metadata?.httpStatusCode === 404
-      ) {
+      if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
         return false;
       }
       this.logger.error(`Error checking file existence for ${key}:`, error);

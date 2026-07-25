@@ -132,7 +132,6 @@ jobs:
           START: ${{ env.START }}
           LOGS_URL: ${{ env.LOGS_URL }}
 
-
       # =========================
       # BUILD & PUSH DOCKER
       # =========================
@@ -252,4 +251,3 @@ jobs:
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtHelperService } from '../../helper/jwt/jwt.service';
 import { ContextService } from '../../helper/context/context.service';
@@ -37,9 +32,7 @@ export class JwtAuthGuard implements CanActivate {
     // If the token has a sessionId, verify the session is still active in Redis
     if (payload.sessionId) {
       try {
-        const active = await this.redis.keyExists(
-          `${SESSION_ACTIVE_PREFIX}${payload.sessionId}`,
-        );
+        const active = await this.redis.keyExists(`${SESSION_ACTIVE_PREFIX}${payload.sessionId}`);
         if (!active) {
           throw new UnauthorizedException('Session invalid');
         }

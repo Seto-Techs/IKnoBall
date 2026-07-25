@@ -105,7 +105,11 @@ export class AuthService {
       .where(eq(users.id, user.id));
 
     await this.redis.deleteKey(tokenKey);
-    try { await this.redis.deleteKey(`${USER_PREFIX}${user.id}`); } catch { /* ok */ }
+    try {
+      await this.redis.deleteKey(`${USER_PREFIX}${user.id}`);
+    } catch {
+      /* ok */
+    }
 
     this.logger.log(`Email verified: ${user.email}`);
 
@@ -117,12 +121,18 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(`Resend verification requested for unknown email: ${dto.email}`);
-      return { data: null, message: 'If that email is registered, a new verification link has been sent.' };
+      return {
+        data: null,
+        message: 'If that email is registered, a new verification link has been sent.',
+      };
     }
 
     if (user.isVerified) {
       this.logger.warn(`Resend verification requested for already verified user: ${dto.email}`);
-      return { data: null, message: 'If that email is registered, a new verification link has been sent.' };
+      return {
+        data: null,
+        message: 'If that email is registered, a new verification link has been sent.',
+      };
     }
 
     await this.invalidateExistingToken(user.id);
@@ -130,7 +140,10 @@ export class AuthService {
 
     this.logger.log(`Verification email resent: ${user.email}`);
 
-    return { data: null, message: 'If that email is registered, a new verification link has been sent.' };
+    return {
+      data: null,
+      message: 'If that email is registered, a new verification link has been sent.',
+    };
   }
 
   // ───────────────────────────────
@@ -230,7 +243,7 @@ export class AuthService {
 
     if (!session || session.session.revokedAt || session.session.expiresAt < new Date()) {
       // Clean up stale Redis keys
-      if (sessionId) await this.cleanupSessionRedis(sessionId, tokenHash);
+      await this.cleanupSessionRedis(sessionId!, tokenHash);
       throw new UnauthorizedException('Session expired or revoked');
     }
 
@@ -368,7 +381,9 @@ export class AuthService {
     const resetLink = `${this.appUrl}/auth/reset-password?token=${resetToken}`;
 
     await this.emailService.sendPasswordResetEmail({
-      to: user.email, name: user.name, link: resetLink,
+      to: user.email,
+      name: user.name,
+      link: resetLink,
       subject: 'Reset your IKnoBall password',
       fromKey: EMAIL_FROM_KEYS.verify,
     });
@@ -412,7 +427,9 @@ export class AuthService {
 
     const verifyLink = `${this.appUrl}/auth/verify-email?token=${token}`;
     await this.emailService.sendVerifyEmail({
-      to: email, name: userName, link: verifyLink,
+      to: email,
+      name: userName,
+      link: verifyLink,
       subject: 'Verify your IKnoBall account',
       fromKey: EMAIL_FROM_KEYS.verify,
     });
@@ -423,8 +440,14 @@ export class AuthService {
     try {
       const oldToken = await this.redis.getKey(userKey);
       await this.redis.deleteKey(`${TOKEN_PREFIX}${oldToken}`);
-    } catch { /* none */ }
-    try { await this.redis.deleteKey(userKey); } catch { /* ok */ }
+    } catch {
+      /* none */
+    }
+    try {
+      await this.redis.deleteKey(userKey);
+    } catch {
+      /* ok */
+    }
   }
 
   private async setSessionInRedis(sessionId: string, refreshTokenHash: string) {
@@ -440,7 +463,9 @@ export class AuthService {
       this.redis.deleteKey(`${SESSION_ACTIVE_PREFIX}${sessionId}`).catch(() => {}),
     ];
     if (refreshTokenHash) {
-      ops.push(this.redis.deleteKey(`${SESSION_REFRESH_PREFIX}${refreshTokenHash}`).catch(() => {}));
+      ops.push(
+        this.redis.deleteKey(`${SESSION_REFRESH_PREFIX}${refreshTokenHash}`).catch(() => {}),
+      );
     }
     await Promise.all(ops);
   }

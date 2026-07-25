@@ -16,4 +16,4 @@ export const emailConfig = () => ({
       : undefined,
     fromName: process.env.EMAIL_FROM_NAME,
   },
-})
+});

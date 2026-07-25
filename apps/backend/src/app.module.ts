@@ -22,7 +22,6 @@ import { emailConfig } from './helper/email/email.config';
   controllers: [AppController],
   providers: [AppService],
 })
-
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(ContextMiddleware).forRoutes('*');

@@ -12,7 +12,8 @@ import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 import { QueueService } from './queue.service';
 
-type ScheduleGameInput = NbaScheduleResponse['leagueSchedule']['gameDates'][number]['games'][number];
+type ScheduleGameInput =
+  NbaScheduleResponse['leagueSchedule']['gameDates'][number]['games'][number];
 
 @Injectable()
 export class ScheduleSyncService {
@@ -73,12 +74,21 @@ export class ScheduleSyncService {
       return;
     }
 
-    await this.upsertScheduleGames(scheduleDay.id, today, daySchedule.games, 0, daySchedule.games.length);
+    await this.upsertScheduleGames(
+      scheduleDay.id,
+      today,
+      daySchedule.games,
+      0,
+      daySchedule.games.length,
+    );
     await this.cleanupStaleGames(
       scheduleDay.id,
       daySchedule.games.map((g) => g.gameId),
     );
-    await this.saveRedisGameIds(today, daySchedule.games.map((game) => game.gameId));
+    await this.saveRedisGameIds(
+      today,
+      daySchedule.games.map((game) => game.gameId),
+    );
 
     await this.cleanupRedisIfFinal(today);
 
@@ -125,7 +135,13 @@ export class ScheduleSyncService {
         continue;
       }
 
-      await this.upsertScheduleGames(scheduleDay.id, normalizedDate, daySchedule.games, processed, totalGames);
+      await this.upsertScheduleGames(
+        scheduleDay.id,
+        normalizedDate,
+        daySchedule.games,
+        processed,
+        totalGames,
+      );
       processed += daySchedule.games.length;
       await this.cleanupStaleGames(
         scheduleDay.id,
@@ -168,7 +184,13 @@ export class ScheduleSyncService {
       }
       const scheduleDay = await this.upsertScheduleDay(normalizedDate, response, '');
 
-      await this.upsertScheduleGames(scheduleDay.id, normalizedDate, daySchedule.games, processed, totalGames);
+      await this.upsertScheduleGames(
+        scheduleDay.id,
+        normalizedDate,
+        daySchedule.games,
+        processed,
+        totalGames,
+      );
       processed += daySchedule.games.length;
       await this.cleanupStaleGames(
         scheduleDay.id,
@@ -213,9 +235,7 @@ export class ScheduleSyncService {
       }
     }
 
-    const slashMatch = date.match(
-      /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?$/,
-    );
+    const slashMatch = date.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?$/);
     if (slashMatch) {
       const [, month, day, year, hour = '00', minute = '00', second = '00'] = slashMatch;
       const iso = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
@@ -503,5 +523,4 @@ export class ScheduleSyncService {
     }
     return parsed;
   }
-
 }

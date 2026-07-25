@@ -8,9 +8,18 @@ import {
 } from '@iknoball/database';
 import { and, eq, gte, inArray, or } from 'drizzle-orm';
 import { Injectable, Logger } from '@nestjs/common';
-import { NbaBoxScoreClient, BoxScoreTraditionalResponse, BoxScoreSummaryResponse } from './nba-boxscore.client';
-import { NbaCdnBoxScoreClient, CdnBoxScoreResponse, CdnPlayerStats } from './nba-cdn-boxscore.client';
-import { DatabaseService } from './database.service';
+import { Prisma } from '@prisma/client';
+import {
+  NbaBoxScoreClient,
+  BoxScoreTraditionalResponse,
+  BoxScoreSummaryResponse,
+} from './nba-boxscore.client';
+import {
+  NbaCdnBoxScoreClient,
+  CdnBoxScoreResponse,
+  CdnPlayerStats,
+} from './nba-cdn-boxscore.client';
+import { PrismaService } from './prisma.service';
 import { RedisService } from './redis.service';
 
 type BoxScorePlayerStats = {
@@ -127,10 +136,14 @@ export class BoxscoreCrawlerService {
       await this.updateSeriesTextForSeries(gameId);
     }
 
-    await this.writeRedis(gameId, {
-      boxScoreTraditional: this.pickTraditional(traditional),
-      boxScoreSummary: this.pickSummary(summary),
-    }, ttlSeconds);
+    await this.writeRedis(
+      gameId,
+      {
+        boxScoreTraditional: this.pickTraditional(traditional),
+        boxScoreSummary: this.pickSummary(summary),
+      },
+      ttlSeconds,
+    );
 
     return summary.boxScoreSummary.gameStatus ?? null;
   }
@@ -184,7 +197,7 @@ export class BoxscoreCrawlerService {
         ),
       ));
 
-    const toUpdate = allSeriesGames.filter(g => {
+    const toUpdate = allSeriesGames.filter((g) => {
       if (g.gameId === gameId) return false;
       if (!hasNum) return true;
       const gn = parseInt(g.seriesGameNumber?.replace(/\D/g, '') ?? '', 10);
@@ -196,7 +209,7 @@ export class BoxscoreCrawlerService {
       return;
     }
 
-    const ids = toUpdate.map(g => g.id);
+    const ids = toUpdate.map((g) => g.id);
 
     await this.database.db
       .update(scheduleGames)
@@ -231,35 +244,51 @@ export class BoxscoreCrawlerService {
           playerSlug: '',
           position: p.position,
           jerseyNum: p.jerseyNum,
-          statistics: p.statistics ? {
-            minutes: p.statistics.minutesCalculated || p.statistics.minutes,
-            fieldGoalsMade: p.statistics.fieldGoalsMade,
-            fieldGoalsAttempted: p.statistics.fieldGoalsAttempted,
-            fieldGoalsPercentage: p.statistics.fieldGoalsPercentage,
-            threePointersMade: p.statistics.threePointersMade,
-            threePointersAttempted: p.statistics.threePointersAttempted,
-            threePointersPercentage: p.statistics.threePointersPercentage,
-            freeThrowsMade: p.statistics.freeThrowsMade,
-            freeThrowsAttempted: p.statistics.freeThrowsAttempted,
-            freeThrowsPercentage: p.statistics.freeThrowsPercentage,
-            reboundsOffensive: p.statistics.reboundsOffensive,
-            reboundsDefensive: p.statistics.reboundsDefensive,
-            reboundsTotal: p.statistics.reboundsTotal,
-            assists: p.statistics.assists,
-            steals: p.statistics.steals,
-            blocks: p.statistics.blocks,
-            turnovers: p.statistics.turnovers,
-            foulsPersonal: p.statistics.foulsPersonal,
-            points: p.statistics.points,
-            plusMinusPoints: p.statistics.plusMinusPoints,
-          } : {
-            minutes: 'PT00M00.00S', fieldGoalsMade: 0, fieldGoalsAttempted: 0, fieldGoalsPercentage: 0,
-            threePointersMade: 0, threePointersAttempted: 0, threePointersPercentage: 0,
-            freeThrowsMade: 0, freeThrowsAttempted: 0, freeThrowsPercentage: 0,
-            reboundsOffensive: 0, reboundsDefensive: 0, reboundsTotal: 0,
-            assists: 0, steals: 0, blocks: 0, turnovers: 0, foulsPersonal: 0,
-            points: 0, plusMinusPoints: 0,
-          },
+          statistics: p.statistics
+            ? {
+                minutes: p.statistics.minutesCalculated || p.statistics.minutes,
+                fieldGoalsMade: p.statistics.fieldGoalsMade,
+                fieldGoalsAttempted: p.statistics.fieldGoalsAttempted,
+                fieldGoalsPercentage: p.statistics.fieldGoalsPercentage,
+                threePointersMade: p.statistics.threePointersMade,
+                threePointersAttempted: p.statistics.threePointersAttempted,
+                threePointersPercentage: p.statistics.threePointersPercentage,
+                freeThrowsMade: p.statistics.freeThrowsMade,
+                freeThrowsAttempted: p.statistics.freeThrowsAttempted,
+                freeThrowsPercentage: p.statistics.freeThrowsPercentage,
+                reboundsOffensive: p.statistics.reboundsOffensive,
+                reboundsDefensive: p.statistics.reboundsDefensive,
+                reboundsTotal: p.statistics.reboundsTotal,
+                assists: p.statistics.assists,
+                steals: p.statistics.steals,
+                blocks: p.statistics.blocks,
+                turnovers: p.statistics.turnovers,
+                foulsPersonal: p.statistics.foulsPersonal,
+                points: p.statistics.points,
+                plusMinusPoints: p.statistics.plusMinusPoints,
+              }
+            : {
+                minutes: 'PT00M00.00S',
+                fieldGoalsMade: 0,
+                fieldGoalsAttempted: 0,
+                fieldGoalsPercentage: 0,
+                threePointersMade: 0,
+                threePointersAttempted: 0,
+                threePointersPercentage: 0,
+                freeThrowsMade: 0,
+                freeThrowsAttempted: 0,
+                freeThrowsPercentage: 0,
+                reboundsOffensive: 0,
+                reboundsDefensive: 0,
+                reboundsTotal: 0,
+                assists: 0,
+                steals: 0,
+                blocks: 0,
+                turnovers: 0,
+                foulsPersonal: 0,
+                points: 0,
+                plusMinusPoints: 0,
+              },
         })),
         statistics: {
           minutes: String(team.statistics.minutes ?? ''),
@@ -368,8 +397,14 @@ export class BoxscoreCrawlerService {
           inactives: [],
         },
         lastFiveMeetings: { meetings: [] },
-        pregameCharts: { homeTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} }, awayTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} } },
-        postgameCharts: { homeTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} }, awayTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} } },
+        pregameCharts: {
+          homeTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} },
+          awayTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} },
+        },
+        postgameCharts: {
+          homeTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} },
+          awayTeam: { teamId: 0, teamCity: '', teamName: '', teamTricode: '', statistics: {} },
+        },
         videoAvailableFlag: 0,
         ptAvailable: 0,
         ptXYZAvailable: 0,
@@ -387,7 +422,29 @@ export class BoxscoreCrawlerService {
     response: Awaited<ReturnType<NbaBoxScoreClient['fetchBoxScoreTraditional']>>,
   ) {
     const norm = (s: { minutes: string } | null) => {
-      if (!s) return { minutes: 'PT00M00.00S', fieldGoalsMade: 0, fieldGoalsAttempted: 0, fieldGoalsPercentage: 0, threePointersMade: 0, threePointersAttempted: 0, threePointersPercentage: 0, freeThrowsMade: 0, freeThrowsAttempted: 0, freeThrowsPercentage: 0, reboundsOffensive: 0, reboundsDefensive: 0, reboundsTotal: 0, assists: 0, steals: 0, blocks: 0, turnovers: 0, foulsPersonal: 0, points: 0, plusMinusPoints: 0 };
+      if (!s)
+        return {
+          minutes: 'PT00M00.00S',
+          fieldGoalsMade: 0,
+          fieldGoalsAttempted: 0,
+          fieldGoalsPercentage: 0,
+          threePointersMade: 0,
+          threePointersAttempted: 0,
+          threePointersPercentage: 0,
+          freeThrowsMade: 0,
+          freeThrowsAttempted: 0,
+          freeThrowsPercentage: 0,
+          reboundsOffensive: 0,
+          reboundsDefensive: 0,
+          reboundsTotal: 0,
+          assists: 0,
+          steals: 0,
+          blocks: 0,
+          turnovers: 0,
+          foulsPersonal: 0,
+          points: 0,
+          plusMinusPoints: 0,
+        };
       if (!s.minutes) s.minutes = 'PT00M00.00S';
       return s;
     };
@@ -479,8 +536,10 @@ export class BoxscoreCrawlerService {
     };
   }
 
-  private toJsonInput(value: unknown) {
-    return value ?? null;
+  private toJsonInput(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    return value === null || value === undefined
+      ? Prisma.JsonNull
+      : (value as Prisma.InputJsonValue);
   }
 
   private async upsertSummary(
@@ -824,12 +883,26 @@ export class BoxscoreCrawlerService {
   private mapStats(stats: BoxScorePlayerStats) {
     if (!stats) {
       return {
-        minutes: null, fgMade: null, fgAttempted: null, fgPct: null,
-        fg3Made: null, fg3Attempted: null, fg3Pct: null,
-        ftMade: null, ftAttempted: null, ftPct: null,
-        oreb: null, dreb: null, reb: null,
-        ast: null, stl: null, blk: null, tov: null, pf: null,
-        pts: null, plusMinus: null,
+        minutes: null,
+        fgMade: null,
+        fgAttempted: null,
+        fgPct: null,
+        fg3Made: null,
+        fg3Attempted: null,
+        fg3Pct: null,
+        ftMade: null,
+        ftAttempted: null,
+        ftPct: null,
+        oreb: null,
+        dreb: null,
+        reb: null,
+        ast: null,
+        stl: null,
+        blk: null,
+        tov: null,
+        pf: null,
+        pts: null,
+        plusMinus: null,
       };
     }
     return {

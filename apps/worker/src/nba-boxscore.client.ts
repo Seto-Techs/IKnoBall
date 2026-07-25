@@ -379,7 +379,9 @@ export class NbaBoxScoreClient {
           throw error;
         }
         const delayMs = this.backoffDelayMs(attempt);
-        this.logger.warn(`NBA boxscore retry ${attempt}/${retries} after ${delayMs}ms for ${url.pathname}`);
+        this.logger.warn(
+          `NBA boxscore retry ${attempt}/${retries} after ${delayMs}ms for ${url.pathname}`,
+        );
         await this.sleep(delayMs);
       }
     }

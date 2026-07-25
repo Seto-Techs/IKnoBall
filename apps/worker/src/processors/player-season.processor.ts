@@ -122,7 +122,12 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       return;
     }
     try {
-      await this.syncDashboardByYear(player.id, playerExternalId, 'Regular Season', 'ByYear-regular');
+      await this.syncDashboardByYear(
+        player.id,
+        playerExternalId,
+        'Regular Season',
+        'ByYear-regular',
+      );
       await this.syncDashboardByYear(player.id, playerExternalId, 'Playoffs', 'ByYear-playoffs');
       const spanSeconds = ((Date.now() - startedAt) / 1000).toFixed(2);
       this.logger.log(`crawlPlayerCareer done player=${playerExternalId} span=${spanSeconds}s`);
@@ -163,7 +168,9 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     );
     const resultSet = response.resultSets.find((set) => set.name === 'ByYearPlayerDashboard');
     if (!resultSet) {
-      this.logger.warn(`ByYearPlayerDashboard result set missing for ${playerExternalId} ${seasonType}`);
+      this.logger.warn(
+        `ByYearPlayerDashboard result set missing for ${playerExternalId} ${seasonType}`,
+      );
       return;
     }
 
@@ -237,10 +244,17 @@ export class PlayerSeasonProcessor implements OnModuleInit {
         return true;
       }
       const message = error.message.toLowerCase();
-      if (message.includes('nba stats request failed: 5') || message.includes('nba stats request failed: 429')) {
+      if (
+        message.includes('nba stats request failed: 5') ||
+        message.includes('nba stats request failed: 429')
+      ) {
         return true;
       }
-      return message.includes('timeout') || message.includes('etimedout') || message.includes('econnreset');
+      return (
+        message.includes('timeout') ||
+        message.includes('etimedout') ||
+        message.includes('econnreset')
+      );
     }
     return false;
   }

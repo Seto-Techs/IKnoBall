@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import nodemailer from 'nodemailer'
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import nodemailer from 'nodemailer';
 
 @Injectable()
 export class SmtpClient {
-  private transporter: nodemailer.Transporter
+  private transporter: nodemailer.Transporter;
 
   constructor(private config: ConfigService) {
     this.transporter = nodemailer.createTransport({
@@ -15,10 +15,10 @@ export class SmtpClient {
         user: this.config.get<string>('SMTP_USER'),
         pass: this.config.get<string>('SMTP_PASS'),
       },
-    })
+    });
   }
 
   send(options: nodemailer.SendMailOptions) {
-    return this.transporter.sendMail(options)
+    return this.transporter.sendMail(options);
   }
 }

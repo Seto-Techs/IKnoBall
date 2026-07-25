@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtHelperService } from '../../helper/jwt/jwt.service';
 import { ContextService } from '../../helper/context/context.service';
