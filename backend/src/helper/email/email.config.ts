@@ -6,7 +6,7 @@ export const emailConfig = () => ({
     pass: process.env.EMAIL_SMTP_PASS,
     secure: true,
   },
-  from: 'DuitRapi <no-reply@setotechs.com>',
+  from: 'IKnoBall <no-reply@setotechs.com>',
   emailQueue: {
     redisUrl: process.env.EMAIL_QUEUE_REDIS_URL,
     key: process.env.EMAIL_QUEUE_KEY,
