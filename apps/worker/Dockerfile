@@ -9,21 +9,14 @@ COPY package.json bun.lock ./
 COPY apps/frontend/package.json apps/frontend/package.json
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/worker/package.json apps/worker/package.json
-COPY packages/schema/package.json packages/schema/package.json
-COPY packages/prisma/package.json packages/prisma/package.json
+COPY packages/database/package.json packages/database/package.json
 RUN bun install --frozen-lockfile
 
 COPY apps/worker apps/worker
-COPY packages/schema packages/schema
-COPY packages/prisma packages/prisma
+COPY packages/database packages/database
 WORKDIR /app/apps/worker
 
-ARG DATABASE_URL
-ENV DATABASE_URL=$DATABASE_URL
-ARG DATABASE_URL_SHADOW
-ENV DATABASE_URL_SHADOW=$DATABASE_URL_SHADOW
-
-RUN bun --filter '@iknoball/prisma' run generate
+RUN bun --filter '@iknoball/database' run build
 RUN bun run build
 
 FROM oven/bun:1.3.1-slim AS runner

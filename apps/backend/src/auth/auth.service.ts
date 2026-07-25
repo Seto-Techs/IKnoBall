@@ -9,7 +9,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash, randomUUID } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../helper/prisma/prisma.service';
+import { userSessions, users } from '@iknoball/database';
+import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import { DatabaseService } from '../helper/database/database.service';
 import { JwtHelperService } from '../helper/jwt/jwt.service';
 import { EmailService } from '../helper/email/email.service';
 import { RedisService } from '../helper/redis/redis.service';
@@ -43,7 +45,7 @@ export class AuthService {
   private readonly appUrl: string;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly database: DatabaseService,
     private readonly jwt: JwtHelperService,
     private readonly emailService: EmailService,
     private readonly redis: RedisService,
@@ -57,22 +59,21 @@ export class AuthService {
   // ───────────────────────────────
 
   async register(dto: RegisterDto) {
-    const existing = await this.prisma.users.findUnique({
-      where: { email: dto.email },
-    });
+    const [existing] = await this.database.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, dto.email))
+      .limit(1);
     if (existing) {
       throw new ConflictException('Email already registered');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = await this.prisma.users.create({
-      data: {
-        email: dto.email,
-        name: dto.name,
-        passwordHash,
-      },
-    });
+    const [user] = await this.database.db
+      .insert(users)
+      .values({ email: dto.email, name: dto.name, passwordHash })
+      .returning();
 
     await this.storeVerificationToken(user.id, user.email, user.name);
 
@@ -92,21 +93,16 @@ export class AuthService {
 
     const userId = await this.redis.getKey(tokenKey);
 
-    const user = await this.prisma.users.findUnique({
-      where: { id: userId },
-    });
+    const [user] = await this.database.db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     if (!user) {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
-    await this.prisma.users.update({
-      where: { id: user.id },
-      data: {
-        isVerified: true,
-        verifiedAt: new Date(),
-      },
-    });
+    await this.database.db
+      .update(users)
+      .set({ isVerified: true, verifiedAt: new Date() })
+      .where(eq(users.id, user.id));
 
     await this.redis.deleteKey(tokenKey);
     try { await this.redis.deleteKey(`${USER_PREFIX}${user.id}`); } catch { /* ok */ }
@@ -117,9 +113,7 @@ export class AuthService {
   }
 
   async resendVerification(dto: ResendVerificationDto) {
-    const user = await this.prisma.users.findUnique({
-      where: { email: dto.email },
-    });
+    const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
 
     if (!user) {
       this.logger.warn(`Resend verification requested for unknown email: ${dto.email}`);
@@ -144,9 +138,7 @@ export class AuthService {
   // ───────────────────────────────
 
   async login(dto: LoginDto, userAgent?: string, ipAddress?: string) {
-    const user = await this.prisma.users.findUnique({
-      where: { email: dto.email },
-    });
+    const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
 
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -172,16 +164,9 @@ export class AuthService {
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SEC * 1000);
 
     // Store in PostgreSQL (audit log)
-    await this.prisma.sessions.create({
-      data: {
-        id: sessionId,
-        userId: user.id,
-        userAgent: userAgent ?? null,
-        ipAddress: ipAddress ?? null,
-        refreshTokenHash,
-        lastUsedAt: now,
-        expiresAt,
-      },
+    await this.database.db.insert(userSessions).values({
+      id: sessionId, userId: user.id, userAgent: userAgent ?? null,
+      ipAddress: ipAddress ?? null, refreshTokenHash, lastUsedAt: now, expiresAt,
     });
 
     // Store in Redis (hot path)
@@ -224,9 +209,11 @@ export class AuthService {
 
     // Fallback: find session by hash in DB
     if (!sessionId) {
-      const session = await this.prisma.sessions.findFirst({
-        where: { refreshTokenHash: tokenHash, revokedAt: null },
-      });
+      const [session] = await this.database.db
+        .select()
+        .from(userSessions)
+        .where(and(eq(userSessions.refreshTokenHash, tokenHash), isNull(userSessions.revokedAt)))
+        .limit(1);
       if (!session) {
         throw new UnauthorizedException('Invalid or expired refresh token');
       }
@@ -234,14 +221,16 @@ export class AuthService {
     }
 
     // Re-fetch session from DB for full state
-    const session = await this.prisma.sessions.findUnique({
-      where: { id: sessionId },
-      include: { user: true },
-    });
+    const [session] = await this.database.db
+      .select({ session: userSessions, user: users })
+      .from(userSessions)
+      .innerJoin(users, eq(userSessions.userId, users.id))
+      .where(eq(userSessions.id, sessionId))
+      .limit(1);
 
-    if (!session || session.revokedAt || session.expiresAt < new Date()) {
+    if (!session || session.session.revokedAt || session.session.expiresAt < new Date()) {
       // Clean up stale Redis keys
-      await this.cleanupSessionRedis(sessionId, tokenHash);
+      if (sessionId) await this.cleanupSessionRedis(sessionId, tokenHash);
       throw new UnauthorizedException('Session expired or revoked');
     }
 
@@ -256,31 +245,27 @@ export class AuthService {
     const now = new Date();
     const newExpiresAt = new Date(now.getTime() + SESSION_TTL_SEC * 1000);
 
-    await this.prisma.sessions.update({
-      where: { id: session.id },
-      data: {
-        refreshTokenHash: newHash,
-        lastUsedAt: now,
-        expiresAt: newExpiresAt,
-      },
-    });
+    await this.database.db
+      .update(userSessions)
+      .set({ refreshTokenHash: newHash, lastUsedAt: now, expiresAt: newExpiresAt })
+      .where(eq(userSessions.id, session.session.id));
 
     // Rotate Redis keys
     await this.redis.deleteKey(refreshKey);
-    await this.setSessionInRedis(session.id, newHash);
+    await this.setSessionInRedis(session.session.id, newHash);
 
     const accessToken = this.jwt.sign(
-      { sub: session.user.id, email: session.user.email, sessionId: session.id },
+      { sub: session.user.id, email: session.user.email, sessionId: session.session.id },
       { expiresIn: ACCESS_TOKEN_EXPIRY },
     );
 
-    this.logger.log(`Token refreshed: session=${session.id}`);
+    this.logger.log(`Token refreshed: session=${session.session.id}`);
 
     return {
       data: {
         accessToken,
         refreshToken: newRefreshToken,
-        sessionId: session.id,
+        sessionId: session.session.id,
         expiresAt: newExpiresAt,
         user: { id: session.user.id, email: session.user.email, name: session.user.name },
       },
@@ -293,26 +278,18 @@ export class AuthService {
   // ───────────────────────────────
 
   async listSessions(userId: string) {
-    const sessions = await this.prisma.sessions.findMany({
-      where: { userId, revokedAt: null },
-      orderBy: { lastUsedAt: 'desc' },
-      select: {
-        id: true,
-        userAgent: true,
-        ipAddress: true,
-        lastUsedAt: true,
-        expiresAt: true,
-        createdAt: true,
-      },
-    });
+    const sessions = await this.database.db
+      .select({ id: userSessions.id, userAgent: userSessions.userAgent, ipAddress: userSessions.ipAddress,
+        lastUsedAt: userSessions.lastUsedAt, expiresAt: userSessions.expiresAt, createdAt: userSessions.createdAt })
+      .from(userSessions)
+      .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
+      .orderBy(desc(userSessions.lastUsedAt));
 
     return { data: sessions };
   }
 
   async getSession(userId: string, sessionId: string) {
-    const session = await this.prisma.sessions.findUnique({
-      where: { id: sessionId },
-    });
+    const [session] = await this.database.db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
 
     if (!session || session.userId !== userId) {
       throw new NotFoundException('Session not found');
@@ -332,18 +309,13 @@ export class AuthService {
   }
 
   async deleteSession(userId: string, sessionId: string) {
-    const session = await this.prisma.sessions.findUnique({
-      where: { id: sessionId },
-    });
+    const [session] = await this.database.db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
 
     if (!session || session.userId !== userId) {
       throw new NotFoundException('Session not found');
     }
 
-    await this.prisma.sessions.update({
-      where: { id: sessionId },
-      data: { revokedAt: new Date() },
-    });
+    await this.database.db.update(userSessions).set({ revokedAt: new Date() }).where(eq(userSessions.id, sessionId));
 
     // Eject from Redis
     await this.cleanupSessionRedis(sessionId, session.refreshTokenHash ?? undefined);
@@ -354,9 +326,7 @@ export class AuthService {
 
   async logoutCurrentSession(userId: string, sessionId: string) {
     // Same as delete, but self-service — no need to re-fetch for ownership
-    const session = await this.prisma.sessions.findUnique({
-      where: { id: sessionId },
-    });
+    const [session] = await this.database.db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
 
     if (!session || session.userId !== userId) {
       throw new NotFoundException('Session not found');
@@ -383,9 +353,7 @@ export class AuthService {
   // ───────────────────────────────
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await this.prisma.users.findUnique({
-      where: { email: dto.email },
-    });
+    const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
 
     if (!user) {
       this.logger.warn(`Forgot password requested for unknown email: ${dto.email}`);
@@ -395,10 +363,7 @@ export class AuthService {
     const resetToken = randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
 
-    await this.prisma.users.update({
-      where: { id: user.id },
-      data: { resetToken, resetTokenExpiry },
-    });
+    await this.database.db.update(users).set({ resetToken, resetTokenExpiry }).where(eq(users.id, user.id));
 
     const resetLink = `${this.appUrl}/auth/reset-password?token=${resetToken}`;
 
@@ -414,9 +379,11 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.prisma.users.findFirst({
-      where: { resetToken: dto.token, resetTokenExpiry: { gt: new Date() } },
-    });
+    const [user] = await this.database.db
+      .select()
+      .from(users)
+      .where(and(eq(users.resetToken, dto.token), gt(users.resetTokenExpiry, new Date())))
+      .limit(1);
 
     if (!user) {
       throw new BadRequestException('Invalid or expired reset token');
@@ -424,10 +391,10 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
 
-    await this.prisma.users.update({
-      where: { id: user.id },
-      data: { passwordHash, resetToken: null, resetTokenExpiry: null },
-    });
+    await this.database.db
+      .update(users)
+      .set({ passwordHash, resetToken: null, resetTokenExpiry: null })
+      .where(eq(users.id, user.id));
 
     this.logger.log(`Password reset completed: ${user.email}`);
 

@@ -1,8 +1,16 @@
+import {
+  players,
+  scheduleBoxscorePlayers,
+  scheduleBoxscoreSummaries,
+  scheduleBoxscoreTeams,
+  scheduleDays,
+  scheduleGames,
+} from '@iknoball/database';
+import { and, eq, gte, inArray, or } from 'drizzle-orm';
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { NbaBoxScoreClient, BoxScoreTraditionalResponse, BoxScoreSummaryResponse } from './nba-boxscore.client';
 import { NbaCdnBoxScoreClient, CdnBoxScoreResponse, CdnPlayerStats } from './nba-cdn-boxscore.client';
-import { PrismaService } from './prisma.service';
+import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 
 type BoxScorePlayerStats = {
@@ -37,7 +45,7 @@ export class BoxscoreCrawlerService {
   constructor(
     private readonly boxscoreClient: NbaBoxScoreClient,
     private readonly cdnBoxscoreClient: NbaCdnBoxScoreClient,
-    private readonly prisma: PrismaService,
+    private readonly database: DatabaseService,
     private readonly redisService: RedisService,
   ) {}
 
@@ -47,14 +55,12 @@ export class BoxscoreCrawlerService {
       throw new Error('NBA_CURRENT_SEASON is required');
     }
 
-    const games = await this.prisma.scheduleGame.findMany({
-      where: {
-        scheduleDay: { seasonYear: season },
-        gameStatus: { gte: 2 },
-      },
-      select: { id: true, gameId: true },
-      orderBy: { gameDate: 'asc' },
-    });
+    const games = await this.database.db
+      .select({ id: scheduleGames.id, gameId: scheduleGames.gameId })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(and(eq(scheduleDays.seasonYear, season), gte(scheduleGames.gameStatus, 2)))
+      .orderBy(scheduleGames.gameDate);
 
     this.logger.log(`boxscore crawl start season=${season} games=${games.length}`);
 
@@ -85,10 +91,10 @@ export class BoxscoreCrawlerService {
   }
 
   async syncGameBoxscoreLive(gameId: string, ttlSeconds: number) {
-    const scheduleGame = await this.prisma.scheduleGame.findUnique({
-      where: { gameId },
-      select: { id: true },
-    });
+    const [scheduleGame] = await this.database.db
+      .select({ id: scheduleGames.id })
+      .from(scheduleGames)
+      .where(eq(scheduleGames.gameId, gameId));
     if (!scheduleGame) {
       this.logger.warn(`live boxscore skip missing schedule game=${gameId}`);
       return null;
@@ -108,14 +114,14 @@ export class BoxscoreCrawlerService {
     await this.upsertTeams(scheduleGameId, traditional);
     await this.upsertPlayers(scheduleGameId, gameId, traditional);
 
-    await this.prisma.scheduleGame.update({
-      where: { id: scheduleGameId },
-      data: {
+    await this.database.db
+      .update(scheduleGames)
+      .set({
         gameStatus: summary.boxScoreSummary.gameStatus,
         gameStatusText: summary.boxScoreSummary.gameStatusText,
         gameCode: summary.boxScoreSummary.gameCode,
-      },
-    });
+      })
+      .where(eq(scheduleGames.id, scheduleGameId));
 
     if (summary.boxScoreSummary.gameStatus === 3) {
       await this.updateSeriesTextForSeries(gameId);
@@ -130,16 +136,16 @@ export class BoxscoreCrawlerService {
   }
 
   private async updateSeriesTextForSeries(gameId: string) {
-    const game = await this.prisma.scheduleGame.findUnique({
-      where: { gameId },
-      select: {
-        gameLabel: true,
-        homeTeamId: true,
-        awayTeamId: true,
-        seriesText: true,
-        seriesGameNumber: true,
-      },
-    });
+    const [game] = await this.database.db
+      .select({
+        gameLabel: scheduleGames.gameLabel,
+        homeTeamId: scheduleGames.homeTeamId,
+        awayTeamId: scheduleGames.awayTeamId,
+        seriesText: scheduleGames.seriesText,
+        seriesGameNumber: scheduleGames.seriesGameNumber,
+      })
+      .from(scheduleGames)
+      .where(eq(scheduleGames.gameId, gameId));
 
     if (!game || !game.gameLabel || !game.homeTeamId || !game.awayTeamId) {
       return;
@@ -163,16 +169,20 @@ export class BoxscoreCrawlerService {
     const currentNum = parseInt(game.seriesGameNumber?.replace(/\D/g, '') ?? '', 10);
     const hasNum = !isNaN(currentNum);
 
-    const allSeriesGames = await this.prisma.scheduleGame.findMany({
-      where: {
-        gameLabel: game.gameLabel,
-        OR: [
-          { homeTeamId: game.homeTeamId, awayTeamId: game.awayTeamId },
-          { homeTeamId: game.awayTeamId, awayTeamId: game.homeTeamId },
-        ],
-      },
-      select: { id: true, gameId: true, seriesGameNumber: true },
-    });
+    const allSeriesGames = await this.database.db
+      .select({
+        id: scheduleGames.id,
+        gameId: scheduleGames.gameId,
+        seriesGameNumber: scheduleGames.seriesGameNumber,
+      })
+      .from(scheduleGames)
+      .where(and(
+        eq(scheduleGames.gameLabel, game.gameLabel),
+        or(
+          and(eq(scheduleGames.homeTeamId, game.homeTeamId), eq(scheduleGames.awayTeamId, game.awayTeamId)),
+          and(eq(scheduleGames.homeTeamId, game.awayTeamId), eq(scheduleGames.awayTeamId, game.homeTeamId)),
+        ),
+      ));
 
     const toUpdate = allSeriesGames.filter(g => {
       if (g.gameId === gameId) return false;
@@ -188,15 +198,15 @@ export class BoxscoreCrawlerService {
 
     const ids = toUpdate.map(g => g.id);
 
-    await this.prisma.scheduleGame.updateMany({
-      where: { id: { in: ids } },
-      data: { seriesText },
-    });
+    await this.database.db
+      .update(scheduleGames)
+      .set({ seriesText })
+      .where(inArray(scheduleGames.id, ids));
 
-    await this.prisma.scheduleBoxScoreSummary.updateMany({
-      where: { scheduleGameId: { in: ids } },
-      data: { seriesText },
-    });
+    await this.database.db
+      .update(scheduleBoxscoreSummaries)
+      .set({ seriesText })
+      .where(inArray(scheduleBoxscoreSummaries.scheduleGameId, ids));
   }
 
   private async fetchGameBoxscore(gameId: string) {
@@ -469,8 +479,8 @@ export class BoxscoreCrawlerService {
     };
   }
 
-  private toJsonInput(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
-    return value === null || value === undefined ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
+  private toJsonInput(value: unknown) {
+    return value ?? null;
   }
 
   private async upsertSummary(
@@ -478,9 +488,7 @@ export class BoxscoreCrawlerService {
     response: Awaited<ReturnType<NbaBoxScoreClient['fetchBoxScoreSummary']>>,
   ) {
     const summary = response.boxScoreSummary;
-    await this.prisma.scheduleBoxScoreSummary.upsert({
-      where: { scheduleGameId },
-      create: {
+    const create = {
         scheduleGameId,
         gameCode: summary.gameCode,
         gameStatus: summary.gameStatus,
@@ -532,8 +540,8 @@ export class BoxscoreCrawlerService {
         lastFiveMeetings: this.toJsonInput(summary.lastFiveMeetings),
         pregameCharts: this.toJsonInput(summary.pregameCharts),
         postgameCharts: this.toJsonInput(summary.postgameCharts),
-      },
-      update: {
+      };
+    const update = {
         gameCode: summary.gameCode,
         gameStatus: summary.gameStatus,
         gameStatusText: summary.gameStatusText,
@@ -584,8 +592,14 @@ export class BoxscoreCrawlerService {
         lastFiveMeetings: this.toJsonInput(summary.lastFiveMeetings),
         pregameCharts: this.toJsonInput(summary.pregameCharts),
         postgameCharts: this.toJsonInput(summary.postgameCharts),
-      },
-    });
+      };
+    await this.database.db
+      .insert(scheduleBoxscoreSummaries)
+      .values(create)
+      .onConflictDoUpdate({
+        target: scheduleBoxscoreSummaries.scheduleGameId,
+        set: update,
+      });
   }
 
   private async upsertTeams(
@@ -595,43 +609,21 @@ export class BoxscoreCrawlerService {
     const home = response.boxScoreTraditional.homeTeam;
     const away = response.boxScoreTraditional.awayTeam;
 
-    await this.prisma.scheduleBoxScoreTeam.upsert({
-      where: {
-        scheduleGameId_side: {
-          scheduleGameId,
-          side: 'home',
-        },
-      },
-      create: {
+    for (const [side, team] of [['home', home], ['away', away]] as const) {
+      const data = {
         scheduleGameId,
-        teamExternalId: home.teamId,
-        side: 'home',
-        ...this.mapStats(home.statistics),
-      },
-      update: {
-        teamExternalId: home.teamId,
-        ...this.mapStats(home.statistics),
-      },
-    });
-
-    await this.prisma.scheduleBoxScoreTeam.upsert({
-      where: {
-        scheduleGameId_side: {
-          scheduleGameId,
-          side: 'away',
-        },
-      },
-      create: {
-        scheduleGameId,
-        teamExternalId: away.teamId,
-        side: 'away',
-        ...this.mapStats(away.statistics),
-      },
-      update: {
-        teamExternalId: away.teamId,
-        ...this.mapStats(away.statistics),
-      },
-    });
+        teamExternalId: team.teamId,
+        side,
+        ...this.mapStats(team.statistics),
+      };
+      await this.database.db
+        .insert(scheduleBoxscoreTeams)
+        .values(data)
+        .onConflictDoUpdate({
+          target: [scheduleBoxscoreTeams.scheduleGameId, scheduleBoxscoreTeams.side],
+          set: { teamExternalId: data.teamExternalId, ...this.mapStats(team.statistics) },
+        });
+    }
   }
 
   private async upsertPlayers(
@@ -650,11 +642,11 @@ export class BoxscoreCrawlerService {
       })),
     ];
 
-    await this.prisma.scheduleBoxScorePlayer.deleteMany({
-      where: { scheduleGameId },
-    });
+    await this.database.db
+      .delete(scheduleBoxscorePlayers)
+      .where(eq(scheduleBoxscorePlayers.scheduleGameId, scheduleGameId));
 
-    const records: Prisma.ScheduleBoxScorePlayerCreateManyInput[] = [];
+    const records: (typeof scheduleBoxscorePlayers.$inferInsert)[] = [];
     for (const player of allPlayers) {
       const playerRecord = await this.findOrCreatePlayer(player.personId, gameId, player);
       if (!playerRecord) {
@@ -670,7 +662,7 @@ export class BoxscoreCrawlerService {
     }
 
     if (records.length) {
-      await this.prisma.scheduleBoxScorePlayer.createMany({ data: records });
+      await this.database.db.insert(scheduleBoxscorePlayers).values(records);
     }
   }
 
@@ -687,9 +679,10 @@ export class BoxscoreCrawlerService {
     },
   ) {
     const externalId = String(personId);
-    const existing = await this.prisma.player.findUnique({
-      where: { externalId },
-    });
+    const [existing] = await this.database.db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.externalId, externalId));
     if (existing) {
       return existing;
     }
@@ -700,14 +693,16 @@ export class BoxscoreCrawlerService {
       if (infoSet && infoSet.rowSet.length) {
         const info = this.mapPlayerInfo(infoSet.headers, infoSet.rowSet[0]);
         if (info) {
-          return this.prisma.player.create({ data: info });
+          const [created] = await this.database.db.insert(players).values(info).returning({ id: players.id });
+          return created;
         }
       }
     }
 
     const fallbackInfo = this.mapFallbackPlayerInfo(externalId, fallback);
     this.logger.warn(`player info fallback used for ${externalId} gameId=${gameId}`);
-    return this.prisma.player.create({ data: fallbackInfo });
+    const [created] = await this.database.db.insert(players).values(fallbackInfo).returning({ id: players.id });
+    return created;
   }
 
   private async fetchPlayerInfoWithRetry(externalId: string, gameId: string) {

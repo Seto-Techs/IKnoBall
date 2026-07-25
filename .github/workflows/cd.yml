@@ -154,9 +154,6 @@ jobs:
           file: ./apps/backend/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ env.ENV }}
-          build-args: |
-            DATABASE_URL=${{ env.TARGET_BRANCH == 'main' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
-            DATABASE_URL_SHADOW=${{ secrets.DATABASE_URL_SHADOW }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -179,9 +176,6 @@ jobs:
           file: ./apps/worker/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ env.ENV }}
-          build-args: |
-            DATABASE_URL=${{ env.TARGET_BRANCH == 'main' && secrets.DATABASE_URL_PROD || secrets.DATABASE_URL_STAGING }}
-            DATABASE_URL_SHADOW=${{ secrets.DATABASE_URL_SHADOW }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

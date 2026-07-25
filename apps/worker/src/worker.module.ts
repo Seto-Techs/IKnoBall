@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { PrismaService } from './prisma.service';
+import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 import { PlayerIndexClient } from './player-index.client';
 import { PlayerSyncService } from './player-sync.service';
@@ -18,7 +18,7 @@ import { LiveBoxscoreProcessor } from './processors/live-boxscore.processor';
 @Module({
   imports: [ScheduleModule.forRoot()],
   providers: [
-    PrismaService,
+    DatabaseService,
     RedisService,
     PlayerIndexClient,
     PlayerSyncService,
