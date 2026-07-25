@@ -102,7 +102,7 @@ jobs:
           export COMMITS_JSON=$(echo "$COMMITS_JSON_BASE64" | base64 --decode)
 
           PAGE_ID=$(node --input-type=module -e "
-            import { createRunWithCommits } from './backend/notion-log.mjs';
+            import { createRunWithCommits } from './apps/backend/notion-log.mjs';
 
             const pageId = await createRunWithCommits({
               workflow: process.env.WORKFLOW,
@@ -150,8 +150,8 @@ jobs:
         if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'dev'
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/Dockerfile
+          context: .
+          file: ./apps/backend/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ env.ENV }}
           build-args: |
@@ -164,8 +164,8 @@ jobs:
         if: env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'dev'
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
+          context: .
+          file: ./apps/frontend/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.FE_IMAGE }}:${{ env.ENV }}
           cache-from: type=gha
@@ -175,8 +175,8 @@ jobs:
         if: env.SOURCE_BRANCH == 'worker' || env.SOURCE_BRANCH == 'dev'
         uses: docker/build-push-action@v5
         with:
-          context: ./worker
-          file: ./worker/Dockerfile
+          context: .
+          file: ./apps/worker/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ env.ENV }}
           build-args: |
@@ -192,7 +192,7 @@ jobs:
         if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'worker' || env.SOURCE_BRANCH == 'dev'
         run: |
           node --input-type=module -e "
-            import { updateRun } from './backend/notion-log.mjs';
+            import { updateRun } from './apps/backend/notion-log.mjs';
 
             await updateRun('${{ steps.notion.outputs.page_id }}', {
               status: 'DEPLOYING',
@@ -245,7 +245,7 @@ jobs:
         if: always()
         run: |
           node --input-type=module -e "
-            import { updateRun } from './backend/notion-log.mjs';
+            import { updateRun } from './apps/backend/notion-log.mjs';
 
             const status = '${{ job.status }}' === 'success' ? 'SUCCESS' : 'FAILED';
 
