@@ -9,7 +9,10 @@ describe('Better Auth email configuration', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('enables Discord when its credentials exist', () => {
-    const original = { clientId: process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_CLIENT_SECRET };
+    const original = {
+      clientId: process.env.DISCORD_CLIENT_ID,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+    };
     process.env.DISCORD_CLIENT_ID = 'discord-client-id';
     process.env.DISCORD_CLIENT_SECRET = 'discord-client-secret';
 
@@ -28,7 +31,10 @@ describe('Better Auth email configuration', () => {
   });
 
   it('does not enable Discord with incomplete credentials', () => {
-    const original = { clientId: process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_CLIENT_SECRET };
+    const original = {
+      clientId: process.env.DISCORD_CLIENT_ID,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+    };
     process.env.DISCORD_CLIENT_ID = 'discord-client-id';
     delete process.env.DISCORD_CLIENT_SECRET;
 

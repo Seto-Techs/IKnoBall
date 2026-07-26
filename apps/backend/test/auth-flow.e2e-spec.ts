@@ -53,16 +53,11 @@ describe('Better Auth email-password flow (e2e)', () => {
       .expect(200);
     expect(mail.verify).toHaveBeenCalledOnce();
 
-    await request(server)
-      .post('/auth/sign-in/email')
-      .send({ email, password })
-      .expect(403);
+    await request(server).post('/auth/sign-in/email').send({ email, password }).expect(403);
     expect(mail.verify).toHaveBeenCalledTimes(2);
 
     const verificationUrl = new URL(mail.verify.mock.calls[0][0].url);
-    await request(server)
-      .get(`${verificationUrl.pathname}${verificationUrl.search}`)
-      .expect(302);
+    await request(server).get(`${verificationUrl.pathname}${verificationUrl.search}`).expect(302);
 
     const signedIn = await request(server)
       .post('/auth/sign-in/email')

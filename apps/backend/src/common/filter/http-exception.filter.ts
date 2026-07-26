@@ -39,7 +39,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const request = context.getRequest();
     const response = context.getResponse();
-    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status =
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
     const problem = this.problem(exception, status, httpAdapter.getRequestUrl(request));
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
@@ -73,7 +74,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = exception.getResponse();
     const body = isRecord(response) ? response : {};
     const message = typeof response === 'string' ? response : body.message;
-    const detail = Array.isArray(message) ? message.join('; ') : typeof message === 'string' ? message : 'Request failed';
+    const detail = Array.isArray(message)
+      ? message.join('; ')
+      : typeof message === 'string'
+        ? message
+        : 'Request failed';
     const problem: ProblemDetails = {
       type: 'about:blank',
       title: typeof body.error === 'string' ? body.error : detail,

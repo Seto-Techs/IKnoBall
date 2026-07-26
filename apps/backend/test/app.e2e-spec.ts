@@ -46,12 +46,15 @@ describe('Better Auth (e2e)', () => {
   });
 
   it('allows anonymous health checks', () =>
-    request(app.getHttpServer()).get('/').expect(200).expect({
-      status: 200,
-      message: 'Service is healthy.',
-      data: { status: 'ok' },
-      meta: null,
-    }));
+    request(app.getHttpServer())
+      .get('/')
+      .expect(200)
+      .expect({
+        status: 200,
+        message: 'Service is healthy.',
+        data: { status: 'ok' },
+        meta: null,
+      }));
 
   it('rejects protected routes without a session', () =>
     request(app.getHttpServer()).get('/protected').expect(401));

@@ -6,7 +6,10 @@ export function createLoggerOptions(): WinstonModuleOptions {
 
   return {
     level: process.env.LOG_LEVEL ?? (isProduction ? 'info' : 'debug'),
-    format: winston.format.combine(winston.format.timestamp(), winston.format.errors({ stack: true })),
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.errors({ stack: true }),
+    ),
     transports: [
       new winston.transports.Console({
         format: isProduction

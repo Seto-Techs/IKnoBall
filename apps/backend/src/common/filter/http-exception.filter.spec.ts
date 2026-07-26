@@ -35,7 +35,11 @@ describe('HttpExceptionFilter', () => {
       host as never,
     );
 
-    expect(setHeader).toHaveBeenCalledWith(expect.anything(), 'content-type', 'application/problem+json');
+    expect(setHeader).toHaveBeenCalledWith(
+      expect.anything(),
+      'content-type',
+      'application/problem+json',
+    );
     expect(reply).toHaveBeenCalledWith(
       expect.anything(),
       {
