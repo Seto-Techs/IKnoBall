@@ -1,15 +1,13 @@
 import { AppController } from './app.controller';
 
 describe('AppController', () => {
-  let appController: AppController;
-
-  beforeEach(() => {
-    appController = new AppController({ getHello: () => 'Hello World!' });
-  });
-
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  it('returns the health contract', () => {
+    const controller = new AppController({ getHello: () => 'Hello World!' });
+    expect(controller.getHello()).toEqual({
+      status: 200,
+      message: 'Service is healthy.',
+      data: { status: 'ok' },
+      meta: null,
     });
   });
 });

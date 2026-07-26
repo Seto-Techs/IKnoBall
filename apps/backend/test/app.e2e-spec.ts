@@ -2,6 +2,7 @@ import { Controller, Get, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AllowAnonymous, AuthModule } from '@thallesp/nestjs-better-auth';
 import { createAuth } from '../src/infrastructure/better-auth/auth.config';
+import { response } from '../src/common/http/response';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
@@ -10,7 +11,7 @@ import { App } from 'supertest/types';
 class HealthController {
   @Get()
   getHello() {
-    return 'Hello World!';
+    return response(200, 'Service is healthy.', { status: 'ok' });
   }
 }
 
@@ -45,7 +46,12 @@ describe('Better Auth (e2e)', () => {
   });
 
   it('allows anonymous health checks', () =>
-    request(app.getHttpServer()).get('/').expect(200).expect('Hello World!'));
+    request(app.getHttpServer()).get('/').expect(200).expect({
+      status: 200,
+      message: 'Service is healthy.',
+      data: { status: 'ok' },
+      meta: null,
+    }));
 
   it('rejects protected routes without a session', () =>
     request(app.getHttpServer()).get('/protected').expect(401));

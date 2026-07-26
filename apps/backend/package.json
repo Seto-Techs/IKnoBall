@@ -36,12 +36,14 @@
     "@thallesp/nestjs-better-auth": "^2.7.0",
     "better-auth": "^1.6.25",
     "drizzle-orm": "^0.45.2",
+    "nest-winston": "^1.10.2",
     "nodemailer": "^6.10.0",
     "pg": "^8.15.0",
     "react": "^19.0.0",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "winston": "^3.19.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
