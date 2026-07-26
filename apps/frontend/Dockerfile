@@ -6,7 +6,7 @@ COPY apps/frontend/package.json apps/frontend/package.json
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/schema/package.json packages/schema/package.json
-COPY packages/prisma/package.json packages/prisma/package.json
+COPY packages/database/package.json packages/database/package.json
 RUN bun install --frozen-lockfile
 
 COPY apps/frontend apps/frontend
