@@ -53,7 +53,6 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
-          cache-to: type=gha,mode=min
 
   # ── BUILD: FRONTEND ─────────────────────────────────────────
   build-fe:
@@ -96,7 +95,6 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.FE_IMAGE }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
-          cache-to: type=gha,mode=min
 
   # ── BUILD: WORKER ───────────────────────────────────────────
   build-worker:
@@ -139,7 +137,6 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ steps.tag.outputs.tag }}
           cache-from: type=gha
-          cache-to: type=gha,mode=min
 
   # ── DEPLOY ──────────────────────────────────────────────────
   deploy:
