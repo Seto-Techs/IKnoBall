@@ -4,7 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
-      '@iknoball/database': fileURLToPath(new URL('../../packages/database/src/index.ts', import.meta.url)),
+      '@iknoball/database': fileURLToPath(
+        new URL('../../packages/database/src/index.ts', import.meta.url),
+      ),
       '@iknoball/schema': fileURLToPath(new URL('../../packages/schema/src', import.meta.url)),
     },
   },

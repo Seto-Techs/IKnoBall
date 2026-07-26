@@ -116,8 +116,12 @@ export class AuthService {
     return { data: null, message: 'Email verified successfully' };
   }
 
-  async resendVerification(dto: ResendVerificationInput) {
-    const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
+  async resendVerification(dto: ResendVerificationDto) {
+    const [user] = await this.database.db
+      .select()
+      .from(users)
+      .where(eq(users.email, dto.email))
+      .limit(1);
 
     if (!user) {
       this.logger.warn(`Resend verification requested for unknown email: ${dto.email}`);
@@ -150,8 +154,12 @@ export class AuthService {
   // Login (creates session)
   // ───────────────────────────────
 
-  async login(dto: LoginInput, userAgent?: string, ipAddress?: string) {
-    const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
+  async login(dto: LoginDto, userAgent?: string, ipAddress?: string) {
+    const [user] = await this.database.db
+      .select()
+      .from(users)
+      .where(eq(users.email, dto.email))
+      .limit(1);
 
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
@@ -178,8 +186,13 @@ export class AuthService {
 
     // Store in PostgreSQL (audit log)
     await this.database.db.insert(userSessions).values({
-      id: sessionId, userId: user.id, userAgent: userAgent ?? null,
-      ipAddress: ipAddress ?? null, refreshTokenHash, lastUsedAt: now, expiresAt,
+      id: sessionId,
+      userId: user.id,
+      userAgent: userAgent ?? null,
+      ipAddress: ipAddress ?? null,
+      refreshTokenHash,
+      lastUsedAt: now,
+      expiresAt,
     });
 
     // Store in Redis (hot path)
@@ -292,8 +305,14 @@ export class AuthService {
 
   async listSessions(userId: string) {
     const sessions = await this.database.db
-      .select({ id: userSessions.id, userAgent: userSessions.userAgent, ipAddress: userSessions.ipAddress,
-        lastUsedAt: userSessions.lastUsedAt, expiresAt: userSessions.expiresAt, createdAt: userSessions.createdAt })
+      .select({
+        id: userSessions.id,
+        userAgent: userSessions.userAgent,
+        ipAddress: userSessions.ipAddress,
+        lastUsedAt: userSessions.lastUsedAt,
+        expiresAt: userSessions.expiresAt,
+        createdAt: userSessions.createdAt,
+      })
       .from(userSessions)
       .where(and(eq(userSessions.userId, userId), isNull(userSessions.revokedAt)))
       .orderBy(desc(userSessions.lastUsedAt));
@@ -302,7 +321,11 @@ export class AuthService {
   }
 
   async getSession(userId: string, sessionId: string) {
-    const [session] = await this.database.db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
+    const [session] = await this.database.db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.id, sessionId))
+      .limit(1);
 
     if (!session || session.userId !== userId) {
       throw new NotFoundException('Session not found');
@@ -322,13 +345,20 @@ export class AuthService {
   }
 
   async deleteSession(userId: string, sessionId: string) {
-    const [session] = await this.database.db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
+    const [session] = await this.database.db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.id, sessionId))
+      .limit(1);
 
     if (!session || session.userId !== userId) {
       throw new NotFoundException('Session not found');
     }
 
-    await this.database.db.update(userSessions).set({ revokedAt: new Date() }).where(eq(userSessions.id, sessionId));
+    await this.database.db
+      .update(userSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(userSessions.id, sessionId));
 
     // Eject from Redis
     await this.cleanupSessionRedis(sessionId, session.refreshTokenHash ?? undefined);
@@ -339,7 +369,11 @@ export class AuthService {
 
   async logoutCurrentSession(userId: string, sessionId: string) {
     // Same as delete, but self-service — no need to re-fetch for ownership
-    const [session] = await this.database.db.select().from(userSessions).where(eq(userSessions.id, sessionId)).limit(1);
+    const [session] = await this.database.db
+      .select()
+      .from(userSessions)
+      .where(eq(userSessions.id, sessionId))
+      .limit(1);
 
     if (!session || session.userId !== userId) {
       throw new NotFoundException('Session not found');
@@ -365,8 +399,12 @@ export class AuthService {
   // Forgot / Reset Password
   // ───────────────────────────────
 
-  async forgotPassword(dto: ForgotPasswordInput) {
-    const [user] = await this.database.db.select().from(users).where(eq(users.email, dto.email)).limit(1);
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const [user] = await this.database.db
+      .select()
+      .from(users)
+      .where(eq(users.email, dto.email))
+      .limit(1);
 
     if (!user) {
       this.logger.warn(`Forgot password requested for unknown email: ${dto.email}`);
@@ -376,7 +414,10 @@ export class AuthService {
     const resetToken = randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
 
-    await this.database.db.update(users).set({ resetToken, resetTokenExpiry }).where(eq(users.id, user.id));
+    await this.database.db
+      .update(users)
+      .set({ resetToken, resetTokenExpiry })
+      .where(eq(users.id, user.id));
 
     const resetLink = `${this.appUrl}/auth/reset-password?token=${resetToken}`;
 

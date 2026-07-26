@@ -6,6 +6,12 @@ import { NbaCdnBoxScoreClient } from './nba-cdn-boxscore.client';
 import { BoxscoreCrawlerService } from './boxscore-crawler.service';
 
 @Module({
-  providers: [DatabaseService, RedisService, NbaBoxScoreClient, NbaCdnBoxScoreClient, BoxscoreCrawlerService],
+  providers: [
+    DatabaseService,
+    RedisService,
+    NbaBoxScoreClient,
+    NbaCdnBoxScoreClient,
+    BoxscoreCrawlerService,
+  ],
 })
 export class BoxscoreModule {}

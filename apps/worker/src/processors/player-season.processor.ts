@@ -200,7 +200,11 @@ export class PlayerSeasonProcessor implements OnModuleInit {
           .insert(playerSeasonStats)
           .values({ playerId, season, statsTimeframe, ...totals })
           .onConflictDoUpdate({
-            target: [playerSeasonStats.playerId, playerSeasonStats.season, playerSeasonStats.statsTimeframe],
+            target: [
+              playerSeasonStats.playerId,
+              playerSeasonStats.season,
+              playerSeasonStats.statsTimeframe,
+            ],
             set: totals,
           });
         continue;
@@ -209,11 +213,13 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       const [existing] = await this.database.db
         .select({ id: playerSeasonStats.id })
         .from(playerSeasonStats)
-        .where(and(
-          eq(playerSeasonStats.playerId, playerId),
-          eq(playerSeasonStats.season, season),
-          eq(playerSeasonStats.statsTimeframe, statsTimeframe),
-        ));
+        .where(
+          and(
+            eq(playerSeasonStats.playerId, playerId),
+            eq(playerSeasonStats.season, season),
+            eq(playerSeasonStats.statsTimeframe, statsTimeframe),
+          ),
+        );
       if (existing) {
         continue;
       }

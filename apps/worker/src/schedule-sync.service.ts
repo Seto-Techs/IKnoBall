@@ -1,8 +1,4 @@
-import {
-  scheduleDays,
-  scheduleGames,
-  schedulePointsLeaders,
-} from '@iknoball/database';
+import { scheduleDays, scheduleGames, schedulePointsLeaders } from '@iknoball/database';
 import { and, eq, ne, notInArray } from 'drizzle-orm';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
@@ -297,11 +293,13 @@ export class ScheduleSyncService {
     const [existing] = await this.database.db
       .select({ id: scheduleDays.id, hash: scheduleDays.hash })
       .from(scheduleDays)
-      .where(and(
-        eq(scheduleDays.gameDate, today),
-        eq(scheduleDays.seasonYear, response.leagueSchedule.seasonYear),
-        eq(scheduleDays.leagueId, response.leagueSchedule.leagueId),
-      ));
+      .where(
+        and(
+          eq(scheduleDays.gameDate, today),
+          eq(scheduleDays.seasonYear, response.leagueSchedule.seasonYear),
+          eq(scheduleDays.leagueId, response.leagueSchedule.leagueId),
+        ),
+      );
 
     const metaTime = this.toDate(response.meta.time) ?? new Date();
     if (!existing) {
@@ -438,11 +436,13 @@ export class ScheduleSyncService {
   private async cleanupStaleGames(scheduleDayId: string, currentGameIds: string[]) {
     const deleted = await this.database.db
       .delete(scheduleGames)
-      .where(and(
-        eq(scheduleGames.scheduleDayId, scheduleDayId),
-        ne(scheduleGames.gameStatus, 3),
-        currentGameIds.length ? notInArray(scheduleGames.gameId, currentGameIds) : undefined,
-      ))
+      .where(
+        and(
+          eq(scheduleGames.scheduleDayId, scheduleDayId),
+          ne(scheduleGames.gameStatus, 3),
+          currentGameIds.length ? notInArray(scheduleGames.gameId, currentGameIds) : undefined,
+        ),
+      )
       .returning({ id: scheduleGames.id });
     if (deleted.length > 0) {
       this.logger.log(`cleanupStaleGames removed=${deleted.length} stale games`);

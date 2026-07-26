@@ -188,13 +188,21 @@ export class BoxscoreCrawlerService {
         seriesGameNumber: scheduleGames.seriesGameNumber,
       })
       .from(scheduleGames)
-      .where(and(
-        eq(scheduleGames.gameLabel, game.gameLabel),
-        or(
-          and(eq(scheduleGames.homeTeamId, game.homeTeamId), eq(scheduleGames.awayTeamId, game.awayTeamId)),
-          and(eq(scheduleGames.homeTeamId, game.awayTeamId), eq(scheduleGames.awayTeamId, game.homeTeamId)),
+      .where(
+        and(
+          eq(scheduleGames.gameLabel, game.gameLabel),
+          or(
+            and(
+              eq(scheduleGames.homeTeamId, game.homeTeamId),
+              eq(scheduleGames.awayTeamId, game.awayTeamId),
+            ),
+            and(
+              eq(scheduleGames.homeTeamId, game.awayTeamId),
+              eq(scheduleGames.awayTeamId, game.homeTeamId),
+            ),
+          ),
         ),
-      ));
+      );
 
     const toUpdate = allSeriesGames.filter((g) => {
       if (g.gameId === gameId) return false;
@@ -545,117 +553,114 @@ export class BoxscoreCrawlerService {
   ) {
     const summary = response.boxScoreSummary;
     const create = {
-        scheduleGameId,
-        gameCode: summary.gameCode,
-        gameStatus: summary.gameStatus,
-        gameStatusText: summary.gameStatusText,
-        period: summary.period,
-        gameClock: summary.gameClock,
-        gameTimeUTC: this.toDate(summary.gameTimeUTC),
-        gameEt: this.toDate(summary.gameEt),
-        duration: summary.duration,
-        attendance: summary.attendance,
-        sellout: summary.sellout,
-        seriesGameNumber: summary.seriesGameNumber,
-        gameLabel: summary.gameLabel,
-        gameSubLabel: summary.gameSubLabel,
-        seriesText: summary.seriesText,
-        ifNecessary: summary.ifNecessary,
-        isNeutral: summary.isNeutral,
-        arenaId: summary.arena?.arenaId ?? null,
-        arenaName: summary.arena?.arenaName ?? null,
-        arenaCity: summary.arena?.arenaCity ?? null,
-        arenaState: summary.arena?.arenaState ?? null,
-        arenaCountry: summary.arena?.arenaCountry ?? null,
-        arenaTimezone: summary.arena?.arenaTimezone ?? null,
-        arenaStreet: summary.arena?.arenaStreetAddress ?? null,
-        arenaPostalCode: summary.arena?.arenaPostalCode ?? null,
-        homeTeamId: summary.homeTeam.teamId,
-        homeScore: summary.homeTeam.score,
-        homeInBonus: summary.homeTeam.inBonus,
-        homeTimeouts: summary.homeTeam.timeoutsRemaining,
-        homeSeed: summary.homeTeam.seed,
-        homePeriods: this.toJsonInput(summary.homeTeam.periods),
-        homePlayers: this.toJsonInput(summary.homeTeam.players),
-        homeInactives: this.toJsonInput(summary.homeTeam.inactives),
-        awayTeamId: summary.awayTeam.teamId,
-        awayTeamName: summary.awayTeam.teamName,
-        awayTeamCity: summary.awayTeam.teamCity,
-        awayTeamTricode: summary.awayTeam.teamTricode,
-        awayTeamSlug: summary.awayTeam.teamSlug,
-        awayTeamWins: summary.awayTeam.teamWins,
-        awayTeamLosses: summary.awayTeam.teamLosses,
-        awayScore: summary.awayTeam.score,
-        awayInBonus: summary.awayTeam.inBonus,
-        awayTimeouts: summary.awayTeam.timeoutsRemaining,
-        awaySeed: summary.awayTeam.seed,
-        awayStatistics: this.toJsonInput(summary.awayTeam.statistics),
-        awayPeriods: this.toJsonInput(summary.awayTeam.periods),
-        awayPlayers: this.toJsonInput(summary.awayTeam.players),
-        awayInactives: this.toJsonInput(summary.awayTeam.inactives),
-        lastFiveMeetings: this.toJsonInput(summary.lastFiveMeetings),
-        pregameCharts: this.toJsonInput(summary.pregameCharts),
-        postgameCharts: this.toJsonInput(summary.postgameCharts),
-      };
+      scheduleGameId,
+      gameCode: summary.gameCode,
+      gameStatus: summary.gameStatus,
+      gameStatusText: summary.gameStatusText,
+      period: summary.period,
+      gameClock: summary.gameClock,
+      gameTimeUTC: this.toDate(summary.gameTimeUTC),
+      gameEt: this.toDate(summary.gameEt),
+      duration: summary.duration,
+      attendance: summary.attendance,
+      sellout: summary.sellout,
+      seriesGameNumber: summary.seriesGameNumber,
+      gameLabel: summary.gameLabel,
+      gameSubLabel: summary.gameSubLabel,
+      seriesText: summary.seriesText,
+      ifNecessary: summary.ifNecessary,
+      isNeutral: summary.isNeutral,
+      arenaId: summary.arena?.arenaId ?? null,
+      arenaName: summary.arena?.arenaName ?? null,
+      arenaCity: summary.arena?.arenaCity ?? null,
+      arenaState: summary.arena?.arenaState ?? null,
+      arenaCountry: summary.arena?.arenaCountry ?? null,
+      arenaTimezone: summary.arena?.arenaTimezone ?? null,
+      arenaStreet: summary.arena?.arenaStreetAddress ?? null,
+      arenaPostalCode: summary.arena?.arenaPostalCode ?? null,
+      homeTeamId: summary.homeTeam.teamId,
+      homeScore: summary.homeTeam.score,
+      homeInBonus: summary.homeTeam.inBonus,
+      homeTimeouts: summary.homeTeam.timeoutsRemaining,
+      homeSeed: summary.homeTeam.seed,
+      homePeriods: this.toJsonInput(summary.homeTeam.periods),
+      homePlayers: this.toJsonInput(summary.homeTeam.players),
+      homeInactives: this.toJsonInput(summary.homeTeam.inactives),
+      awayTeamId: summary.awayTeam.teamId,
+      awayTeamName: summary.awayTeam.teamName,
+      awayTeamCity: summary.awayTeam.teamCity,
+      awayTeamTricode: summary.awayTeam.teamTricode,
+      awayTeamSlug: summary.awayTeam.teamSlug,
+      awayTeamWins: summary.awayTeam.teamWins,
+      awayTeamLosses: summary.awayTeam.teamLosses,
+      awayScore: summary.awayTeam.score,
+      awayInBonus: summary.awayTeam.inBonus,
+      awayTimeouts: summary.awayTeam.timeoutsRemaining,
+      awaySeed: summary.awayTeam.seed,
+      awayStatistics: this.toJsonInput(summary.awayTeam.statistics),
+      awayPeriods: this.toJsonInput(summary.awayTeam.periods),
+      awayPlayers: this.toJsonInput(summary.awayTeam.players),
+      awayInactives: this.toJsonInput(summary.awayTeam.inactives),
+      lastFiveMeetings: this.toJsonInput(summary.lastFiveMeetings),
+      pregameCharts: this.toJsonInput(summary.pregameCharts),
+      postgameCharts: this.toJsonInput(summary.postgameCharts),
+    };
     const update = {
-        gameCode: summary.gameCode,
-        gameStatus: summary.gameStatus,
-        gameStatusText: summary.gameStatusText,
-        period: summary.period,
-        gameClock: summary.gameClock,
-        gameTimeUTC: this.toDate(summary.gameTimeUTC),
-        gameEt: this.toDate(summary.gameEt),
-        duration: summary.duration,
-        attendance: summary.attendance,
-        sellout: summary.sellout,
-        seriesGameNumber: summary.seriesGameNumber,
-        gameLabel: summary.gameLabel,
-        gameSubLabel: summary.gameSubLabel,
-        seriesText: summary.seriesText || undefined,
-        ifNecessary: summary.ifNecessary,
-        isNeutral: summary.isNeutral,
-        arenaId: summary.arena?.arenaId ?? null,
-        arenaName: summary.arena?.arenaName ?? null,
-        arenaCity: summary.arena?.arenaCity ?? null,
-        arenaState: summary.arena?.arenaState ?? null,
-        arenaCountry: summary.arena?.arenaCountry ?? null,
-        arenaTimezone: summary.arena?.arenaTimezone ?? null,
-        arenaStreet: summary.arena?.arenaStreetAddress ?? null,
-        arenaPostalCode: summary.arena?.arenaPostalCode ?? null,
-        homeTeamId: summary.homeTeam.teamId,
-        homeScore: summary.homeTeam.score,
-        homeInBonus: summary.homeTeam.inBonus,
-        homeTimeouts: summary.homeTeam.timeoutsRemaining,
-        homeSeed: summary.homeTeam.seed,
-        homePeriods: this.toJsonInput(summary.homeTeam.periods),
-        homePlayers: this.toJsonInput(summary.homeTeam.players),
-        homeInactives: this.toJsonInput(summary.homeTeam.inactives),
-        awayTeamId: summary.awayTeam.teamId,
-        awayTeamName: summary.awayTeam.teamName,
-        awayTeamCity: summary.awayTeam.teamCity,
-        awayTeamTricode: summary.awayTeam.teamTricode,
-        awayTeamSlug: summary.awayTeam.teamSlug,
-        awayTeamWins: summary.awayTeam.teamWins,
-        awayTeamLosses: summary.awayTeam.teamLosses,
-        awayScore: summary.awayTeam.score,
-        awayInBonus: summary.awayTeam.inBonus,
-        awayTimeouts: summary.awayTeam.timeoutsRemaining,
-        awaySeed: summary.awayTeam.seed,
-        awayStatistics: this.toJsonInput(summary.awayTeam.statistics),
-        awayPeriods: this.toJsonInput(summary.awayTeam.periods),
-        awayPlayers: this.toJsonInput(summary.awayTeam.players),
-        awayInactives: this.toJsonInput(summary.awayTeam.inactives),
-        lastFiveMeetings: this.toJsonInput(summary.lastFiveMeetings),
-        pregameCharts: this.toJsonInput(summary.pregameCharts),
-        postgameCharts: this.toJsonInput(summary.postgameCharts),
-      };
-    await this.database.db
-      .insert(scheduleBoxscoreSummaries)
-      .values(create)
-      .onConflictDoUpdate({
-        target: scheduleBoxscoreSummaries.scheduleGameId,
-        set: update,
-      });
+      gameCode: summary.gameCode,
+      gameStatus: summary.gameStatus,
+      gameStatusText: summary.gameStatusText,
+      period: summary.period,
+      gameClock: summary.gameClock,
+      gameTimeUTC: this.toDate(summary.gameTimeUTC),
+      gameEt: this.toDate(summary.gameEt),
+      duration: summary.duration,
+      attendance: summary.attendance,
+      sellout: summary.sellout,
+      seriesGameNumber: summary.seriesGameNumber,
+      gameLabel: summary.gameLabel,
+      gameSubLabel: summary.gameSubLabel,
+      seriesText: summary.seriesText || undefined,
+      ifNecessary: summary.ifNecessary,
+      isNeutral: summary.isNeutral,
+      arenaId: summary.arena?.arenaId ?? null,
+      arenaName: summary.arena?.arenaName ?? null,
+      arenaCity: summary.arena?.arenaCity ?? null,
+      arenaState: summary.arena?.arenaState ?? null,
+      arenaCountry: summary.arena?.arenaCountry ?? null,
+      arenaTimezone: summary.arena?.arenaTimezone ?? null,
+      arenaStreet: summary.arena?.arenaStreetAddress ?? null,
+      arenaPostalCode: summary.arena?.arenaPostalCode ?? null,
+      homeTeamId: summary.homeTeam.teamId,
+      homeScore: summary.homeTeam.score,
+      homeInBonus: summary.homeTeam.inBonus,
+      homeTimeouts: summary.homeTeam.timeoutsRemaining,
+      homeSeed: summary.homeTeam.seed,
+      homePeriods: this.toJsonInput(summary.homeTeam.periods),
+      homePlayers: this.toJsonInput(summary.homeTeam.players),
+      homeInactives: this.toJsonInput(summary.homeTeam.inactives),
+      awayTeamId: summary.awayTeam.teamId,
+      awayTeamName: summary.awayTeam.teamName,
+      awayTeamCity: summary.awayTeam.teamCity,
+      awayTeamTricode: summary.awayTeam.teamTricode,
+      awayTeamSlug: summary.awayTeam.teamSlug,
+      awayTeamWins: summary.awayTeam.teamWins,
+      awayTeamLosses: summary.awayTeam.teamLosses,
+      awayScore: summary.awayTeam.score,
+      awayInBonus: summary.awayTeam.inBonus,
+      awayTimeouts: summary.awayTeam.timeoutsRemaining,
+      awaySeed: summary.awayTeam.seed,
+      awayStatistics: this.toJsonInput(summary.awayTeam.statistics),
+      awayPeriods: this.toJsonInput(summary.awayTeam.periods),
+      awayPlayers: this.toJsonInput(summary.awayTeam.players),
+      awayInactives: this.toJsonInput(summary.awayTeam.inactives),
+      lastFiveMeetings: this.toJsonInput(summary.lastFiveMeetings),
+      pregameCharts: this.toJsonInput(summary.pregameCharts),
+      postgameCharts: this.toJsonInput(summary.postgameCharts),
+    };
+    await this.database.db.insert(scheduleBoxscoreSummaries).values(create).onConflictDoUpdate({
+      target: scheduleBoxscoreSummaries.scheduleGameId,
+      set: update,
+    });
   }
 
   private async upsertTeams(
@@ -665,7 +670,10 @@ export class BoxscoreCrawlerService {
     const home = response.boxScoreTraditional.homeTeam;
     const away = response.boxScoreTraditional.awayTeam;
 
-    for (const [side, team] of [['home', home], ['away', away]] as const) {
+    for (const [side, team] of [
+      ['home', home],
+      ['away', away],
+    ] as const) {
       const data = {
         scheduleGameId,
         teamExternalId: team.teamId,
@@ -749,7 +757,10 @@ export class BoxscoreCrawlerService {
       if (infoSet && infoSet.rowSet.length) {
         const info = this.mapPlayerInfo(infoSet.headers, infoSet.rowSet[0]);
         if (info) {
-          const [created] = await this.database.db.insert(players).values(info).returning({ id: players.id });
+          const [created] = await this.database.db
+            .insert(players)
+            .values(info)
+            .returning({ id: players.id });
           return created;
         }
       }
@@ -757,7 +768,10 @@ export class BoxscoreCrawlerService {
 
     const fallbackInfo = this.mapFallbackPlayerInfo(externalId, fallback);
     this.logger.warn(`player info fallback used for ${externalId} gameId=${gameId}`);
-    const [created] = await this.database.db.insert(players).values(fallbackInfo).returning({ id: players.id });
+    const [created] = await this.database.db
+      .insert(players)
+      .values(fallbackInfo)
+      .returning({ id: players.id });
     return created;
   }
 
