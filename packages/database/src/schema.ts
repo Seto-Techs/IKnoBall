@@ -88,12 +88,29 @@ export const scheduleBoxscoreTeams = pgTable('schedule_boxscore_teams', {
   id: id(), scheduleGameId: text('scheduleGameId').notNull().references(() => scheduleGames.id), teamExternalId: integer('teamExternalId').notNull(), side: scheduleTeamSide('side').notNull(), ...stats, createdAt: createdAt(), updatedAt: updatedAt(),
 }, (table) => [unique('schedule_boxscore_teams_scheduleGameId_side_key').on(table.scheduleGameId, table.side), index('schedule_boxscore_teams_scheduleGameId_idx').on(table.scheduleGameId), index('schedule_boxscore_teams_teamExternalId_idx').on(table.teamExternalId)]);
 
-export const scheduleBoxscorePlayers = pgTable('schedule_boxscore_players', {
-  id: id(), scheduleGameId: text('scheduleGameId').notNull().references(() => scheduleGames.id), playerId: text('playerId').notNull().references(() => players.id), playerExternalId: text('playerExternalId').notNull(), teamExternalId: integer('teamExternalId').notNull(), ...stats, createdAt: createdAt(), updatedAt: updatedAt(),
-}, (table) => [unique('schedule_boxscore_players_scheduleGameId_playerExternalId_key').on(table.scheduleGameId, table.playerExternalId), index('schedule_boxscore_players_scheduleGameId_idx').on(table.scheduleGameId), index('schedule_boxscore_players_playerId_idx').on(table.playerId), index('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId)]);
-
-export const categories = pgTable('categories', { id: id(), userId: text('user_id').notNull().references(() => users.id), name: text('name').notNull(), type: categoryType('type').notNull(), colorHex: text('color_hex').notNull(), icon: text('icon').notNull(), createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { precision: 3 }).notNull().defaultNow(), deletedAt: timestamp('deleted_at', { precision: 3 }) }, (table) => [index('categories_user_id_type_idx').on(table.userId, table.type), index('categories_user_id_name_idx').on(table.userId, table.name), index('categories_user_id_deleted_at_idx').on(table.userId, table.deletedAt)]);
-export const wallets = pgTable('wallets', { id: id(), userId: text('user_id').notNull().references(() => users.id), name: text('name').notNull(), createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { precision: 3 }).notNull().defaultNow(), deletedAt: timestamp('deleted_at', { precision: 3 }) });
-const finance = (name: 'expenses' | 'incomes') => pgTable(name, { id: id(), userId: text('user_id').notNull().references(() => users.id), walletId: text('wallet_id').notNull().references(() => wallets.id), categoryId: text('category_id').notNull().references(() => categories.id), amount: integer('amount').notNull(), note: text('note'), occurredAt: timestamp('occurred_at', { precision: 3 }).notNull(), createdAt: timestamp('created_at', { precision: 3 }).notNull().defaultNow(), updatedAt: timestamp('updated_at', { precision: 3 }).notNull().defaultNow(), deletedAt: timestamp('deleted_at', { precision: 3 }) }, (table) => [index(`${name}_user_id_occurred_at_idx`).on(table.userId, table.occurredAt), index(`${name}_user_id_category_id_idx`).on(table.userId, table.categoryId)]);
-export const expenses = finance('expenses');
-export const incomes = finance('incomes');
+export const scheduleBoxscorePlayers = pgTable(
+  'schedule_boxscore_players',
+  {
+    id: id(),
+    scheduleGameId: text('scheduleGameId')
+      .notNull()
+      .references(() => scheduleGames.id),
+    playerId: text('playerId')
+      .notNull()
+      .references(() => players.id),
+    playerExternalId: text('playerExternalId').notNull(),
+    teamExternalId: integer('teamExternalId').notNull(),
+    ...stats,
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('schedule_boxscore_players_scheduleGameId_playerExternalId_key').on(
+      table.scheduleGameId,
+      table.playerExternalId,
+    ),
+    index('schedule_boxscore_players_scheduleGameId_idx').on(table.scheduleGameId),
+    index('schedule_boxscore_players_playerId_idx').on(table.playerId),
+    index('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId),
+  ],
+)
