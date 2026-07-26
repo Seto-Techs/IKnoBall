@@ -52,7 +52,6 @@ jobs:
           file: ./apps/backend/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ steps.tag.outputs.tag }}
-          cache-from: type=gha
 
   # ── BUILD: FRONTEND ─────────────────────────────────────────
   build-fe:
@@ -94,7 +93,6 @@ jobs:
           file: ./apps/frontend/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.FE_IMAGE }}:${{ steps.tag.outputs.tag }}
-          cache-from: type=gha
 
   # ── BUILD: WORKER ───────────────────────────────────────────
   build-worker:
@@ -136,7 +134,6 @@ jobs:
           file: ./apps/worker/Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ steps.tag.outputs.tag }}
-          cache-from: type=gha
 
   # ── DEPLOY ──────────────────────────────────────────────────
   deploy:
