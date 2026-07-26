@@ -1,4 +1,4 @@
-name: cd
+name: CD
 
 on:
   pull_request:
@@ -10,18 +10,162 @@ env:
   BE_IMAGE: seto-techs/iknoball-be
   FE_IMAGE: seto-techs/iknoball-fe
   WORKER_IMAGE: seto-techs/iknoball-worker
-  SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
-  TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
-  ENV: ${{ github.event.pull_request.base.ref == 'main' && 'prod' || 'staging' }}
 
 jobs:
-  cd:
-    if: github.event.pull_request.merged == true
+  # ── BUILD: BACKEND ──────────────────────────────────────────
+  build-be:
+    if: |
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'dev' ||
+       (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'be'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: tag
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            echo "tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & push BE
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/backend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── BUILD: FRONTEND ─────────────────────────────────────────
+  build-fe:
+    if: |
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'dev' ||
+       (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'fe'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: tag
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            echo "tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & push FE
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/frontend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.FE_IMAGE }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── BUILD: WORKER ───────────────────────────────────────────
+  build-worker:
+    if: |
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'dev' ||
+       (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'worker'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: tag
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            echo "tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & push Worker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/worker/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ steps.tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── DEPLOY ──────────────────────────────────────────────────
+  deploy:
+    needs: [build-be, build-fe, build-worker]
+    if: |
+      always() &&
+      github.event.pull_request.merged == true &&
+      needs.build-be.result != 'failure' &&
+      needs.build-be.result != 'cancelled' &&
+      needs.build-fe.result != 'failure' &&
+      needs.build-fe.result != 'cancelled' &&
+      needs.build-worker.result != 'failure' &&
+      needs.build-worker.result != 'cancelled' &&
+      (needs.build-be.result == 'success' ||
+       needs.build-fe.result == 'success' ||
+       needs.build-worker.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       pull-requests: read
+
+    env:
+      SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+      TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+      ENV: ${{ github.event.pull_request.base.ref == 'main' && 'prod' || 'staging' }}
 
     steps:
       - name: Checkout repository
@@ -32,47 +176,23 @@ jobs:
         with:
           node-version: 20
 
-      # =========================
-      # COLLECT COMMITS
-      # =========================
+      # ── COLLECT COMMITS ────────────────────────────────────
       - name: Collect commits
         id: collect
         run: |
           git fetch --prune --unshallow || true
 
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
-            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
 
-            COMMITS_JSON=$(git log origin/$BASE_BRANCH..origin/$HEAD_BRANCH \
-              --pretty=format:'{"sha":"%h","author":"%an","date":"%ad","message":"%s","branch":"'$HEAD_BRANCH'"}' \
-              --date=iso | jq -s .)
+          COMMITS_JSON=$(git log "origin/$BASE_BRANCH..origin/$HEAD_BRANCH" \
+            --pretty=format:'{"sha":"%h","author":"%an","date":"%ad","message":"%s","branch":"'$HEAD_BRANCH'"}' \
+            --date=iso | jq -s .)
 
-            SHA="${{ github.event.pull_request.head.sha }}"
-            MESSAGE="${{ github.event.pull_request.title }}"
-            AUTHOR="${{ github.event.pull_request.user.login }}"
-          else
-            BRANCH_NAME="${GITHUB_REF_NAME##*/}" # ambil branch terakhir dari ref
+          SHA="${{ github.event.pull_request.head.sha }}"
+          MESSAGE="${{ github.event.pull_request.title }}"
+          AUTHOR="${{ github.event.pull_request.user.login }}"
 
-            SHA=$(git log -1 --pretty=format:%h)
-            MESSAGE=$(git log -1 --pretty=format:%s)
-            AUTHOR=$(git log -1 --pretty=format:%an)
-
-            # Ambil source branch via GitHub API (lebih robust handle squash/rebase/custom msg)
-            PR_BRANCH=$(gh api repos/${{ github.repository }}/commits/${{ github.sha }}/pulls --jq '.[0].head.ref')
-            
-            if [ -n "$PR_BRANCH" ] && [ "$PR_BRANCH" != "null" ]; then
-              JSON_BRANCH="$PR_BRANCH"
-            else
-              JSON_BRANCH="$BRANCH_NAME"
-            fi
-
-            COMMITS_JSON=$(git log ${{ github.event.before }}..${{ github.sha }} \
-              --pretty=format:'{"sha":"%h","author":"%an","date":"%ad","message":"%s","branch":"'$JSON_BRANCH'"}' \
-              --date=iso | jq -s .)
-          fi
-
-          # Encode JSON ke base64 supaya aman simpen di GITHUB_ENV
           COMMITS_BASE64=$(echo "$COMMITS_JSON" | base64 | tr -d '\n')
 
           echo "SHA=$SHA" >> $GITHUB_ENV
@@ -81,9 +201,8 @@ jobs:
           echo "COMMITS_JSON_BASE64=$COMMITS_BASE64" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # =========================
-      # WORKFLOW META
-      # =========================
+
+      # ── WORKFLOW META ─────────────────────────────────────
       - name: Set metadata
         run: |
           echo "WORKFLOW=CD – DuitRapi" >> $GITHUB_ENV
@@ -92,13 +211,10 @@ jobs:
           echo "START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_ENV
           echo "LOGS_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
 
-      # =========================
-      # CREATE NOTION RUN
-      # =========================
+      # ── CREATE NOTION RUN ─────────────────────────────────
       - name: Create Notion Run
         id: notion
         run: |
-          # decode base64 ke environment variable
           export COMMITS_JSON=$(echo "$COMMITS_JSON_BASE64" | base64 --decode)
 
           PAGE_ID=$(node --input-type=module -e "
@@ -132,57 +248,8 @@ jobs:
           START: ${{ env.START }}
           LOGS_URL: ${{ env.LOGS_URL }}
 
-      # =========================
-      # BUILD & PUSH DOCKER
-      # =========================
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & push BE
-        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'dev'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./apps/backend/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.BE_IMAGE }}:${{ env.ENV }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & push FE
-        if: env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'dev'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./apps/frontend/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.FE_IMAGE }}:${{ env.ENV }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & push Worker
-        if: env.SOURCE_BRANCH == 'worker' || env.SOURCE_BRANCH == 'dev'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./apps/worker/Dockerfile
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ env.ENV }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # =========================
-      # MARK DEPLOYING
-      # =========================
+      # ── MARK DEPLOYING ────────────────────────────────────
       - name: Mark DEPLOYING
-        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'worker' || env.SOURCE_BRANCH == 'dev'
         run: |
           node --input-type=module -e "
             import { updateRun } from './apps/backend/notion-log.mjs';
@@ -196,11 +263,8 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
 
-      # =========================
-      # DEPLOY VIA DOKPLOY
-      # =========================
-      - name: Deploy
-        if: env.SOURCE_BRANCH == 'be' || env.SOURCE_BRANCH == 'fe' || env.SOURCE_BRANCH == 'worker' || env.SOURCE_BRANCH == 'dev'
+      # ── DEPLOY VIA DOKPLOY ────────────────────────────────
+      - name: Deploy via Dokploy
         run: |
           PROJECT_NAME="iknoball"
           COMPOSE_NAME="staging"
@@ -231,9 +295,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"composeId\": \"$COMPOSE_ID\"}"
 
-      # =========================
-      # MARK FINAL STATUS
-      # =========================
+      # ── MARK FINAL STATUS ─────────────────────────────────
       - name: Mark FINAL STATUS
         if: always()
         run: |
