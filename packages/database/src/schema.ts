@@ -113,4 +113,4 @@ export const scheduleBoxscorePlayers = pgTable(
     index('schedule_boxscore_players_playerId_idx').on(table.playerId),
     index('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId),
   ],
-)
+);
