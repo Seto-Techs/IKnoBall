@@ -6,7 +6,7 @@ import { HttpExceptionFilter } from './http-exception.filter';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
@@ -16,12 +16,6 @@ async function bootstrap() {
     .setTitle('IKnoBall API')
     .setDescription('IKnoBall backend REST API')
     .setVersion('1.0')
-    .addBearerAuth({
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      description: 'Enter your JWT access token obtained from the login endpoint.',
-    })
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

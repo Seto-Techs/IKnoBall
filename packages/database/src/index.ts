@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import * as schema from './schema.js';
 
 export * from './schema.js';
+export * as betterAuthSchema from './schema.js';
 
 export function createDatabase(connectionString = process.env.DATABASE_URL) {
   if (!connectionString) throw new Error('DATABASE_URL is required');

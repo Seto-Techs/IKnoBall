@@ -36,11 +36,13 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.betterAuthSchema = void 0;
 exports.createDatabase = createDatabase;
 const node_postgres_1 = require("drizzle-orm/node-postgres");
 const pg_1 = require("pg");
 const schema = __importStar(require("./schema.js"));
 __exportStar(require("./schema.js"), exports);
+exports.betterAuthSchema = __importStar(require("./schema.js"));
 function createDatabase(connectionString = process.env.DATABASE_URL) {
     if (!connectionString)
         throw new Error('DATABASE_URL is required');

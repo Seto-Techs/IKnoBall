@@ -64,10 +64,25 @@ export class EmailService {
       await client.connect();
       await client.rPush(key, JSON.stringify(payload));
     } finally {
-      if (client.isOpen) {
-        await client.quit();
-      }
+      if (client.isOpen) await client.quit();
     }
+  }
+
+  private async enqueueAuthEmail(
+    params: { to: string; name: string; subject: string; fromKey: EmailFromKey },
+    html: string,
+  ) {
+    const queue = this.getEmailQueueConfig();
+    const address = queue.fromAddressMap[params.fromKey];
+    if (!address) throw new Error(`Email from address not found for key: ${params.fromKey}`);
+
+    await this.enqueueEmail({
+      from: { address, name: queue.fromName },
+      to: [{ email_address: { address: params.to, name: params.name.trim() || params.to } }],
+      subject: params.subject,
+      htmlbody: html,
+      internal_token: queue.internalToken,
+    });
   }
 
   async send(options: SendEmailOptions) {
@@ -112,36 +127,7 @@ export class EmailService {
     };
 
     const html = await renderEmail(React.createElement(EmailTemplate, props));
-
-    const queueConfig = this.getEmailQueueConfig();
-    const fromAddress = queueConfig.fromAddressMap[params.fromKey];
-    if (!fromAddress) {
-      throw new Error(`Email from address not found for key: ${params.fromKey}`);
-    }
-
-    const payload: InvoiceEmailPayload = {
-      from: {
-        address: fromAddress,
-        name: queueConfig.fromName,
-      },
-      to: [
-        {
-          email_address: {
-            address: params.to,
-            name: params.name?.trim() || params.to,
-          },
-        },
-      ],
-      subject: params.subject,
-      htmlbody: html,
-      internal_token: queueConfig.internalToken,
-    };
-
-    await this.enqueueEmail(payload);
-
-    return {
-      queued: true,
-    };
+    await this.enqueueAuthEmail(params, html);
   }
 
   /**
@@ -168,35 +154,6 @@ export class EmailService {
     };
 
     const html = await renderEmail(React.createElement(EmailTemplate, props));
-
-    const queueConfig = this.getEmailQueueConfig();
-    const fromAddress = queueConfig.fromAddressMap[params.fromKey];
-    if (!fromAddress) {
-      throw new Error(`Email from address not found for key: ${params.fromKey}`);
-    }
-
-    const payload: InvoiceEmailPayload = {
-      from: {
-        address: fromAddress,
-        name: queueConfig.fromName,
-      },
-      to: [
-        {
-          email_address: {
-            address: params.to,
-            name: params.name?.trim() || params.to,
-          },
-        },
-      ],
-      subject: params.subject,
-      htmlbody: html,
-      internal_token: queueConfig.internalToken,
-    };
-
-    await this.enqueueEmail(payload);
-
-    return {
-      queued: true,
-    };
+    await this.enqueueAuthEmail(params, html);
   }
 }

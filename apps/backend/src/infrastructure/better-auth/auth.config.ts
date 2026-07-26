@@ -1,0 +1,55 @@
+import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { betterAuthSchema, createDatabase } from '@iknoball/database';
+import { betterAuth } from 'better-auth';
+import { EmailService } from '../email/email.service';
+
+const database = createDatabase(process.env.DATABASE_URL ?? 'postgresql://localhost:5432/iknoball');
+
+export function createAuth(email: EmailService) {
+  const discordClientId = process.env.DISCORD_CLIENT_ID;
+  const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
+  const socialProviders =
+    discordClientId && discordClientSecret
+      ? {
+          discord: {
+            clientId: discordClientId,
+            clientSecret: discordClientSecret,
+            scope: ['identify', 'email'],
+          },
+        }
+      : undefined;
+
+  return betterAuth({
+    baseURL: process.env.BETTER_AUTH_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
+    database: drizzleAdapter(database.db, { provider: 'pg', schema: betterAuthSchema }),
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: true,
+      sendResetPassword: async ({ user, url }) => {
+        await email.sendPasswordResetEmail({
+          to: user.email,
+          name: user.name,
+          link: url,
+          subject: 'Reset your IKnoBall password',
+          fromKey: 'reset',
+        });
+      },
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      sendOnSignIn: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await email.sendVerifyEmail({
+          to: user.email,
+          name: user.name,
+          link: url,
+          subject: 'Verify your IKnoBall account',
+          fromKey: 'verify',
+        });
+      },
+    },
+    socialProviders,
+    trustedOrigins: [process.env.FRONTEND_URL ?? 'http://localhost:5173'],
+    basePath: '/auth',
+  });
+}

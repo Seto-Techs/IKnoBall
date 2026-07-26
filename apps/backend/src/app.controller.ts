@@ -1,7 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { AppService } from './app.service';
 
+@AllowAnonymous()
 @ApiTags('Health')
 @Controller()
 export class AppController {
