@@ -1,33 +1,33 @@
-FROM oven/bun:1.3.1-slim AS builder
+FROM oven/bun:1.3.14-slim AS builder
 WORKDIR /app
 
 RUN apt-get update -y \
   && apt-get install -y openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package.json bun.lock ./
+COPY package.json bun.lock turbo.json ./
 COPY apps/frontend/package.json apps/frontend/package.json
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/schema/package.json packages/schema/package.json
-RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY apps/backend apps/backend
 COPY packages/database packages/database
 COPY packages/schema packages/schema
-WORKDIR /app/apps/backend
 
-RUN bun --filter '@iknoball/database' run build
-RUN bun run build
+RUN bun install --frozen-lockfile --ignore-scripts
+RUN bunx turbo run build --filter '@iknoball/database'
+RUN bunx turbo run build --filter '@iknoball/schema'
+RUN bunx turbo run build --filter 'backend'
 
-FROM oven/bun:1.3.1-slim AS runner
+FROM oven/bun:1.3.14-slim AS runner
 WORKDIR /app/apps/backend
 
 ENV NODE_ENV=production
 
 RUN apt-get update -y \
-  && apt-get install -y openssl ca-certificates \
+  && apt-get install -y openssl ca-certificates adduser \
   && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system app && adduser --system --ingroup app app
@@ -36,7 +36,8 @@ USER app
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/apps/backend/node_modules ./node_modules
 COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/apps/backend/package.json ./package.json
 
 EXPOSE 3000
-CMD ["bun", "run", "dist/src/main.js"]
+CMD ["bun", "run", "dist/main.js"]

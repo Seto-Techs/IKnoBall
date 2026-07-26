@@ -1,13 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.incomes = exports.expenses = exports.wallets = exports.categories = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.users = exports.session = exports.account = void 0;
+exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.users = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
-const better_auth_schema_js_1 = require("./better-auth.schema.js");
-var better_auth_schema_js_2 = require("./better-auth.schema.js");
-Object.defineProperty(exports, "account", { enumerable: true, get: function () { return better_auth_schema_js_2.account; } });
-Object.defineProperty(exports, "session", { enumerable: true, get: function () { return better_auth_schema_js_2.session; } });
-Object.defineProperty(exports, "users", { enumerable: true, get: function () { return better_auth_schema_js_2.users; } });
-Object.defineProperty(exports, "verification", { enumerable: true, get: function () { return better_auth_schema_js_2.verification; } });
+var better_auth_schema_js_1 = require("./better-auth.schema.js");
+Object.defineProperty(exports, "account", { enumerable: true, get: function () { return better_auth_schema_js_1.account; } });
+Object.defineProperty(exports, "session", { enumerable: true, get: function () { return better_auth_schema_js_1.session; } });
+Object.defineProperty(exports, "users", { enumerable: true, get: function () { return better_auth_schema_js_1.users; } });
+Object.defineProperty(exports, "verification", { enumerable: true, get: function () { return better_auth_schema_js_1.verification; } });
 const pg_core_1 = require("drizzle-orm/pg-core");
 const id = () => (0, pg_core_1.text)('id').primaryKey().$defaultFn(node_crypto_1.randomUUID);
 const createdAt = () => (0, pg_core_1.timestamp)('createdAt', { precision: 3 }).notNull().defaultNow();
@@ -15,60 +14,284 @@ const updatedAt = () => (0, pg_core_1.timestamp)('updatedAt', { precision: 3 }).
 exports.scheduleTeamSide = (0, pg_core_1.pgEnum)('ScheduleTeamSide', ['home', 'away']);
 exports.categoryType = (0, pg_core_1.pgEnum)('CategoryType', ['income', 'expense']);
 exports.activityLogs = (0, pg_core_1.pgTable)('activity_logs', {
-    id: (0, pg_core_1.text)('activity_log_id').primaryKey().$defaultFn(node_crypto_1.randomUUID), userId: (0, pg_core_1.text)('user_id'), category: (0, pg_core_1.text)('category').notNull(),
-    activityName: (0, pg_core_1.text)('activity_name').notNull(), entityType: (0, pg_core_1.text)('entity_type').notNull(), entityId: (0, pg_core_1.text)('entity_id').notNull(),
-    isSuccess: (0, pg_core_1.boolean)('is_success').notNull(), description: (0, pg_core_1.text)('description'), metadata: (0, pg_core_1.jsonb)('metadata'),
+    id: (0, pg_core_1.text)('activity_log_id').primaryKey().$defaultFn(node_crypto_1.randomUUID),
+    userId: (0, pg_core_1.text)('user_id'),
+    category: (0, pg_core_1.text)('category').notNull(),
+    activityName: (0, pg_core_1.text)('activity_name').notNull(),
+    entityType: (0, pg_core_1.text)('entity_type').notNull(),
+    entityId: (0, pg_core_1.text)('entity_id').notNull(),
+    isSuccess: (0, pg_core_1.boolean)('is_success').notNull(),
+    description: (0, pg_core_1.text)('description'),
+    metadata: (0, pg_core_1.jsonb)('metadata'),
     createdAt: (0, pg_core_1.timestamp)('created_at', { precision: 3 }).notNull().defaultNow(),
-}, (table) => [(0, pg_core_1.index)('activity_logs_entity_type_entity_id_idx').on(table.entityType, table.entityId), (0, pg_core_1.index)('activity_logs_user_id_created_at_idx').on(table.userId, table.createdAt)]);
+}, (table) => [
+    (0, pg_core_1.index)('activity_logs_entity_type_entity_id_idx').on(table.entityType, table.entityId),
+    (0, pg_core_1.index)('activity_logs_user_id_created_at_idx').on(table.userId, table.createdAt),
+]);
 exports.players = (0, pg_core_1.pgTable)('players', {
-    id: id(), externalId: (0, pg_core_1.text)('externalId').notNull().unique(), firstName: (0, pg_core_1.text)('firstName').notNull(), lastName: (0, pg_core_1.text)('lastName').notNull(),
-    displayName: (0, pg_core_1.text)('displayName'), slug: (0, pg_core_1.text)('slug'), position: (0, pg_core_1.text)('position'), teamId: (0, pg_core_1.integer)('teamId'), teamSlug: (0, pg_core_1.text)('teamSlug'),
-    isDefunct: (0, pg_core_1.boolean)('isDefunct'), teamCity: (0, pg_core_1.text)('teamCity'), teamName: (0, pg_core_1.text)('teamName'), teamAbbr: (0, pg_core_1.text)('teamAbbr'), jersey: (0, pg_core_1.text)('jersey'),
-    height: (0, pg_core_1.text)('height'), weight: (0, pg_core_1.text)('weight'), college: (0, pg_core_1.text)('college'), country: (0, pg_core_1.text)('country'), draftYear: (0, pg_core_1.integer)('draftYear'),
-    draftRound: (0, pg_core_1.integer)('draftRound'), draftPick: (0, pg_core_1.integer)('draftPick'), rosterStatus: (0, pg_core_1.doublePrecision)('rosterStatus'), careerFrom: (0, pg_core_1.text)('careerFrom'), careerTo: (0, pg_core_1.text)('careerTo'),
-    createdAt: createdAt(), updatedAt: updatedAt(),
+    id: id(),
+    externalId: (0, pg_core_1.text)('externalId').notNull().unique(),
+    firstName: (0, pg_core_1.text)('firstName').notNull(),
+    lastName: (0, pg_core_1.text)('lastName').notNull(),
+    displayName: (0, pg_core_1.text)('displayName'),
+    slug: (0, pg_core_1.text)('slug'),
+    position: (0, pg_core_1.text)('position'),
+    teamId: (0, pg_core_1.integer)('teamId'),
+    teamSlug: (0, pg_core_1.text)('teamSlug'),
+    isDefunct: (0, pg_core_1.boolean)('isDefunct'),
+    teamCity: (0, pg_core_1.text)('teamCity'),
+    teamName: (0, pg_core_1.text)('teamName'),
+    teamAbbr: (0, pg_core_1.text)('teamAbbr'),
+    jersey: (0, pg_core_1.text)('jersey'),
+    height: (0, pg_core_1.text)('height'),
+    weight: (0, pg_core_1.text)('weight'),
+    college: (0, pg_core_1.text)('college'),
+    country: (0, pg_core_1.text)('country'),
+    draftYear: (0, pg_core_1.integer)('draftYear'),
+    draftRound: (0, pg_core_1.integer)('draftRound'),
+    draftPick: (0, pg_core_1.integer)('draftPick'),
+    rosterStatus: (0, pg_core_1.doublePrecision)('rosterStatus'),
+    careerFrom: (0, pg_core_1.text)('careerFrom'),
+    careerTo: (0, pg_core_1.text)('careerTo'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
 });
 exports.teams = (0, pg_core_1.pgTable)('teams', {
-    id: id(), externalId: (0, pg_core_1.text)('externalId').notNull().unique(), name: (0, pg_core_1.text)('name').notNull(),
-    fullName: (0, pg_core_1.text)('fullName').notNull(), abbreviation: (0, pg_core_1.text)('abbreviation').notNull(),
-    createdAt: createdAt(), updatedAt: updatedAt(),
+    id: id(),
+    externalId: (0, pg_core_1.text)('externalId').notNull().unique(),
+    name: (0, pg_core_1.text)('name').notNull(),
+    fullName: (0, pg_core_1.text)('fullName').notNull(),
+    abbreviation: (0, pg_core_1.text)('abbreviation').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
 });
 exports.playerSeasonStats = (0, pg_core_1.pgTable)('player_season_stats', {
-    id: id(), playerId: (0, pg_core_1.text)('playerId').notNull().references(() => exports.players.id), season: (0, pg_core_1.text)('season').notNull(), gp: (0, pg_core_1.integer)('gp'), wins: (0, pg_core_1.integer)('wins'), losses: (0, pg_core_1.integer)('losses'),
-    fgPct: (0, pg_core_1.doublePrecision)('fgPct'), fg3Pct: (0, pg_core_1.doublePrecision)('fg3Pct'), ftPct: (0, pg_core_1.doublePrecision)('ftPct'), ptsTotal: (0, pg_core_1.doublePrecision)('ptsTotal'),
-    rebTotal: (0, pg_core_1.doublePrecision)('rebTotal'), astTotal: (0, pg_core_1.doublePrecision)('astTotal'), ptsPerGame: (0, pg_core_1.doublePrecision)('ptsPerGame'),
-    rebPerGame: (0, pg_core_1.doublePrecision)('rebPerGame'), astPerGame: (0, pg_core_1.doublePrecision)('astPerGame'), statsTimeframe: (0, pg_core_1.text)('statsTimeframe'), createdAt: createdAt(), updatedAt: updatedAt(),
-}, (table) => [(0, pg_core_1.unique)('player_season_stats_playerId_season_statsTimeframe_key').on(table.playerId, table.season, table.statsTimeframe), (0, pg_core_1.index)('player_season_stats_playerId_idx').on(table.playerId)]);
+    id: id(),
+    playerId: (0, pg_core_1.text)('playerId')
+        .notNull()
+        .references(() => exports.players.id),
+    season: (0, pg_core_1.text)('season').notNull(),
+    gp: (0, pg_core_1.integer)('gp'),
+    wins: (0, pg_core_1.integer)('wins'),
+    losses: (0, pg_core_1.integer)('losses'),
+    fgPct: (0, pg_core_1.doublePrecision)('fgPct'),
+    fg3Pct: (0, pg_core_1.doublePrecision)('fg3Pct'),
+    ftPct: (0, pg_core_1.doublePrecision)('ftPct'),
+    ptsTotal: (0, pg_core_1.doublePrecision)('ptsTotal'),
+    rebTotal: (0, pg_core_1.doublePrecision)('rebTotal'),
+    astTotal: (0, pg_core_1.doublePrecision)('astTotal'),
+    ptsPerGame: (0, pg_core_1.doublePrecision)('ptsPerGame'),
+    rebPerGame: (0, pg_core_1.doublePrecision)('rebPerGame'),
+    astPerGame: (0, pg_core_1.doublePrecision)('astPerGame'),
+    statsTimeframe: (0, pg_core_1.text)('statsTimeframe'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('player_season_stats_playerId_season_statsTimeframe_key').on(table.playerId, table.season, table.statsTimeframe),
+    (0, pg_core_1.index)('player_season_stats_playerId_idx').on(table.playerId),
+]);
 exports.scheduleDays = (0, pg_core_1.pgTable)('schedule_days', {
-    id: id(), gameDate: (0, pg_core_1.date)('gameDate', { mode: 'string' }).notNull(), seasonYear: (0, pg_core_1.text)('seasonYear').notNull(), leagueId: (0, pg_core_1.text)('leagueId').notNull(),
-    metaVersion: (0, pg_core_1.integer)('metaVersion').notNull(), metaRequest: (0, pg_core_1.text)('metaRequest').notNull(), metaTime: (0, pg_core_1.timestamp)('metaTime', { precision: 3 }).notNull(), hash: (0, pg_core_1.text)('hash').notNull(), createdAt: createdAt(), updatedAt: updatedAt(),
-}, (table) => [(0, pg_core_1.unique)('schedule_days_gameDate_seasonYear_leagueId_key').on(table.gameDate, table.seasonYear, table.leagueId), (0, pg_core_1.index)('schedule_days_gameDate_idx').on(table.gameDate)]);
+    id: id(),
+    gameDate: (0, pg_core_1.date)('gameDate', { mode: 'string' }).notNull(),
+    seasonYear: (0, pg_core_1.text)('seasonYear').notNull(),
+    leagueId: (0, pg_core_1.text)('leagueId').notNull(),
+    metaVersion: (0, pg_core_1.integer)('metaVersion').notNull(),
+    metaRequest: (0, pg_core_1.text)('metaRequest').notNull(),
+    metaTime: (0, pg_core_1.timestamp)('metaTime', { precision: 3 }).notNull(),
+    hash: (0, pg_core_1.text)('hash').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('schedule_days_gameDate_seasonYear_leagueId_key').on(table.gameDate, table.seasonYear, table.leagueId),
+    (0, pg_core_1.index)('schedule_days_gameDate_idx').on(table.gameDate),
+]);
 exports.scheduleGames = (0, pg_core_1.pgTable)('schedule_games', {
-    id: id(), scheduleDayId: (0, pg_core_1.text)('scheduleDayId').notNull().references(() => exports.scheduleDays.id), gameId: (0, pg_core_1.text)('gameId').notNull().unique(),
-    gameDate: (0, pg_core_1.date)('gameDate', { mode: 'string' }).notNull(), gameCode: (0, pg_core_1.text)('gameCode').notNull(), gameStatus: (0, pg_core_1.integer)('gameStatus').notNull(), gameStatusText: (0, pg_core_1.text)('gameStatusText').notNull(), gameSequence: (0, pg_core_1.integer)('gameSequence').notNull(),
-    gameDateEst: (0, pg_core_1.timestamp)('gameDateEst', { precision: 3 }), gameTimeEst: (0, pg_core_1.timestamp)('gameTimeEst', { precision: 3 }), gameDateTimeEst: (0, pg_core_1.timestamp)('gameDateTimeEst', { precision: 3 }), gameDateUTC: (0, pg_core_1.timestamp)('gameDateUTC', { precision: 3 }), gameTimeUTC: (0, pg_core_1.timestamp)('gameTimeUTC', { precision: 3 }), gameDateTimeUTC: (0, pg_core_1.timestamp)('gameDateTimeUTC', { precision: 3 }), awayTeamTime: (0, pg_core_1.timestamp)('awayTeamTime', { precision: 3 }), homeTeamTime: (0, pg_core_1.timestamp)('homeTeamTime', { precision: 3 }),
-    day: (0, pg_core_1.text)('day'), monthNum: (0, pg_core_1.integer)('monthNum'), weekNumber: (0, pg_core_1.integer)('weekNumber'), weekName: (0, pg_core_1.text)('weekName'), ifNecessary: (0, pg_core_1.text)('ifNecessary'), seriesGameNumber: (0, pg_core_1.text)('seriesGameNumber'), gameLabel: (0, pg_core_1.text)('gameLabel'), gameSubLabel: (0, pg_core_1.text)('gameSubLabel'), seriesText: (0, pg_core_1.text)('seriesText'), arenaName: (0, pg_core_1.text)('arenaName'), arenaState: (0, pg_core_1.text)('arenaState'), arenaCity: (0, pg_core_1.text)('arenaCity'), postponedStatus: (0, pg_core_1.text)('postponedStatus'), branchLink: (0, pg_core_1.text)('branchLink'), gameSubtype: (0, pg_core_1.text)('gameSubtype'), isNeutral: (0, pg_core_1.boolean)('isNeutral').notNull(),
-    homeTeamId: (0, pg_core_1.integer)('homeTeamId'), homeTeamName: (0, pg_core_1.text)('homeTeamName'), homeTeamCity: (0, pg_core_1.text)('homeTeamCity'), homeTeamTricode: (0, pg_core_1.text)('homeTeamTricode'), homeTeamSlug: (0, pg_core_1.text)('homeTeamSlug'), homeTeamWins: (0, pg_core_1.integer)('homeTeamWins'), homeTeamLosses: (0, pg_core_1.integer)('homeTeamLosses'), homeTeamScore: (0, pg_core_1.integer)('homeTeamScore'), homeTeamSeed: (0, pg_core_1.integer)('homeTeamSeed'),
-    awayTeamId: (0, pg_core_1.integer)('awayTeamId'), awayTeamName: (0, pg_core_1.text)('awayTeamName'), awayTeamCity: (0, pg_core_1.text)('awayTeamCity'), awayTeamTricode: (0, pg_core_1.text)('awayTeamTricode'), awayTeamSlug: (0, pg_core_1.text)('awayTeamSlug'), awayTeamWins: (0, pg_core_1.integer)('awayTeamWins'), awayTeamLosses: (0, pg_core_1.integer)('awayTeamLosses'), awayTeamScore: (0, pg_core_1.integer)('awayTeamScore'), awayTeamSeed: (0, pg_core_1.integer)('awayTeamSeed'), createdAt: createdAt(), updatedAt: updatedAt(),
-}, (table) => [(0, pg_core_1.index)('schedule_games_gameDate_idx').on(table.gameDate), (0, pg_core_1.index)('schedule_games_scheduleDayId_idx').on(table.scheduleDayId)]);
+    id: id(),
+    scheduleDayId: (0, pg_core_1.text)('scheduleDayId')
+        .notNull()
+        .references(() => exports.scheduleDays.id),
+    gameId: (0, pg_core_1.text)('gameId').notNull().unique(),
+    gameDate: (0, pg_core_1.date)('gameDate', { mode: 'string' }).notNull(),
+    gameCode: (0, pg_core_1.text)('gameCode').notNull(),
+    gameStatus: (0, pg_core_1.integer)('gameStatus').notNull(),
+    gameStatusText: (0, pg_core_1.text)('gameStatusText').notNull(),
+    gameSequence: (0, pg_core_1.integer)('gameSequence').notNull(),
+    gameDateEst: (0, pg_core_1.timestamp)('gameDateEst', { precision: 3 }),
+    gameTimeEst: (0, pg_core_1.timestamp)('gameTimeEst', { precision: 3 }),
+    gameDateTimeEst: (0, pg_core_1.timestamp)('gameDateTimeEst', { precision: 3 }),
+    gameDateUTC: (0, pg_core_1.timestamp)('gameDateUTC', { precision: 3 }),
+    gameTimeUTC: (0, pg_core_1.timestamp)('gameTimeUTC', { precision: 3 }),
+    gameDateTimeUTC: (0, pg_core_1.timestamp)('gameDateTimeUTC', { precision: 3 }),
+    awayTeamTime: (0, pg_core_1.timestamp)('awayTeamTime', { precision: 3 }),
+    homeTeamTime: (0, pg_core_1.timestamp)('homeTeamTime', { precision: 3 }),
+    day: (0, pg_core_1.text)('day'),
+    monthNum: (0, pg_core_1.integer)('monthNum'),
+    weekNumber: (0, pg_core_1.integer)('weekNumber'),
+    weekName: (0, pg_core_1.text)('weekName'),
+    ifNecessary: (0, pg_core_1.text)('ifNecessary'),
+    seriesGameNumber: (0, pg_core_1.text)('seriesGameNumber'),
+    gameLabel: (0, pg_core_1.text)('gameLabel'),
+    gameSubLabel: (0, pg_core_1.text)('gameSubLabel'),
+    seriesText: (0, pg_core_1.text)('seriesText'),
+    arenaName: (0, pg_core_1.text)('arenaName'),
+    arenaState: (0, pg_core_1.text)('arenaState'),
+    arenaCity: (0, pg_core_1.text)('arenaCity'),
+    postponedStatus: (0, pg_core_1.text)('postponedStatus'),
+    branchLink: (0, pg_core_1.text)('branchLink'),
+    gameSubtype: (0, pg_core_1.text)('gameSubtype'),
+    isNeutral: (0, pg_core_1.boolean)('isNeutral').notNull(),
+    homeTeamId: (0, pg_core_1.integer)('homeTeamId'),
+    homeTeamName: (0, pg_core_1.text)('homeTeamName'),
+    homeTeamCity: (0, pg_core_1.text)('homeTeamCity'),
+    homeTeamTricode: (0, pg_core_1.text)('homeTeamTricode'),
+    homeTeamSlug: (0, pg_core_1.text)('homeTeamSlug'),
+    homeTeamWins: (0, pg_core_1.integer)('homeTeamWins'),
+    homeTeamLosses: (0, pg_core_1.integer)('homeTeamLosses'),
+    homeTeamScore: (0, pg_core_1.integer)('homeTeamScore'),
+    homeTeamSeed: (0, pg_core_1.integer)('homeTeamSeed'),
+    awayTeamId: (0, pg_core_1.integer)('awayTeamId'),
+    awayTeamName: (0, pg_core_1.text)('awayTeamName'),
+    awayTeamCity: (0, pg_core_1.text)('awayTeamCity'),
+    awayTeamTricode: (0, pg_core_1.text)('awayTeamTricode'),
+    awayTeamSlug: (0, pg_core_1.text)('awayTeamSlug'),
+    awayTeamWins: (0, pg_core_1.integer)('awayTeamWins'),
+    awayTeamLosses: (0, pg_core_1.integer)('awayTeamLosses'),
+    awayTeamScore: (0, pg_core_1.integer)('awayTeamScore'),
+    awayTeamSeed: (0, pg_core_1.integer)('awayTeamSeed'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.index)('schedule_games_gameDate_idx').on(table.gameDate),
+    (0, pg_core_1.index)('schedule_games_scheduleDayId_idx').on(table.scheduleDayId),
+]);
 exports.schedulePointsLeaders = (0, pg_core_1.pgTable)('schedule_points_leaders', {
-    id: id(), scheduleGameId: (0, pg_core_1.text)('scheduleGameId').notNull().references(() => exports.scheduleGames.id), personId: (0, pg_core_1.integer)('personId'), firstName: (0, pg_core_1.text)('firstName'), lastName: (0, pg_core_1.text)('lastName'), teamId: (0, pg_core_1.integer)('teamId'), teamCity: (0, pg_core_1.text)('teamCity'), teamName: (0, pg_core_1.text)('teamName'), teamTricode: (0, pg_core_1.text)('teamTricode'), points: (0, pg_core_1.doublePrecision)('points'), createdAt: createdAt(), updatedAt: updatedAt(),
+    id: id(),
+    scheduleGameId: (0, pg_core_1.text)('scheduleGameId')
+        .notNull()
+        .references(() => exports.scheduleGames.id),
+    personId: (0, pg_core_1.integer)('personId'),
+    firstName: (0, pg_core_1.text)('firstName'),
+    lastName: (0, pg_core_1.text)('lastName'),
+    teamId: (0, pg_core_1.integer)('teamId'),
+    teamCity: (0, pg_core_1.text)('teamCity'),
+    teamName: (0, pg_core_1.text)('teamName'),
+    teamTricode: (0, pg_core_1.text)('teamTricode'),
+    points: (0, pg_core_1.doublePrecision)('points'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
 }, (table) => [(0, pg_core_1.index)('schedule_points_leaders_scheduleGameId_idx').on(table.scheduleGameId)]);
 const stats = {
-    minutes: (0, pg_core_1.text)('minutes'), fgMade: (0, pg_core_1.integer)('fgMade'), fgAttempted: (0, pg_core_1.integer)('fgAttempted'), fgPct: (0, pg_core_1.doublePrecision)('fgPct'), fg3Made: (0, pg_core_1.integer)('fg3Made'), fg3Attempted: (0, pg_core_1.integer)('fg3Attempted'), fg3Pct: (0, pg_core_1.doublePrecision)('fg3Pct'), ftMade: (0, pg_core_1.integer)('ftMade'), ftAttempted: (0, pg_core_1.integer)('ftAttempted'), ftPct: (0, pg_core_1.doublePrecision)('ftPct'), oreb: (0, pg_core_1.integer)('oreb'), dreb: (0, pg_core_1.integer)('dreb'), reb: (0, pg_core_1.integer)('reb'), ast: (0, pg_core_1.integer)('ast'), stl: (0, pg_core_1.integer)('stl'), blk: (0, pg_core_1.integer)('blk'), tov: (0, pg_core_1.integer)('tov'), pf: (0, pg_core_1.integer)('pf'), pts: (0, pg_core_1.integer)('pts'), plusMinus: (0, pg_core_1.doublePrecision)('plusMinus'),
+    minutes: (0, pg_core_1.text)('minutes'),
+    fgMade: (0, pg_core_1.integer)('fgMade'),
+    fgAttempted: (0, pg_core_1.integer)('fgAttempted'),
+    fgPct: (0, pg_core_1.doublePrecision)('fgPct'),
+    fg3Made: (0, pg_core_1.integer)('fg3Made'),
+    fg3Attempted: (0, pg_core_1.integer)('fg3Attempted'),
+    fg3Pct: (0, pg_core_1.doublePrecision)('fg3Pct'),
+    ftMade: (0, pg_core_1.integer)('ftMade'),
+    ftAttempted: (0, pg_core_1.integer)('ftAttempted'),
+    ftPct: (0, pg_core_1.doublePrecision)('ftPct'),
+    oreb: (0, pg_core_1.integer)('oreb'),
+    dreb: (0, pg_core_1.integer)('dreb'),
+    reb: (0, pg_core_1.integer)('reb'),
+    ast: (0, pg_core_1.integer)('ast'),
+    stl: (0, pg_core_1.integer)('stl'),
+    blk: (0, pg_core_1.integer)('blk'),
+    tov: (0, pg_core_1.integer)('tov'),
+    pf: (0, pg_core_1.integer)('pf'),
+    pts: (0, pg_core_1.integer)('pts'),
+    plusMinus: (0, pg_core_1.doublePrecision)('plusMinus'),
 };
 exports.scheduleBoxscoreSummaries = (0, pg_core_1.pgTable)('schedule_boxscore_summaries', {
-    id: id(), scheduleGameId: (0, pg_core_1.text)('scheduleGameId').notNull().unique().references(() => exports.scheduleGames.id), gameCode: (0, pg_core_1.text)('gameCode').notNull(), gameStatus: (0, pg_core_1.integer)('gameStatus').notNull(), gameStatusText: (0, pg_core_1.text)('gameStatusText').notNull(), period: (0, pg_core_1.integer)('period').notNull(), gameClock: (0, pg_core_1.text)('gameClock'), gameTimeUTC: (0, pg_core_1.timestamp)('gameTimeUTC', { precision: 3 }), gameEt: (0, pg_core_1.timestamp)('gameEt', { precision: 3 }), duration: (0, pg_core_1.text)('duration'), attendance: (0, pg_core_1.integer)('attendance'), sellout: (0, pg_core_1.integer)('sellout'), seriesGameNumber: (0, pg_core_1.text)('seriesGameNumber'), gameLabel: (0, pg_core_1.text)('gameLabel'), gameSubLabel: (0, pg_core_1.text)('gameSubLabel'), seriesText: (0, pg_core_1.text)('seriesText'), ifNecessary: (0, pg_core_1.boolean)('ifNecessary').notNull(), isNeutral: (0, pg_core_1.boolean)('isNeutral').notNull(),
-    arenaId: (0, pg_core_1.integer)('arenaId'), arenaName: (0, pg_core_1.text)('arenaName'), arenaCity: (0, pg_core_1.text)('arenaCity'), arenaState: (0, pg_core_1.text)('arenaState'), arenaCountry: (0, pg_core_1.text)('arenaCountry'), arenaTimezone: (0, pg_core_1.text)('arenaTimezone'), arenaStreet: (0, pg_core_1.text)('arenaStreet'), arenaPostalCode: (0, pg_core_1.text)('arenaPostalCode'), homeTeamId: (0, pg_core_1.integer)('homeTeamId').notNull(), homeScore: (0, pg_core_1.integer)('homeScore'), homeInBonus: (0, pg_core_1.text)('homeInBonus'), homeTimeouts: (0, pg_core_1.integer)('homeTimeouts'), homeSeed: (0, pg_core_1.integer)('homeSeed'), homePeriods: (0, pg_core_1.jsonb)('homePeriods'), homePlayers: (0, pg_core_1.jsonb)('homePlayers'), homeInactives: (0, pg_core_1.jsonb)('homeInactives'), awayTeamId: (0, pg_core_1.integer)('awayTeamId').notNull(), awayTeamName: (0, pg_core_1.text)('awayTeamName'), awayTeamCity: (0, pg_core_1.text)('awayTeamCity'), awayTeamTricode: (0, pg_core_1.text)('awayTeamTricode'), awayTeamSlug: (0, pg_core_1.text)('awayTeamSlug'), awayTeamWins: (0, pg_core_1.integer)('awayTeamWins'), awayTeamLosses: (0, pg_core_1.integer)('awayTeamLosses'), awayScore: (0, pg_core_1.integer)('awayScore'), awayInBonus: (0, pg_core_1.text)('awayInBonus'), awayTimeouts: (0, pg_core_1.integer)('awayTimeouts'), awaySeed: (0, pg_core_1.integer)('awaySeed'), awayStatistics: (0, pg_core_1.jsonb)('awayStatistics'), awayPeriods: (0, pg_core_1.jsonb)('awayPeriods'), awayPlayers: (0, pg_core_1.jsonb)('awayPlayers'), awayInactives: (0, pg_core_1.jsonb)('awayInactives'), lastFiveMeetings: (0, pg_core_1.jsonb)('lastFiveMeetings'), pregameCharts: (0, pg_core_1.jsonb)('pregameCharts'), postgameCharts: (0, pg_core_1.jsonb)('postgameCharts'), createdAt: createdAt(), updatedAt: updatedAt(),
+    id: id(),
+    scheduleGameId: (0, pg_core_1.text)('scheduleGameId')
+        .notNull()
+        .unique()
+        .references(() => exports.scheduleGames.id),
+    gameCode: (0, pg_core_1.text)('gameCode').notNull(),
+    gameStatus: (0, pg_core_1.integer)('gameStatus').notNull(),
+    gameStatusText: (0, pg_core_1.text)('gameStatusText').notNull(),
+    period: (0, pg_core_1.integer)('period').notNull(),
+    gameClock: (0, pg_core_1.text)('gameClock'),
+    gameTimeUTC: (0, pg_core_1.timestamp)('gameTimeUTC', { precision: 3 }),
+    gameEt: (0, pg_core_1.timestamp)('gameEt', { precision: 3 }),
+    duration: (0, pg_core_1.text)('duration'),
+    attendance: (0, pg_core_1.integer)('attendance'),
+    sellout: (0, pg_core_1.integer)('sellout'),
+    seriesGameNumber: (0, pg_core_1.text)('seriesGameNumber'),
+    gameLabel: (0, pg_core_1.text)('gameLabel'),
+    gameSubLabel: (0, pg_core_1.text)('gameSubLabel'),
+    seriesText: (0, pg_core_1.text)('seriesText'),
+    ifNecessary: (0, pg_core_1.boolean)('ifNecessary').notNull(),
+    isNeutral: (0, pg_core_1.boolean)('isNeutral').notNull(),
+    arenaId: (0, pg_core_1.integer)('arenaId'),
+    arenaName: (0, pg_core_1.text)('arenaName'),
+    arenaCity: (0, pg_core_1.text)('arenaCity'),
+    arenaState: (0, pg_core_1.text)('arenaState'),
+    arenaCountry: (0, pg_core_1.text)('arenaCountry'),
+    arenaTimezone: (0, pg_core_1.text)('arenaTimezone'),
+    arenaStreet: (0, pg_core_1.text)('arenaStreet'),
+    arenaPostalCode: (0, pg_core_1.text)('arenaPostalCode'),
+    homeTeamId: (0, pg_core_1.integer)('homeTeamId').notNull(),
+    homeScore: (0, pg_core_1.integer)('homeScore'),
+    homeInBonus: (0, pg_core_1.text)('homeInBonus'),
+    homeTimeouts: (0, pg_core_1.integer)('homeTimeouts'),
+    homeSeed: (0, pg_core_1.integer)('homeSeed'),
+    homePeriods: (0, pg_core_1.jsonb)('homePeriods'),
+    homePlayers: (0, pg_core_1.jsonb)('homePlayers'),
+    homeInactives: (0, pg_core_1.jsonb)('homeInactives'),
+    awayTeamId: (0, pg_core_1.integer)('awayTeamId').notNull(),
+    awayTeamName: (0, pg_core_1.text)('awayTeamName'),
+    awayTeamCity: (0, pg_core_1.text)('awayTeamCity'),
+    awayTeamTricode: (0, pg_core_1.text)('awayTeamTricode'),
+    awayTeamSlug: (0, pg_core_1.text)('awayTeamSlug'),
+    awayTeamWins: (0, pg_core_1.integer)('awayTeamWins'),
+    awayTeamLosses: (0, pg_core_1.integer)('awayTeamLosses'),
+    awayScore: (0, pg_core_1.integer)('awayScore'),
+    awayInBonus: (0, pg_core_1.text)('awayInBonus'),
+    awayTimeouts: (0, pg_core_1.integer)('awayTimeouts'),
+    awaySeed: (0, pg_core_1.integer)('awaySeed'),
+    awayStatistics: (0, pg_core_1.jsonb)('awayStatistics'),
+    awayPeriods: (0, pg_core_1.jsonb)('awayPeriods'),
+    awayPlayers: (0, pg_core_1.jsonb)('awayPlayers'),
+    awayInactives: (0, pg_core_1.jsonb)('awayInactives'),
+    lastFiveMeetings: (0, pg_core_1.jsonb)('lastFiveMeetings'),
+    pregameCharts: (0, pg_core_1.jsonb)('pregameCharts'),
+    postgameCharts: (0, pg_core_1.jsonb)('postgameCharts'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
 });
 exports.scheduleBoxscoreTeams = (0, pg_core_1.pgTable)('schedule_boxscore_teams', {
-    id: id(), scheduleGameId: (0, pg_core_1.text)('scheduleGameId').notNull().references(() => exports.scheduleGames.id), teamExternalId: (0, pg_core_1.integer)('teamExternalId').notNull(), side: (0, exports.scheduleTeamSide)('side').notNull(), ...stats, createdAt: createdAt(), updatedAt: updatedAt(),
-}, (table) => [(0, pg_core_1.unique)('schedule_boxscore_teams_scheduleGameId_side_key').on(table.scheduleGameId, table.side), (0, pg_core_1.index)('schedule_boxscore_teams_scheduleGameId_idx').on(table.scheduleGameId), (0, pg_core_1.index)('schedule_boxscore_teams_teamExternalId_idx').on(table.teamExternalId)]);
+    id: id(),
+    scheduleGameId: (0, pg_core_1.text)('scheduleGameId')
+        .notNull()
+        .references(() => exports.scheduleGames.id),
+    teamExternalId: (0, pg_core_1.integer)('teamExternalId').notNull(),
+    side: (0, exports.scheduleTeamSide)('side').notNull(),
+    ...stats,
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('schedule_boxscore_teams_scheduleGameId_side_key').on(table.scheduleGameId, table.side),
+    (0, pg_core_1.index)('schedule_boxscore_teams_scheduleGameId_idx').on(table.scheduleGameId),
+    (0, pg_core_1.index)('schedule_boxscore_teams_teamExternalId_idx').on(table.teamExternalId),
+]);
 exports.scheduleBoxscorePlayers = (0, pg_core_1.pgTable)('schedule_boxscore_players', {
-    id: id(), scheduleGameId: (0, pg_core_1.text)('scheduleGameId').notNull().references(() => exports.scheduleGames.id), playerId: (0, pg_core_1.text)('playerId').notNull().references(() => exports.players.id), playerExternalId: (0, pg_core_1.text)('playerExternalId').notNull(), teamExternalId: (0, pg_core_1.integer)('teamExternalId').notNull(), ...stats, createdAt: createdAt(), updatedAt: updatedAt(),
-}, (table) => [(0, pg_core_1.unique)('schedule_boxscore_players_scheduleGameId_playerExternalId_key').on(table.scheduleGameId, table.playerExternalId), (0, pg_core_1.index)('schedule_boxscore_players_scheduleGameId_idx').on(table.scheduleGameId), (0, pg_core_1.index)('schedule_boxscore_players_playerId_idx').on(table.playerId), (0, pg_core_1.index)('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId)]);
-exports.categories = (0, pg_core_1.pgTable)('categories', { id: id(), userId: (0, pg_core_1.text)('user_id').notNull().references(() => better_auth_schema_js_1.users.id), name: (0, pg_core_1.text)('name').notNull(), type: (0, exports.categoryType)('type').notNull(), colorHex: (0, pg_core_1.text)('color_hex').notNull(), icon: (0, pg_core_1.text)('icon').notNull(), createdAt: (0, pg_core_1.timestamp)('created_at', { precision: 3 }).notNull().defaultNow(), updatedAt: (0, pg_core_1.timestamp)('updated_at', { precision: 3 }).notNull().defaultNow(), deletedAt: (0, pg_core_1.timestamp)('deleted_at', { precision: 3 }) }, (table) => [(0, pg_core_1.index)('categories_user_id_type_idx').on(table.userId, table.type), (0, pg_core_1.index)('categories_user_id_name_idx').on(table.userId, table.name), (0, pg_core_1.index)('categories_user_id_deleted_at_idx').on(table.userId, table.deletedAt)]);
-exports.wallets = (0, pg_core_1.pgTable)('wallets', { id: id(), userId: (0, pg_core_1.text)('user_id').notNull().references(() => better_auth_schema_js_1.users.id), name: (0, pg_core_1.text)('name').notNull(), createdAt: (0, pg_core_1.timestamp)('created_at', { precision: 3 }).notNull().defaultNow(), updatedAt: (0, pg_core_1.timestamp)('updated_at', { precision: 3 }).notNull().defaultNow(), deletedAt: (0, pg_core_1.timestamp)('deleted_at', { precision: 3 }) });
-const finance = (name) => (0, pg_core_1.pgTable)(name, { id: id(), userId: (0, pg_core_1.text)('user_id').notNull().references(() => better_auth_schema_js_1.users.id), walletId: (0, pg_core_1.text)('wallet_id').notNull().references(() => exports.wallets.id), categoryId: (0, pg_core_1.text)('category_id').notNull().references(() => exports.categories.id), amount: (0, pg_core_1.integer)('amount').notNull(), note: (0, pg_core_1.text)('note'), occurredAt: (0, pg_core_1.timestamp)('occurred_at', { precision: 3 }).notNull(), createdAt: (0, pg_core_1.timestamp)('created_at', { precision: 3 }).notNull().defaultNow(), updatedAt: (0, pg_core_1.timestamp)('updated_at', { precision: 3 }).notNull().defaultNow(), deletedAt: (0, pg_core_1.timestamp)('deleted_at', { precision: 3 }) }, (table) => [(0, pg_core_1.index)(`${name}_user_id_occurred_at_idx`).on(table.userId, table.occurredAt), (0, pg_core_1.index)(`${name}_user_id_category_id_idx`).on(table.userId, table.categoryId)]);
-exports.expenses = finance('expenses');
-exports.incomes = finance('incomes');
+    id: id(),
+    scheduleGameId: (0, pg_core_1.text)('scheduleGameId')
+        .notNull()
+        .references(() => exports.scheduleGames.id),
+    playerId: (0, pg_core_1.text)('playerId')
+        .notNull()
+        .references(() => exports.players.id),
+    playerExternalId: (0, pg_core_1.text)('playerExternalId').notNull(),
+    teamExternalId: (0, pg_core_1.integer)('teamExternalId').notNull(),
+    ...stats,
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('schedule_boxscore_players_scheduleGameId_playerExternalId_key').on(table.scheduleGameId, table.playerExternalId),
+    (0, pg_core_1.index)('schedule_boxscore_players_scheduleGameId_idx').on(table.scheduleGameId),
+    (0, pg_core_1.index)('schedule_boxscore_players_playerId_idx').on(table.playerId),
+    (0, pg_core_1.index)('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId),
+]);
