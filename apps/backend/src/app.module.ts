@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -14,6 +14,7 @@ import { createAuth } from './infrastructure/better-auth/auth.config';
 import { EmailService } from './infrastructure/email/email.service';
 import { HttpExceptionFilter } from './common/filter/http-exception.filter';
 import { createLoggerOptions } from './infrastructure/logger/logger.config';
+import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 
 @Module({
   imports: [
@@ -30,6 +31,11 @@ import { createLoggerOptions } from './infrastructure/logger/logger.config';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_PIPE, useClass: ZodValidationPipe },
+    { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+  ],
 })
 export class AppModule {}
