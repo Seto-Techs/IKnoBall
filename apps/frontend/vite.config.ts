@@ -11,12 +11,16 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/auth': {
+        target: process.env.VITE_API_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
+        changeOrigin: true,
+      },
       '/api': {
-        target: process.env.VITE_API_BASE_URL,
+        target: process.env.VITE_API_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
         changeOrigin: true,
       },
       '/media': {
-        target: process.env.VITE_API_BASE_URL,
+        target: process.env.VITE_API_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
         changeOrigin: true,
       },
     },

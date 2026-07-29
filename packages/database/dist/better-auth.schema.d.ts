@@ -1,4 +1,4 @@
-export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
+export declare const user: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "users";
     schema: undefined;
     columns: {
