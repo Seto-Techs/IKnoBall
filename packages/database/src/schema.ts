@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { users } from './better-auth.schema.js';
+import { user } from './better-auth.schema.js';
 
-export { account, session, users, verification } from './better-auth.schema.js';
+export { account, session, user, verification } from './better-auth.schema.js';
 import {
   boolean,
   date,

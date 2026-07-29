@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.users = exports.session = exports.account = void 0;
+exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
 var better_auth_schema_js_1 = require("./better-auth.schema.js");
 Object.defineProperty(exports, "account", { enumerable: true, get: function () { return better_auth_schema_js_1.account; } });
 Object.defineProperty(exports, "session", { enumerable: true, get: function () { return better_auth_schema_js_1.session; } });
-Object.defineProperty(exports, "users", { enumerable: true, get: function () { return better_auth_schema_js_1.users; } });
+Object.defineProperty(exports, "user", { enumerable: true, get: function () { return better_auth_schema_js_1.user; } });
 Object.defineProperty(exports, "verification", { enumerable: true, get: function () { return better_auth_schema_js_1.verification; } });
 const pg_core_1 = require("drizzle-orm/pg-core");
 const id = () => (0, pg_core_1.text)('id').primaryKey().$defaultFn(node_crypto_1.randomUUID);

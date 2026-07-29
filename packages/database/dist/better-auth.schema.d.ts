@@ -1,4 +1,4 @@
-export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
+export declare const user: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "users";
     schema: undefined;
     columns: {
@@ -53,7 +53,7 @@ export declare const users: import("drizzle-orm/pg-core").PgTableWithColumns<{
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        is_verified: import("drizzle-orm/pg-core").PgColumn<{
+        emailVerified: import("drizzle-orm/pg-core").PgColumn<{
             name: "is_verified";
             tableName: "users";
             dataType: "boolean";

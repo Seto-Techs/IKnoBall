@@ -18,7 +18,7 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [emailConfig] }),
+    ConfigModule.forRoot({ isGlobal: true, load: [emailConfig], envFilePath: ['.env', '../.env', '../../.env'] }),
     WinstonModule.forRoot(createLoggerOptions()),
     DatabaseModule,
     EmailModule,

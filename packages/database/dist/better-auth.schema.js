@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.accountRelations = exports.sessionRelations = exports.usersRelations = exports.verification = exports.account = exports.session = exports.users = void 0;
+exports.accountRelations = exports.sessionRelations = exports.usersRelations = exports.verification = exports.account = exports.session = exports.user = void 0;
 const drizzle_orm_1 = require("drizzle-orm");
 const pg_core_1 = require("drizzle-orm/pg-core");
-exports.users = (0, pg_core_1.pgTable)('users', {
+exports.user = (0, pg_core_1.pgTable)('users', {
     id: (0, pg_core_1.text)('id').primaryKey(),
     name: (0, pg_core_1.text)('name').notNull(),
     email: (0, pg_core_1.text)('email').notNull().unique(),
-    is_verified: (0, pg_core_1.boolean)('is_verified').default(false).notNull(),
+    emailVerified: (0, pg_core_1.boolean)('is_verified').default(false).notNull(),
     image: (0, pg_core_1.text)('image'),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at')
@@ -28,7 +28,7 @@ exports.session = (0, pg_core_1.pgTable)('session', {
     userAgent: (0, pg_core_1.text)('user_agent'),
     userId: (0, pg_core_1.text)('user_id')
         .notNull()
-        .references(() => exports.users.id, { onDelete: 'cascade' }),
+        .references(() => exports.user.id, { onDelete: 'cascade' }),
 }, (table) => [(0, pg_core_1.index)('session_userId_idx').on(table.userId)]);
 exports.account = (0, pg_core_1.pgTable)('account', {
     id: (0, pg_core_1.text)('id').primaryKey(),
@@ -36,7 +36,7 @@ exports.account = (0, pg_core_1.pgTable)('account', {
     providerId: (0, pg_core_1.text)('provider_id').notNull(),
     userId: (0, pg_core_1.text)('user_id')
         .notNull()
-        .references(() => exports.users.id, { onDelete: 'cascade' }),
+        .references(() => exports.user.id, { onDelete: 'cascade' }),
     accessToken: (0, pg_core_1.text)('access_token'),
     refreshToken: (0, pg_core_1.text)('refresh_token'),
     idToken: (0, pg_core_1.text)('id_token'),
@@ -60,19 +60,19 @@ exports.verification = (0, pg_core_1.pgTable)('verification', {
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
 }, (table) => [(0, pg_core_1.index)('verification_identifier_idx').on(table.identifier)]);
-exports.usersRelations = (0, drizzle_orm_1.relations)(exports.users, ({ many }) => ({
+exports.usersRelations = (0, drizzle_orm_1.relations)(exports.user, ({ many }) => ({
     sessions: many(exports.session),
     accounts: many(exports.account),
 }));
 exports.sessionRelations = (0, drizzle_orm_1.relations)(exports.session, ({ one }) => ({
-    users: one(exports.users, {
+    users: one(exports.user, {
         fields: [exports.session.userId],
-        references: [exports.users.id],
+        references: [exports.user.id],
     }),
 }));
 exports.accountRelations = (0, drizzle_orm_1.relations)(exports.account, ({ one }) => ({
-    users: one(exports.users, {
+    users: one(exports.user, {
         fields: [exports.account.userId],
-        references: [exports.users.id],
+        references: [exports.user.id],
     }),
 }));
