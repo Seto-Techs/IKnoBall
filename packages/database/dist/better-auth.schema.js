@@ -7,8 +7,9 @@ exports.users = (0, pg_core_1.pgTable)('users', {
     id: (0, pg_core_1.text)('id').primaryKey(),
     name: (0, pg_core_1.text)('name').notNull(),
     email: (0, pg_core_1.text)('email').notNull().unique(),
-    is_verified: (0, pg_core_1.boolean)('is_verified').default(false).notNull(),
+    emailVerified: (0, pg_core_1.boolean)('is_verified').default(false).notNull(),
     image: (0, pg_core_1.text)('image'),
+    role: (0, pg_core_1.text)('role').default('user').notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at')
         .defaultNow()

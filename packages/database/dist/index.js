@@ -42,7 +42,19 @@ const node_postgres_1 = require("drizzle-orm/node-postgres");
 const pg_1 = require("pg");
 const schema = __importStar(require("./schema.js"));
 __exportStar(require("./schema.js"), exports);
-exports.betterAuthSchema = __importStar(require("./schema.js"));
+const schema_js_1 = require("./schema.js");
+/**
+ * Schema object keyed by BetterAuth internal model names.
+ *
+ * BetterAuth models: `user`, `session`, `account`, `verification`
+ * Our Drizzle table is named `users` (plural), so we alias it as `user`.
+ */
+exports.betterAuthSchema = {
+    user: schema_js_1.users,
+    session: schema_js_1.session,
+    account: schema_js_1.account,
+    verification: schema_js_1.verification,
+};
 function createDatabase(connectionString = process.env.DATABASE_URL) {
     if (!connectionString)
         throw new Error('DATABASE_URL is required');
