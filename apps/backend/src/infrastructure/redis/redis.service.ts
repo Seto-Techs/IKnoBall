@@ -15,7 +15,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    await this.connect();
+    this.connect().catch((err) => {
+      this.logger.error('Redis initialization failed, will retry in background', err);
+    });
   }
 
   async onModuleDestroy() {
@@ -29,7 +31,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     // Connect General Client
     if (!this.client || !this.client.isOpen) {
       if (!this.redisUrl) {
-        throw new Error('REDIS_URL environment variable is not set');
+        this.logger.error('REDIS_URL environment variable is not set');
+        return;
       }
       this.client = await this.createRedisClient(this.redisUrl, 'General');
     }
@@ -63,11 +66,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       url: url,
       socket: {
         reconnectStrategy: (retries) => {
-          if (retries > 10) {
-            this.logger.error(`Redis (${name}): Max reconnection attempts reached`);
-            return new Error('Max reconnection attempts reached');
+          if (retries > 50) {
+            this.logger.warn(
+              `Redis (${name}): ${retries} reconnection attempts, still trying every 5s`,
+            );
+            return 5000;
           }
-          return Math.min(retries * 50, 1000);
+          return Math.min(retries * 100, 3000);
         },
         connectTimeout: 10000,
       },
@@ -79,22 +84,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     client.on('reconnecting', () => this.logger.log(`Redis (${name}): Reconnecting...`));
     client.on('end', () => this.logger.log(`Redis (${name}): Connection ended`));
 
-    try {
-      await client.connect();
-      this.logger.log(`Redis (${name}): Connected`);
-      return client;
-    } catch (error) {
-      this.logger.error(`Redis (${name}): Failed to connect`, error);
-      throw error;
-    }
+    client.connect().catch((err) => {
+      this.logger.error(`Redis (${name}): Initial connect failed, retrying...`, err);
+    });
+    return client;
   }
 
   /**
    * Get the General Redis client instance
    */
   getClient(): RedisClientType {
-    if (!this.client || !this.client.isOpen) {
-      throw new Error('Redis client is not connected');
+    if (!this.client) {
+      throw new Error('Redis client is not initialized');
     }
     return this.client;
   }
@@ -119,7 +120,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    * Check if General Redis is connected
    */
   isConnected(): boolean {
-    return this.client !== null && this.client.isOpen;
+    return this.client !== null && (this.client.isOpen || this.client.isReady);
   }
 
   /**
