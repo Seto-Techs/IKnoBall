@@ -35,17 +35,12 @@ function LoginPage() {
             IK
           </div>
           <h1 className="text-xl font-semibold text-stone-900">Sign in</h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Welcome back to IKnoBall
-          </p>
+          <p className="mt-1 text-sm text-stone-500">Welcome back to IKnoBall</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-stone-700">
               Email
             </label>
             <input
@@ -61,10 +56,7 @@ function LoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-stone-700">
               Password
             </label>
             <input
@@ -79,11 +71,7 @@ function LoginPage() {
             />
           </div>
 
-          {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
+          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
           <button
             type="submit"

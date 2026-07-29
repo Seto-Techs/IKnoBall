@@ -11,9 +11,7 @@ export const Route = createFileRoute('/auth/verify')({
 
 function VerifyPage() {
   const { token } = useSearch({ from: '/auth/verify' });
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
-    'loading',
-  );
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -46,9 +44,7 @@ function VerifyPage() {
         {status === 'loading' && (
           <>
             <div className="mx-auto mb-4 h-9 w-9 animate-pulse rounded-full bg-arena-200" />
-            <h1 className="text-xl font-semibold text-stone-900">
-              Verifying…
-            </h1>
+            <h1 className="text-xl font-semibold text-stone-900">Verifying…</h1>
           </>
         )}
 
@@ -72,9 +68,7 @@ function VerifyPage() {
             <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-base font-bold text-white">
               !
             </div>
-            <h1 className="text-xl font-semibold text-stone-900">
-              Verification failed
-            </h1>
+            <h1 className="text-xl font-semibold text-stone-900">Verification failed</h1>
             <p className="mt-2 text-sm text-stone-500">{message}</p>
             <Link
               to="/auth/login"

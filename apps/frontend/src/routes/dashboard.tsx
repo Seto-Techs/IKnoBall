@@ -75,7 +75,9 @@ function DashboardPage() {
             { label: 'Last Game', value: '\u2014' },
           ].map((stat) => (
             <div key={stat.label} className="rounded-xl border border-court-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">{stat.label}</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+                {stat.label}
+              </p>
               <p className="mt-1 text-lg font-bold text-stone-900">{stat.value}</p>
             </div>
           ))}
@@ -109,7 +111,9 @@ function DashboardPage() {
               </div>
             ) : (
               <div className="p-8 text-center">
-                <p className="text-base text-stone-400">Run the worker to sync NBA schedule data.</p>
+                <p className="text-base text-stone-400">
+                  Run the worker to sync NBA schedule data.
+                </p>
               </div>
             )}
           </div>

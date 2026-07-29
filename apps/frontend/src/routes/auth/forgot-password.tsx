@@ -36,12 +36,9 @@ function ForgotPasswordPage() {
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-arena-500 text-base font-bold text-white">
             ✓
           </div>
-          <h1 className="text-xl font-semibold text-stone-900">
-            Check your email
-          </h1>
+          <h1 className="text-xl font-semibold text-stone-900">Check your email</h1>
           <p className="mt-2 text-sm text-stone-500">
-            If an account with{' '}
-            <span className="font-medium text-stone-700">{email}</span> exists,
+            If an account with <span className="font-medium text-stone-700">{email}</span> exists,
             you'll receive a password reset link.
           </p>
           <Link
@@ -59,9 +56,7 @@ function ForgotPasswordPage() {
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-sm rounded-lg border border-court-200 bg-white p-8">
         <div className="mb-6">
-          <h1 className="text-xl font-semibold text-stone-900">
-            Reset password
-          </h1>
+          <h1 className="text-xl font-semibold text-stone-900">Reset password</h1>
           <p className="mt-1 text-sm text-stone-500">
             Enter your email and we'll send you a reset link.
           </p>
@@ -69,10 +64,7 @@ function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-stone-700">
               Email
             </label>
             <input
@@ -87,11 +79,7 @@ function ForgotPasswordPage() {
             />
           </div>
 
-          {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
+          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
           <button
             type="submit"

@@ -78,21 +78,14 @@ export function useSignIn() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      email,
-      password,
-    }: {
-      email: string;
-      password: string;
-    }) => {
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
       if (isMock()) return { token: 'mock-token', user: MOCK_USER };
 
       const { data, error } = await authClient.signIn.email({
         email,
         password,
       });
-      if (error)
-        throw new Error(error.message ?? error.code ?? 'Sign in failed');
+      if (error) throw new Error(error.message ?? error.code ?? 'Sign in failed');
       return data as { token: string; user: AuthUser };
     },
     onSuccess: () => {
@@ -119,8 +112,7 @@ export function useSignUp() {
         email,
         password,
       });
-      if (error)
-        throw new Error(error.message ?? error.code ?? 'Sign up failed');
+      if (error) throw new Error(error.message ?? error.code ?? 'Sign up failed');
       return data as { user: AuthUser };
     },
   });
@@ -134,8 +126,7 @@ export function useSignOut() {
       if (isMock()) return;
 
       const { error } = await authClient.signOut();
-      if (error)
-        throw new Error(error.message ?? error.code ?? 'Sign out failed');
+      if (error) throw new Error(error.message ?? error.code ?? 'Sign out failed');
     },
     onSuccess: () => {
       qc.setQueryData(['session'], null);

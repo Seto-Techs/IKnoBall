@@ -12,9 +12,7 @@ function Header() {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-basketball-500 text-sm font-bold text-white shadow-sm">
             IK
           </div>
-          <span className="text-lg font-semibold tracking-tight text-stone-800">
-            IKnoBall
-          </span>
+          <span className="text-lg font-semibold tracking-tight text-stone-800">IKnoBall</span>
         </Link>
 
         <div className="ml-auto flex items-center gap-3">
@@ -50,9 +48,7 @@ export const Route = createRootRoute({
     return (
       <div className="min-h-screen bg-court-50 text-stone-900 antialiased">
         {!isOnboarding && <Header />}
-        <main
-          className={isOnboarding ? 'px-8 py-4' : 'mx-auto max-w-6xl px-4 py-6'}
-        >
+        <main className={isOnboarding ? 'px-8 py-4' : 'mx-auto max-w-6xl px-4 py-6'}>
           <Outlet />
         </main>
       </div>

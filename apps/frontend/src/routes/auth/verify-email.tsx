@@ -15,8 +15,7 @@ function VerifyEmailPage() {
     signIn.mutate(
       { email: 'admin@iknoball.dev', password: '12345678' },
       {
-        onSuccess: () =>
-          navigate({ to: hasSelectedTeam() ? '/dashboard' : '/onboarding' }),
+        onSuccess: () => navigate({ to: hasSelectedTeam() ? '/dashboard' : '/onboarding' }),
       },
     );
   };
@@ -40,12 +39,10 @@ function VerifyEmailPage() {
           </svg>
         </div>
 
-        <h1 className="text-xl font-semibold text-stone-900">
-          Check your email
-        </h1>
+        <h1 className="text-xl font-semibold text-stone-900">Check your email</h1>
         <p className="mt-2 text-sm leading-relaxed text-stone-500">
-          We sent a verification link to your email. Click the link to verify
-          your account, then come back here.
+          We sent a verification link to your email. Click the link to verify your account, then
+          come back here.
         </p>
 
         <div className="mt-8 space-y-3">

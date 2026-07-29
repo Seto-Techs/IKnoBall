@@ -34,20 +34,13 @@ function RegisterPage() {
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-basketball-500 text-base font-bold text-white shadow-sm">
             IK
           </div>
-          <h1 className="text-xl font-semibold text-stone-900">
-            Create account
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Start following NBA stats
-          </p>
+          <h1 className="text-xl font-semibold text-stone-900">Create account</h1>
+          <p className="mt-1 text-sm text-stone-500">Start following NBA stats</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="name"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="name" className="mb-1 block text-sm font-medium text-stone-700">
               Name
             </label>
             <input
@@ -62,10 +55,7 @@ function RegisterPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-stone-700">
               Email
             </label>
             <input
@@ -80,10 +70,7 @@ function RegisterPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-stone-700">
               Password
             </label>
             <input

@@ -47,9 +47,7 @@ function ResetPasswordPage() {
     return (
       <div className="flex min-h-[70vh] items-center justify-center">
         <div className="w-full max-w-sm rounded-lg border border-court-200 bg-white p-8 text-center">
-          <h1 className="text-xl font-semibold text-stone-900">
-            Invalid link
-          </h1>
+          <h1 className="text-xl font-semibold text-stone-900">Invalid link</h1>
           <p className="mt-2 text-sm text-stone-500">
             This reset link is missing a token. Request a new one below.
           </p>
@@ -68,20 +66,13 @@ function ResetPasswordPage() {
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-sm rounded-lg border border-court-200 bg-white p-8">
         <div className="mb-6">
-          <h1 className="text-xl font-semibold text-stone-900">
-            Set new password
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Choose a new password for your account.
-          </p>
+          <h1 className="text-xl font-semibold text-stone-900">Set new password</h1>
+          <p className="mt-1 text-sm text-stone-500">Choose a new password for your account.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-stone-700">
               New password
             </label>
             <input
@@ -97,10 +88,7 @@ function ResetPasswordPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="confirm"
-              className="mb-1 block text-sm font-medium text-stone-700"
-            >
+            <label htmlFor="confirm" className="mb-1 block text-sm font-medium text-stone-700">
               Confirm password
             </label>
             <input
@@ -115,11 +103,7 @@ function ResetPasswordPage() {
             />
           </div>
 
-          {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </p>
-          )}
+          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
           <button
             type="submit"
