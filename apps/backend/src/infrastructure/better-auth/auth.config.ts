@@ -1,11 +1,13 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { betterAuthSchema, createDatabase } from '@iknoball/database';
 import { betterAuth } from 'better-auth';
+import { bearer, admin } from 'better-auth/plugins';
 import { EmailService } from '../email/email.service';
 
-const database = createDatabase(process.env.DATABASE_URL ?? 'postgresql://localhost:5432/iknoball');
-
 export function createAuth(email: EmailService) {
+  const database = createDatabase(
+    process.env.DATABASE_URL ?? 'postgresql://localhost:5432/iknoball',
+  );
   const discordClientId = process.env.DISCORD_CLIENT_ID;
   const discordClientSecret = process.env.DISCORD_CLIENT_SECRET;
   const socialProviders =
@@ -51,5 +53,9 @@ export function createAuth(email: EmailService) {
     socialProviders,
     trustedOrigins: [process.env.FRONTEND_URL ?? 'http://localhost:5173'],
     basePath: '/auth',
+    session: {
+      cookieCache: { enabled: false },
+    },
+    plugins: [bearer(), admin()],
   });
 }

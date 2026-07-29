@@ -61,5 +61,4 @@ describe('HttpExceptionFilter', () => {
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   });
-
 });
