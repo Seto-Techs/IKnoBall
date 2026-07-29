@@ -17,7 +17,7 @@ import { createLoggerOptions } from './infrastructure/logger/logger.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [emailConfig] }),
+    ConfigModule.forRoot({ isGlobal: true, load: [emailConfig], envFilePath: ['.env', '../.env', '../../.env'] }),
     WinstonModule.forRoot(createLoggerOptions()),
     DatabaseModule,
     EmailModule,

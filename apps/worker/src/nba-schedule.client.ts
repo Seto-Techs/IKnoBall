@@ -1,3 +1,4 @@
+import { setDefaultResultOrder } from 'node:dns';
 import { Injectable, Logger } from '@nestjs/common';
 
 export type NbaScheduleResponse = {
@@ -83,6 +84,8 @@ export class NbaScheduleClient {
   private readonly logger = new Logger(NbaScheduleClient.name);
   private readonly baseUrl = process.env.NBA_STATS_BASE_URL || 'https://stats.nba.com/stats';
   private readonly requestTimeoutMs = 15000;
+  private readonly forceIpv4 = process.env.NBA_STATS_FORCE_IPV4 === 'true';
+  private readonly ipv4Configured = this.configureIpv4();
 
   async fetchLeagueSchedule(season: string, leagueId: string): Promise<NbaScheduleResponse> {
     const url = new URL(`${this.baseUrl}/scheduleleaguev2`);
@@ -183,6 +186,16 @@ export class NbaScheduleClient {
   }
 
   private sleep(delayMs: number) {
-    return new Promise((resolve) => setTimeout(resolve, delayMs));
+    const { promise, resolve } = Promise.withResolvers<void>();
+    setTimeout(resolve, delayMs);
+    return promise;
+  }
+
+  private configureIpv4() {
+    if (!this.forceIpv4) {
+      return false;
+    }
+    setDefaultResultOrder('ipv4first');
+    return true;
   }
 }

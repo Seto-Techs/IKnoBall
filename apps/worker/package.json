@@ -6,7 +6,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "oxlint .",
     "start": "node dist/main.js",
-    "start:dev": "node --enable-source-maps --loader ts-node/esm src/main.ts",
+    "start:dev": "bun run src/main.ts",
     "dev": "bun run start:dev",
     "run:sync": "node dist/run-sync.js",
     "sync:schedule": "node dist/run-schedule-today.js",

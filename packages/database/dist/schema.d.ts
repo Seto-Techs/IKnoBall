@@ -1,4 +1,4 @@
-export { account, session, users, verification } from './better-auth.schema.js';
+export { account, session, user, verification } from './better-auth.schema.js';
 export declare const scheduleTeamSide: import("drizzle-orm/pg-core").PgEnum<["home", "away"]>;
 export declare const categoryType: import("drizzle-orm/pg-core").PgEnum<["income", "expense"]>;
 export declare const activityLogs: import("drizzle-orm/pg-core").PgTableWithColumns<{

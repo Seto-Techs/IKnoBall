@@ -9,7 +9,7 @@
     "build": "nest build",
     "format": "oxfmt . --write",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "nest start --watch --preserveWatchOutput",
     "dev": "bun run start:dev",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
