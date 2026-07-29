@@ -11,7 +11,7 @@ import { App } from 'supertest/types';
 class HealthController {
   @Get()
   getHello() {
-    return response(200, 'Service is healthy.', { status: 'ok' });
+    return response(true, 'Service is healthy.', { status: 'ok' });
   }
 }
 
@@ -50,10 +50,9 @@ describe('Better Auth (e2e)', () => {
       .get('/')
       .expect(200)
       .expect({
-        status: 200,
+        is_success: true,
         message: 'Service is healthy.',
         data: { status: 'ok' },
-        meta: null,
       }));
 
   it('rejects protected routes without a session', () =>

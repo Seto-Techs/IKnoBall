@@ -11,15 +11,6 @@ import {
 import { HttpAdapterHost } from '@nestjs/core';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
-interface ProblemDetails {
-  type: 'about:blank';
-  title: string;
-  status: number;
-  detail: string;
-  instance: string;
-  errors?: unknown;
-}
-
 const INTERNAL_ERROR = 'Internal server error';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -41,11 +32,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = context.getResponse();
     const status =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-    const problem = this.problem(exception, status, httpAdapter.getRequestUrl(request));
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
-        `${status} ${problem.title}`,
+        `${status} ${INTERNAL_ERROR}`,
         exception instanceof Error ? exception.stack : undefined,
         HttpExceptionFilter.name,
       );
@@ -56,19 +46,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    httpAdapter.setHeader(response, 'content-type', 'application/problem+json');
-    httpAdapter.reply(response, problem, status);
+    httpAdapter.reply(response, this.errorBody(exception, status), status);
   }
 
-  private problem(exception: unknown, status: number, instance: string): ProblemDetails {
+  private errorBody(exception: unknown, status: number): Record<string, unknown> {
     if (!(exception instanceof HttpException)) {
-      return {
-        type: 'about:blank',
-        title: INTERNAL_ERROR,
-        status,
-        detail: INTERNAL_ERROR,
-        instance,
-      };
+      return { is_success: false, message: INTERNAL_ERROR, data: null };
     }
 
     const response = exception.getResponse();
@@ -79,15 +62,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       : typeof message === 'string'
         ? message
         : 'Request failed';
-    const problem: ProblemDetails = {
-      type: 'about:blank',
-      title: typeof body.error === 'string' ? body.error : detail,
-      status,
-      detail,
-      instance,
-    };
 
-    if ('errors' in body) problem.errors = body.errors;
-    return problem;
+    return { is_success: false, message: detail, data: null };
   }
 }

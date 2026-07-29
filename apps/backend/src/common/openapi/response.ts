@@ -14,12 +14,11 @@ export function ApiDataResponse(
       description,
       schema: {
         type: 'object',
-        required: ['status', 'message', 'data', 'meta'],
+        required: ['is_success', 'message', 'data'],
         properties: {
-          status: { type: 'integer', example: status },
+          is_success: { type: 'boolean', example: status < 400 },
           message: { type: 'string', example: message },
           data: { $ref: getSchemaPath(type), nullable: true },
-          meta: { type: 'object', additionalProperties: true, nullable: true },
         },
       },
     })(target, propertyKey, descriptor);
