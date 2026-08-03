@@ -50,7 +50,7 @@ const schema_js_1 = require("./schema.js");
  * Our Drizzle table is named `users` (plural), so we alias it as `user`.
  */
 exports.betterAuthSchema = {
-    user: schema_js_1.users,
+    user: schema_js_1.user,
     session: schema_js_1.session,
     account: schema_js_1.account,
     verification: schema_js_1.verification,

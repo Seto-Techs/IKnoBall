@@ -10,6 +10,7 @@ exports.user = (0, pg_core_1.pgTable)('users', {
     emailVerified: (0, pg_core_1.boolean)('is_verified').default(false).notNull(),
     image: (0, pg_core_1.text)('image'),
     role: (0, pg_core_1.text)('role').default('user').notNull(),
+    banned: (0, pg_core_1.boolean)('banned').default(false).notNull(),
     createdAt: (0, pg_core_1.timestamp)('created_at').defaultNow().notNull(),
     updatedAt: (0, pg_core_1.timestamp)('updated_at')
         .defaultNow()

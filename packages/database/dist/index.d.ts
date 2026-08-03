@@ -114,6 +114,23 @@ export declare const betterAuthSchema: {
                 identity: undefined;
                 generated: undefined;
             }, {}, {}>;
+            banned: import("drizzle-orm/pg-core").PgColumn<{
+                name: "banned";
+                tableName: "users";
+                dataType: "boolean";
+                columnType: "PgBoolean";
+                data: boolean;
+                driverParam: boolean;
+                notNull: true;
+                hasDefault: true;
+                isPrimaryKey: false;
+                isAutoincrement: false;
+                hasRuntimeDefault: false;
+                enumValues: undefined;
+                baseColumn: never;
+                identity: undefined;
+                generated: undefined;
+            }, {}, {}>;
             createdAt: import("drizzle-orm/pg-core").PgColumn<{
                 name: "created_at";
                 tableName: "users";

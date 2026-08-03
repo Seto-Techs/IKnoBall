@@ -15,6 +15,13 @@
       "when": 1785307007589,
       "tag": "0001_great_doorman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785354876765,
+      "tag": "0002_add_banned_to_users",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,7 @@ import * as schema from './schema.js';
 
 export * from './schema.js';
 
-import { account, session, users, verification } from './schema.js';
+import { account, session, user, verification } from './schema.js';
 
 /**
  * Schema object keyed by BetterAuth internal model names.
@@ -13,7 +13,7 @@ import { account, session, users, verification } from './schema.js';
  * Our Drizzle table is named `users` (plural), so we alias it as `user`.
  */
 export const betterAuthSchema = {
-  user: users,
+  user: user,
   session,
   account,
   verification,
