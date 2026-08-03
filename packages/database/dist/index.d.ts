@@ -182,6 +182,23 @@ export declare const betterAuthSchema: {
                 identity: undefined;
                 generated: undefined;
             }, {}, {}>;
+            favoriteTeam: import("drizzle-orm/pg-core").PgColumn<{
+                name: "favorite_team";
+                tableName: "users";
+                dataType: "string";
+                columnType: "PgText";
+                data: string;
+                driverParam: string;
+                notNull: false;
+                hasDefault: false;
+                isPrimaryKey: false;
+                isAutoincrement: false;
+                hasRuntimeDefault: false;
+                enumValues: [string, ...string[]];
+                baseColumn: never;
+                identity: undefined;
+                generated: undefined;
+            }, {}, {}>;
         };
         dialect: "pg";
     }>;
