@@ -17,7 +17,7 @@ function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
 
-    const { error: err } = await authClient.forgetPassword({ email });
+    const { error: err } = await authClient.requestPasswordReset({ email });
 
     setLoading(false);
 

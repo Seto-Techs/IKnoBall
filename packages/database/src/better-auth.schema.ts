@@ -15,6 +15,7 @@ export const user = pgTable('users', {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  favoriteTeam: text('favorite_team'),
 });
 
 export const session = pgTable(

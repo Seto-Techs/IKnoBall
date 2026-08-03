@@ -17,6 +17,7 @@ exports.user = (0, pg_core_1.pgTable)('users', {
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
     isActive: (0, pg_core_1.boolean)('is_active').default(true).notNull(),
+    favoriteTeam: (0, pg_core_1.text)('favorite_team'),
 });
 exports.session = (0, pg_core_1.pgTable)('session', {
     id: (0, pg_core_1.text)('id').primaryKey(),

@@ -64,6 +64,13 @@ exports.teams = (0, pg_core_1.pgTable)('teams', {
     abbreviation: (0, pg_core_1.text)('abbreviation').notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
+    city: (0, pg_core_1.text)('city').notNull(),
+    conference: (0, pg_core_1.text)('conference').notNull(),
+    division: (0, pg_core_1.text)('division').notNull(),
+    logoUrl: (0, pg_core_1.text)('logoUrl'),
+    arena: (0, pg_core_1.text)('arena'),
+    headCoach: (0, pg_core_1.text)('headCoach'),
+    primaryColor: (0, pg_core_1.text)('primaryColor'),
 });
 exports.playerSeasonStats = (0, pg_core_1.pgTable)('player_season_stats', {
     id: id(),

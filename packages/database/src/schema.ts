@@ -80,6 +80,13 @@ export const teams = pgTable('teams', {
   abbreviation: text('abbreviation').notNull(),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
+  city: text('city').notNull(),
+  conference: text('conference').notNull(),
+  division: text('division').notNull(),
+  logoUrl: text('logoUrl'),
+  arena: text('arena'),
+  headCoach: text('headCoach'),
+  primaryColor: text('primaryColor'),
 });
 
 export const playerSeasonStats = pgTable(
