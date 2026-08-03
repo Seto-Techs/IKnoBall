@@ -1,5 +1,8 @@
 import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { useSession } from '../lib/use-auth';
+import { getSelectedTeam, setSelectedTeam } from '../lib/team';
+import { nbaTeams } from '../config/nba-teams';
 
 function Header() {
   const { data: session } = useSession();
@@ -42,11 +45,34 @@ function Header() {
 
 export const Route = createRootRoute({
   component: () => {
+    const { data: session } = useSession();
     const { pathname } = useLocation();
     const isOnboarding = pathname.startsWith('/onboarding');
 
+    // Sync favoriteTeam from session → localStorage (cross-device login)
+    useEffect(() => {
+      const favTeam = session?.user?.favoriteTeam;
+      if (!favTeam) return;
+      const local = getSelectedTeam();
+      if (local?.abbr === favTeam) return;
+      const team = nbaTeams.find((t) => t.abbreviation === favTeam);
+      if (team) {
+        setSelectedTeam({
+          abbr: team.abbreviation,
+          name: team.fullName,
+          primaryColor: team.primaryColor,
+          logoUrl: team.logoUrl,
+        });
+      }
+    }, [session?.user?.favoriteTeam]);
     return (
-      <div className="min-h-screen bg-court-50 text-stone-900 antialiased">
+      <div
+        className="min-h-screen text-stone-900 antialiased"
+        style={{
+          backgroundColor: 'var(--team-bg, #faf8f6)',
+          transition: 'background-color 0.5s ease',
+        }}
+      >
         {!isOnboarding && <Header />}
         <main className={isOnboarding ? 'px-8 py-4' : 'mx-auto max-w-6xl px-4 py-6'}>
           <Outlet />

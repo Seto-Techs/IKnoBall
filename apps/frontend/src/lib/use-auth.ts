@@ -7,6 +7,8 @@ export interface AuthUser {
   email: string;
   emailVerified: boolean;
   image: string | null;
+  favoriteTeam: string | null;
+  favoriteTeamColor: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,6 +76,15 @@ export function useSession() {
   });
 }
 
+export class AuthError extends Error {
+  code: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = 'AuthError';
+    this.code = code;
+  }
+}
+
 export function useSignIn() {
   const qc = useQueryClient();
 
@@ -85,7 +96,7 @@ export function useSignIn() {
         email,
         password,
       });
-      if (error) throw new Error(error.message ?? error.code ?? 'Sign in failed');
+      if (error) throw new AuthError(error.message ?? 'Sign in failed', error.code ?? 'UNKNOWN');
       return data as { token: string; user: AuthUser };
     },
     onSuccess: () => {
