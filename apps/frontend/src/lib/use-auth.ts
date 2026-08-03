@@ -8,7 +8,7 @@ export interface AuthUser {
   emailVerified: boolean;
   image: string | null;
   favoriteTeam: string | null;
-  favoriteTeamColor: string | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +35,7 @@ const MOCK_USER: AuthUser = {
   email: 'admin@iknoball.dev',
   emailVerified: true,
   image: null,
+  favoriteTeam: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };

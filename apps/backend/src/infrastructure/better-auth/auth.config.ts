@@ -24,6 +24,11 @@ export function createAuth(email: EmailService) {
   return betterAuth({
     baseURL: process.env.BETTER_AUTH_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
     database: drizzleAdapter(database.db, { provider: 'pg', schema: betterAuthSchema }),
+    user: {
+      additionalFields: {
+        favoriteTeam: { type: 'string', required: false },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
