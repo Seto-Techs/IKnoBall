@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false, bufferLogs: true });
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+  app.setGlobalPrefix('api');
 
   // Swagger/OpenAPI setup
   const config = new DocumentBuilder()
@@ -107,6 +108,13 @@ function addBetterAuthPaths(document: Record<string, any>) {
           maxLength: 128,
           example: 'new-valid-password-123',
         },
+      },
+    },
+    ResendVerificationRequest: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', format: 'email', example: 'player@iknoball.test' },
       },
     },
     ErrorResponse: {
@@ -278,6 +286,28 @@ function addBetterAuthPaths(document: Record<string, any>) {
         responses: {
           '302': { description: 'Redirects to frontend on success.' },
           '400': { description: 'Invalid or expired token' },
+        },
+      },
+    },
+
+    '/auth/send-verification-email': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Resend verification email',
+        description:
+          'Sends a new verification email to the specified address. Always returns 200 to prevent email enumeration.',
+        operationId: 'resendVerification',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ResendVerificationRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Verification email sent.' },
+          '429': { description: 'Rate limited (3 req / 5 min)' },
         },
       },
     },

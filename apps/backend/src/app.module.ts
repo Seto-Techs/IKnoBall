@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AdminController } from './admin.controller';
 import { UserController } from './user.controller';
+import { TeamsController } from './teams.controller';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { emailConfig } from './infrastructure/email/email.config';
@@ -21,7 +22,11 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [emailConfig], envFilePath: ['.env', '../.env', '../../.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [emailConfig],
+      envFilePath: ['.env', '../.env', '../../.env'],
+    }),
     WinstonModule.forRoot(createLoggerOptions()),
     DatabaseModule,
     EmailModule,
@@ -33,7 +38,7 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
       useFactory: (email: EmailService) => ({ auth: createAuth(email) }),
     }),
   ],
-  controllers: [AppController, AdminController, UserController],
+  controllers: [AppController, AdminController, UserController, TeamsController],
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
@@ -49,6 +54,7 @@ export class AppModule implements NestModule {
         { path: '/auth/sign-up/email', method: RequestMethod.POST },
         { path: '/auth/sign-in/email', method: RequestMethod.POST },
         { path: '/auth/request-password-reset', method: RequestMethod.POST },
+        { path: '/auth/send-verification-email', method: RequestMethod.POST },
       );
   }
 }

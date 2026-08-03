@@ -12,7 +12,8 @@
     "sync:schedule": "node dist/run-schedule-today.js",
     "sync:schedule:all": "node dist/run-schedule-all.js",
     "sync:schedule:force": "node dist/run-schedule-all-force.js",
-    "sync:boxscore": "node dist/run-boxscore.js"
+    "sync:boxscore": "node dist/run-boxscore.js",
+    "seed:teams": "node dist/run-seed-teams.js"
   },
   "dependencies": {
     "@iknoball/database": "workspace:*",

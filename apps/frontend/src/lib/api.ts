@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { nbaTeams, type NBATeam } from '../config/nba-teams';
 import { getSelectedTeam } from './team';
 
@@ -28,6 +28,30 @@ export interface PlayerStat {
   points: number;
   rebounds: number;
   assists: number;
+}
+
+export interface StatLeader {
+  name: string;
+  value: number;
+}
+
+export interface TeamWithLeaders {
+  externalId: number;
+  abbreviation: string;
+  teamName: string;
+  fullName: string;
+  city: string;
+  conference: string;
+  division: string;
+  logoUrl: string;
+  arena: string;
+  headCoach: string;
+  primaryColor: string;
+  leaders: {
+    pts: StatLeader;
+    reb: StatLeader;
+    ast: StatLeader;
+  } | null;
 }
 
 /* ── API fetch helpers (use Vite proxy → backend) ── */
@@ -104,5 +128,39 @@ export function useTopPlayers() {
     queryFn: () => fetchJson<PlayerStat[]>(`/teams/${selected!.abbr}/players`),
     enabled: !!selected?.abbr,
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useTeams() {
+  return useQuery({
+    queryKey: ['teams'],
+    queryFn: async (): Promise<TeamWithLeaders[]> => {
+      const res = await fetchJson<{ data: TeamWithLeaders[] }>('/teams');
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+/* ── Mutations ── */
+
+async function mutateJson<T>(method: string, path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export function useSaveTeam() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (teamAbbr: string) =>
+      mutateJson<{ data: { favoriteTeam: string } }>('PATCH', '/me/team', { teamAbbr }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['session'] });
+    },
   });
 }
