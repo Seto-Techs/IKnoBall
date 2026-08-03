@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { nbaTeams, conferences, type NBATeam } from '../config/nba-teams';
 import { setSelectedTeam } from '../lib/team';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { isLightColor, darken } from '../lib/color';
+import { useSaveTeam, useTeams, type TeamWithLeaders } from '../lib/api';
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingPage,
@@ -9,7 +10,40 @@ export const Route = createFileRoute('/onboarding')({
 
 function OnboardingPage() {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<NBATeam | null>(null);
+  const [selected, setSelected] = useState<TeamWithLeaders | null>(null);
+  const bodyBg = selected ? darken(selected.primaryColor, 0.45) : '';
+  const isLightBody = selected ? isLightColor(bodyBg) : false;
+  const isLightCard = selected ? isLightColor(selected.primaryColor) : false;
+  const saveTeam = useSaveTeam();
+  const { data: teams } = useTeams();
+
+  const conferences = useMemo(() => {
+    const order: Record<string, { label: string; key: string; divisions: string[] }> = {
+      West: {
+        label: 'WESTERN CONFERENCE',
+        key: 'West',
+        divisions: ['Northwest', 'Pacific', 'Southwest'],
+      },
+      East: {
+        label: 'EASTERN CONFERENCE',
+        key: 'East',
+        divisions: ['Atlantic', 'Central', 'Southeast'],
+      },
+    };
+    return [order.West, order.East];
+  }, []);
+
+  // Animate root background to the selected team's primary color (darkened)
+  useEffect(() => {
+    if (selected) {
+      document.documentElement.style.setProperty('--team-bg', darken(selected.primaryColor, 0.45));
+    } else {
+      document.documentElement.style.removeProperty('--team-bg');
+    }
+    return () => {
+      document.documentElement.style.removeProperty('--team-bg');
+    };
+  }, [selected]);
 
   return (
     <div
@@ -18,17 +52,25 @@ function OnboardingPage() {
     >
       {/* ── Left: Team Grid ─────────────────────────────────── */}
       <div className="flex flex-col justify-center">
-        <h1 className="text-3xl font-bold tracking-tight text-stone-900">Choose Your Team</h1>
-        <p className="mt-1 text-base text-stone-500">
+        <h1
+          className={`text-3xl font-bold tracking-tight ${selected && !isLightBody ? 'text-white/90' : 'text-stone-900'}`}
+        >
+          Choose Your Team
+        </h1>
+        <p
+          className={`mt-1 text-base ${selected && !isLightBody ? 'text-white/60' : 'text-stone-500'}`}
+        >
           Select the franchise you'll manage this season.
         </p>
 
         <div className="mt-6 space-y-6">
           {conferences.map((conf) => {
-            const confTeams = nbaTeams.filter((t) => t.conference === conf.key);
+            const confTeams = teams?.filter((t) => t.conference === conf.key) ?? [];
             return (
               <section key={conf.key}>
-                <h2 className="mb-3 text-base font-bold tracking-[0.15em] text-stone-600">
+                <h2
+                  className={`mb-3 text-base font-bold tracking-[0.15em] ${selected && !isLightBody ? 'text-white/70' : 'text-stone-600'}`}
+                >
                   {conf.label}
                 </h2>
 
@@ -37,7 +79,9 @@ function OnboardingPage() {
                     const divTeams = confTeams.filter((t) => t.division === div);
                     return (
                       <div key={div} className="flex items-center gap-4">
-                        <span className="w-28 shrink-0 text-base font-semibold text-stone-600">
+                        <span
+                          className={`w-28 shrink-0 text-base font-semibold ${selected && !isLightBody ? 'text-white/60' : 'text-stone-600'}`}
+                        >
                           {div}
                         </span>
 
@@ -53,7 +97,7 @@ function OnboardingPage() {
                                   )
                                 }
                                 className={`
-                                  group relative flex items-center gap-3 overflow-hidden rounded-2xl border-2 px-4 py-5
+                                  group relative flex items-center gap-3 rounded-2xl border-2 px-4 py-5
                                   text-left outline-none transition-all duration-300 ease-out
                                   ${
                                     isSelected
@@ -64,7 +108,8 @@ function OnboardingPage() {
                                 style={
                                   isSelected
                                     ? {
-                                        borderColor: team.primaryColor,
+                                        backgroundColor: team.primaryColor,
+                                        borderColor: '#ffffff',
                                         boxShadow: `0 4px 24px -4px ${team.primaryColor}55`,
                                       }
                                     : undefined
@@ -72,21 +117,24 @@ function OnboardingPage() {
                               >
                                 {/* Checkmark */}
                                 <span
-                                  className={`absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-white shadow transition-all duration-300 ${
+                                  className={`absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[10px] shadow transition-all duration-300 ${
                                     isSelected ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
                                   }`}
-                                  style={{ backgroundColor: team.primaryColor }}
+                                  style={{
+                                    backgroundColor: isSelected ? '#ffffff' : team.primaryColor,
+                                    color: isSelected ? team.primaryColor : '#ffffff',
+                                  }}
                                 >
                                   ✓
                                 </span>
-
-                                {/* Silhouette logo */}
-                                <img
-                                  src={team.logoUrl}
-                                  alt=""
-                                  aria-hidden
-                                  className="pointer-events-none absolute -right-4 top-1/2 -translate-y-1/2 h-32 w-32 object-contain opacity-[0.05] grayscale transition-opacity duration-300 group-hover:opacity-[0.08]"
-                                />
+                                {/* Silhouette logo — clipped to card */}
+                                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+                                  <img
+                                    src={team.logoUrl}
+                                    alt=""
+                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 h-32 w-32 object-contain grayscale transition-opacity duration-300 ${isSelected ? 'opacity-[0.12]' : 'opacity-[0.05] group-hover:opacity-[0.08]'}`}
+                                  />
+                                </div>
 
                                 {/* Logo */}
                                 <img
@@ -100,10 +148,14 @@ function OnboardingPage() {
 
                                 {/* Text */}
                                 <div className="relative z-[1] min-w-0">
-                                  <span className="block text-lg font-bold leading-tight text-stone-800">
+                                  <span
+                                    className={`block text-lg font-bold leading-tight ${isSelected ? (isLightCard ? 'text-stone-900' : 'text-white') : 'text-stone-800'}`}
+                                  >
                                     {team.abbreviation}
                                   </span>
-                                  <span className="block text-base leading-tight text-stone-500">
+                                  <span
+                                    className={`block text-base leading-tight ${isSelected ? (isLightCard ? 'text-stone-700' : 'text-white/80') : 'text-stone-500'}`}
+                                  >
                                     {team.teamName}
                                   </span>
                                 </div>
@@ -173,6 +225,40 @@ function OnboardingPage() {
               <InfoPill label="CODE" value={selected.abbreviation} />
             </div>
 
+            {/* Stat Leaders */}
+            {selected.leaders && (
+              <>
+                <div className="h-px bg-gray-100" />
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-stone-400">
+                    2025-26 Leaders
+                  </p>
+                  <div className="w-full space-y-1.5">
+                    {(['pts', 'reb', 'ast'] as const).map((cat) => {
+                      const s = selected.leaders![cat];
+                      const label = { pts: 'PTS', reb: 'REB', ast: 'AST' }[cat];
+                      return (
+                        <div
+                          key={cat}
+                          className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2"
+                        >
+                          <span className="w-7 text-center text-xs font-bold text-stone-400">
+                            {label}
+                          </span>
+                          <span className="text-sm font-medium text-stone-700 truncate">
+                            {s.name}
+                          </span>
+                          <span className="ml-auto text-sm font-semibold tabular-nums text-stone-900">
+                            {s.value.toFixed(1)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="h-px bg-gray-100" />
 
             {/* Arena */}
@@ -237,9 +323,10 @@ function OnboardingPage() {
                   primaryColor: selected.primaryColor,
                   logoUrl: selected.logoUrl,
                 });
+                saveTeam.mutate(selected.abbreviation);
                 navigate({ to: '/dashboard' });
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold text-white transition-colors duration-200"
+              className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'}`}
               style={{ backgroundColor: selected.primaryColor }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.filter = 'brightness(1.1)';

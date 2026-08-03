@@ -1,18 +1,55 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useSignUp } from '../../lib/use-auth';
 import { useState } from 'react';
-
 export const Route = createFileRoute('/auth/register')({
   component: RegisterPage,
 });
 
 function RegisterPage() {
-  const navigate = useNavigate();
   const signUp = useSignUp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+
+  if (registeredEmail) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <div className="w-full max-w-sm rounded-lg border border-court-200 bg-white p-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-arena-100">
+            <svg
+              className="h-6 w-6 text-arena-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-xl font-semibold text-stone-900">Check your email</h1>
+          <p className="mt-2 text-sm leading-relaxed text-stone-500">
+            We sent a verification link to{' '}
+            <span className="font-medium text-stone-700">{registeredEmail}</span>. Click the link to
+            verify, then sign in.
+          </p>
+          <div className="mt-8 space-y-3">
+            <Link
+              to="/auth/login"
+              className="inline-block text-sm font-medium text-basketball-600 underline-offset-2 hover:text-basketball-700 hover:underline"
+            >
+              Back to sign in
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +59,7 @@ function RegisterPage() {
       { name, email, password },
       {
         onError: (err) => setError(err.message),
-        onSuccess: () => navigate({ to: '/auth/verify-email' }),
+        onSuccess: () => setRegisteredEmail(email),
       },
     );
   };

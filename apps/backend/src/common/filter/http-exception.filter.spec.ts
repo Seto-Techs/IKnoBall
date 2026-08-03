@@ -25,8 +25,8 @@ function testFilter() {
 }
 
 describe('HttpExceptionFilter', () => {
-  it('returns RFC 9457 validation errors', () => {
-    const { filter, host, reply, setHeader } = testFilter();
+  it('returns error responses in the standard format', () => {
+    const { filter, host, reply } = testFilter();
     filter.catch(
       new BadRequestException({
         message: 'Validation failed',
@@ -35,20 +35,12 @@ describe('HttpExceptionFilter', () => {
       host as never,
     );
 
-    expect(setHeader).toHaveBeenCalledWith(
-      expect.anything(),
-      'content-type',
-      'application/problem+json',
-    );
     expect(reply).toHaveBeenCalledWith(
       expect.anything(),
       {
-        type: 'about:blank',
-        title: 'Validation failed',
-        status: HttpStatus.BAD_REQUEST,
-        detail: 'Validation failed',
-        instance: '/players',
-        errors: [{ field: 'email', message: 'Invalid email address' }],
+        is_success: false,
+        message: 'Validation failed',
+        data: null,
       },
       HttpStatus.BAD_REQUEST,
     );
@@ -62,11 +54,9 @@ describe('HttpExceptionFilter', () => {
     expect(reply).toHaveBeenCalledWith(
       expect.anything(),
       {
-        type: 'about:blank',
-        title: 'Internal server error',
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        detail: 'Internal server error',
-        instance: '/players',
+        is_success: false,
+        message: 'Internal server error',
+        data: null,
       },
       HttpStatus.INTERNAL_SERVER_ERROR,
     );

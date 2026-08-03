@@ -3,6 +3,7 @@ import { getSelectedTeam, clearSelectedTeam } from '../lib/team';
 import { useSignOut, useSession } from '../lib/use-auth';
 import { useTeamRecord, useUpcomingGames, useTopPlayers } from '../lib/api';
 import { useEffect } from 'react';
+import { isLightColor } from '../lib/color';
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -14,6 +15,7 @@ function DashboardPage() {
   const { data: session } = useSession();
   const signOut = useSignOut();
   const user = session?.user;
+  const isLight = team ? isLightColor(team.primaryColor) : false;
 
   const { data: record } = useTeamRecord();
   const { data: games, isLoading: gamesLoading } = useUpcomingGames();
@@ -43,21 +45,29 @@ function DashboardPage() {
       >
         <img src={team.logoUrl} alt={team.name} className="h-12 w-12 object-contain" />
         <div>
-          <h1 className="text-xl font-bold text-white">{team.name}</h1>
-          <span className="text-sm text-white/70">{team.abbr}</span>
+          <h1 className={`text-xl font-bold ${isLight ? 'text-stone-900' : 'text-white'}`}>
+            {team.name}
+          </h1>
+          <span className={`text-sm ${isLight ? 'text-stone-700' : 'text-white/70'}`}>
+            {team.abbr}
+          </span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          {user && <span className="text-sm text-white/80">{user.name}</span>}
+          {user && (
+            <span className={`text-sm ${isLight ? 'text-stone-700' : 'text-white/80'}`}>
+              {user.name}
+            </span>
+          )}
           <button
             onClick={() => navigate({ to: '/onboarding' })}
-            className="rounded-md bg-white/15 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/25"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${isLight ? 'bg-black/10 text-stone-800 hover:bg-black/15' : 'bg-white/15 text-white hover:bg-white/25'}`}
           >
             Change Team
           </button>
           <button
             onClick={handleSignOut}
-            className="rounded-md bg-white/15 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/25"
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${isLight ? 'bg-black/10 text-stone-800 hover:bg-black/15' : 'bg-white/15 text-white hover:bg-white/25'}`}
           >
             Sign out
           </button>
