@@ -13,6 +13,7 @@ const DEFAULTS: Record<string, RateLimitConfig> = {
   '/auth/sign-up/email': { max: 5, windowSec: 300 },
   '/auth/sign-in/email': { max: 10, windowSec: 300 },
   '/auth/request-password-reset': { max: 3, windowSec: 300 },
+  '/auth/send-verification-email': { max: 3, windowSec: 300 },
 };
 
 const DEFAULT_CONFIG: RateLimitConfig = { max: 30, windowSec: 60 };

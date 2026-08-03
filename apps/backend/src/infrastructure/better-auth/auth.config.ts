@@ -40,11 +40,15 @@ export function createAuth(email: EmailService) {
     emailVerification: {
       sendOnSignUp: true,
       sendOnSignIn: true,
+      expiresIn: 900, // 15 minutes
       sendVerificationEmail: async ({ user, url }) => {
+        // Extract token from the backend-generated URL and build a frontend URL
+        const token = new URL(url).searchParams.get('token');
+        const frontendUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/auth/verify?token=${token}`;
         await email.sendVerifyEmail({
           to: user.email,
           name: user.name,
-          link: url,
+          link: frontendUrl,
           subject: 'Verify your IKnoBall account',
           fromKey: 'verify',
         });
