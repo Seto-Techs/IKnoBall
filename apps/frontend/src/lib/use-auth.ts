@@ -7,10 +7,9 @@ export interface AuthUser {
   email: string;
   emailVerified: boolean;
   image: string | null;
-  favoriteTeam: string | null;
-
-  createdAt: string;
-  updatedAt: string;
+  favoriteTeam?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AuthSession {
@@ -36,8 +35,8 @@ const MOCK_USER: AuthUser = {
   emailVerified: true,
   image: null,
   favoriteTeam: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 const MOCK_SESSION: AuthSession = {
