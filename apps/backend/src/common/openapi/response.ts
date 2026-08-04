@@ -6,6 +6,7 @@ export function ApiDataResponse(
   status: HttpStatus,
   message: string,
   description: string,
+  isArray = false,
 ): MethodDecorator {
   return (target, propertyKey, descriptor) => {
     ApiExtraModels(type)(target, propertyKey, descriptor);
@@ -18,7 +19,9 @@ export function ApiDataResponse(
         properties: {
           is_success: { type: 'boolean', example: status < 400 },
           message: { type: 'string', example: message },
-          data: { $ref: getSchemaPath(type), nullable: true },
+          data: isArray
+            ? { type: 'array', items: { $ref: getSchemaPath(type) } }
+            : { $ref: getSchemaPath(type), nullable: true },
         },
       },
     })(target, propertyKey, descriptor);
