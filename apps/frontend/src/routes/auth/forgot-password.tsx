@@ -17,7 +17,9 @@ function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
 
-    const { error: err } = await authClient.requestPasswordReset({ email });
+    // requestPasswordReset exists at runtime but the default client type
+    // can't infer it (requires server-side type inference via generics).
+    const { error: err } = await (authClient as any).requestPasswordReset({ email });
 
     setLoading(false);
 
