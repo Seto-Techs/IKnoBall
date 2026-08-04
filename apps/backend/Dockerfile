@@ -31,13 +31,15 @@ RUN apt-get update -y \
   && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system app && adduser --system --ingroup app app
-USER app
 
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/apps/backend/node_modules ./node_modules
 COPY --from=builder /app/apps/backend/dist ./dist
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/apps/backend/package.json ./package.json
+COPY --chmod=755 apps/backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+USER app
 
 EXPOSE 3000
-CMD ["bun", "run", "dist/src/main.js"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
