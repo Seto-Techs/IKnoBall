@@ -11,11 +11,15 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Swagger/OpenAPI setup
-  const config = new DocumentBuilder()
+  const builder = new DocumentBuilder()
     .setTitle('IKnoBall API')
     .setDescription('IKnoBall backend REST API')
-    .setVersion('1.0')
-    .addServer(process.env.BETTER_AUTH_URL ?? 'http://localhost:3000')
+    .setVersion('1.0');
+
+  const serverUrl = process.env.BETTER_AUTH_URL;
+  if (serverUrl) builder.addServer(serverUrl);
+
+  const config = builder
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'SessionToken')
     .addSecurityRequirements('SessionToken')
     .build();
