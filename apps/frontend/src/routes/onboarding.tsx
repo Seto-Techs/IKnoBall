@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { setSelectedTeam } from '../lib/team';
 import { useState, useEffect, useMemo } from 'react';
 import { isLightColor, darken } from '../lib/color';
 import { useSaveTeam, useTeams, type TeamWithLeaders } from '../lib/api';
+import { useSession } from '../lib/use-auth';
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingPage,
@@ -10,12 +10,18 @@ export const Route = createFileRoute('/onboarding')({
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const { data: session, isPending: sessionLoading, isFetching: sessionFetching } = useSession();
   const [selected, setSelected] = useState<TeamWithLeaders | null>(null);
   const bodyBg = selected ? darken(selected.primaryColor, 0.45) : '';
   const isLightBody = selected ? isLightColor(bodyBg) : false;
   const isLightCard = selected ? isLightColor(selected.primaryColor) : false;
   const saveTeam = useSaveTeam();
-  const { data: teams } = useTeams();
+  const { data: teams } = useTeams({ enabled: !!session?.user });
+
+  useEffect(() => {
+    if (sessionLoading || sessionFetching) return;
+    if (!session?.user) navigate({ to: '/auth/login' });
+  }, [sessionLoading, sessionFetching, session?.user, navigate]);
 
   const conferences = useMemo(() => {
     const order: Record<string, { label: string; key: string; divisions: string[] }> = {
@@ -44,6 +50,8 @@ function OnboardingPage() {
       document.documentElement.style.removeProperty('--team-bg');
     };
   }, [selected]);
+  if (sessionLoading || sessionFetching) return null;
+  if (!session?.user) return null;
 
   return (
     <div
@@ -317,12 +325,6 @@ function OnboardingPage() {
             {/* Continue button */}
             <button
               onClick={() => {
-                setSelectedTeam({
-                  abbr: selected.abbreviation,
-                  name: selected.fullName,
-                  primaryColor: selected.primaryColor,
-                  logoUrl: selected.logoUrl,
-                });
                 saveTeam.mutate(selected.abbreviation);
                 navigate({ to: '/dashboard' });
               }}

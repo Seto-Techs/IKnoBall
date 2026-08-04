@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useSignIn, AuthError } from '../../lib/use-auth';
-import { hasSelectedTeam } from '../../lib/team';
 import { useState } from 'react';
 
 export const Route = createFileRoute('/auth/login')({
@@ -26,7 +25,8 @@ function LoginPage() {
           setError(err.message);
           setErrorCode(err instanceof AuthError ? err.code : null);
         },
-        onSuccess: () => navigate({ to: hasSelectedTeam() ? '/dashboard' : '/onboarding' }),
+        onSuccess: (data) =>
+          navigate({ to: data?.user?.favoriteTeam ? '/dashboard' : '/onboarding' }),
       },
     );
   };
