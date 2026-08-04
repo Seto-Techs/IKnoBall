@@ -40,4 +40,4 @@ COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/apps/backend/package.json ./package.json
 
 EXPOSE 3000
-CMD ["bun", "run", "dist/main.js"]
+CMD ["bun", "run", "dist/src/main.js"]
