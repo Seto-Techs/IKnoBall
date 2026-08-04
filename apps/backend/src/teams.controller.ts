@@ -1,10 +1,18 @@
-import { Controller, Get, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpStatus, NotFoundException, Param } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
-import { teams, players, playerSeasonStats } from '@iknoball/database';
-import { eq, and } from 'drizzle-orm';
+import { teams, players, playerSeasonStats, scheduleDays, scheduleGames } from '@iknoball/database';
+import { eq, and, or, notInArray, desc, sql, gte, asc, inArray, max } from 'drizzle-orm';
+
+// Map BKN → BRK (players/schedule tricodes use BKN, teams table uses BRK)
+const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
+
+function teamName(tricode: string | null, byAbbr: Map<string, string>): string {
+  const abbr = ABBR_MAP[tricode ?? ''] ?? tricode ?? '';
+  return byAbbr.get(abbr) ?? abbr;
+}
 
 class StatLeader {
   @ApiProperty({ example: 'Victor Wembanyama' })
@@ -63,10 +71,98 @@ class TeamResponse {
   leaders!: TeamLeaders | null;
 }
 
+class LastGameResponse {
+  @ApiProperty({ example: 'NYK' })
+  opponentAbbr!: string;
+
+  @ApiProperty({ example: true })
+  isHome!: boolean;
+
+  @ApiProperty({ example: 115 })
+  ourScore!: number;
+
+  @ApiProperty({ example: 111 })
+  oppScore!: number;
+
+  @ApiProperty({ example: '2026-06-08' })
+  gameDate!: string;
+}
+
+class TeamRecordResponse {
+  @ApiProperty({ example: 54 })
+  wins!: number;
+
+  @ApiProperty({ example: 28 })
+  losses!: number;
+
+  @ApiProperty({ example: 'Western Conference' })
+  conference!: string;
+
+  @ApiProperty({ example: 'Southwest Division' })
+  division!: string;
+
+  @ApiProperty({ type: [LastGameResponse] })
+  lastGames!: LastGameResponse[];
+}
+
+class GameResponse {
+  @ApiProperty({ example: '20260616/NYKSAS' })
+  id!: string;
+
+  @ApiProperty({ example: 'San Antonio Spurs' })
+  homeTeam!: string;
+
+  @ApiProperty({ example: 'New York Knicks' })
+  awayTeam!: string;
+
+  @ApiProperty({ example: null, nullable: true })
+  homeScore!: number | null;
+
+  @ApiProperty({ example: null, nullable: true })
+  awayScore!: number | null;
+
+  @ApiProperty({ example: '2026-06-19T23:00:00.000Z' })
+  gameDateTime!: string;
+
+  @ApiProperty({ example: 'Scheduled' })
+  status!: string;
+}
+
+class PlayerStatResponse {
+  @ApiProperty({ example: '0a1b2c3d-4e5f-6789-abcd-ef0123456789' })
+  id!: string;
+
+  @ApiProperty({ example: 'Victor Wembanyama' })
+  name!: string;
+
+  @ApiProperty({ example: 'C' })
+  position!: string;
+
+  @ApiProperty({ example: 'https://cdn.nba.com/headshots/nba/latest/260x190/1642868.png' })
+  headshotUrl!: string;
+
+  @ApiProperty({ example: 27.7 })
+  points!: number;
+
+  @ApiProperty({ example: 12.9 })
+  rebounds!: number;
+
+  @ApiProperty({ example: 10.7 })
+  assists!: number;
+}
+
 @ApiTags('Teams')
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly db: DatabaseService) {}
+
+  private async findTeam(abbr: string) {
+    const rows = await this.db.db.select().from(teams).where(eq(teams.abbreviation, abbr)).limit(1);
+    if (rows.length === 0) {
+      throw new NotFoundException(`Team '${abbr}' not found`);
+    }
+    return rows[0];
+  }
 
   @Get()
   @ApiOperation({ summary: 'All 30 NBA teams with 2025-26 stat leaders' })
@@ -117,9 +213,6 @@ export class TeamsController {
       };
     }
 
-    // Map BKN → BRK (players table uses BKN, teams table uses BRK)
-    const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
-
     const result: TeamResponse[] = allTeams.map((t) => {
       const lookup = ABBR_MAP[t.abbreviation] ?? t.abbreviation;
       const rows = byTeam.get(lookup) ?? [];
@@ -148,5 +241,231 @@ export class TeamsController {
     });
 
     return response(true, 'Teams fetched.', result);
+  }
+
+  @Get(':abbr/record')
+  @ApiOperation({ summary: 'Team win-loss record for the current season' })
+  @ApiDataResponse(TeamRecordResponse, HttpStatus.OK, 'Team record.', 'Team record.')
+  async getTeamRecord(@Param('abbr') abbr: string): Promise<ApiResponse<TeamRecordResponse>> {
+    const season = '2025-26';
+
+    const team = await this.findTeam(abbr);
+
+    // Schedule tricodes use BKN; teams table uses BRK
+    const tricode = abbr === 'BRK' ? 'BKN' : abbr;
+
+    const games = await this.db.db
+      .select({
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+      })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(
+        and(
+          eq(scheduleDays.seasonYear, season),
+          eq(scheduleGames.gameStatus, 3),
+          eq(scheduleGames.seriesText, ''),
+          notInArray(scheduleGames.gameLabel, ['Preseason', 'All-Star', 'All-Star Championship']),
+          or(
+            eq(scheduleGames.homeTeamTricode, tricode),
+            eq(scheduleGames.awayTeamTricode, tricode),
+          ),
+        ),
+      );
+
+    let wins = 0;
+    let losses = 0;
+    for (const g of games) {
+      if (g.homeScore == null || g.awayScore == null) continue;
+      const isHome = g.homeTricode === tricode;
+      const ours = isHome ? g.homeScore : g.awayScore;
+      const theirs = isHome ? g.awayScore : g.homeScore;
+      if (ours > theirs) wins += 1;
+      else losses += 1;
+    }
+
+    // Latest final games with real scores (any phase: regular season, play-in, playoffs)
+    const lastRows = await this.db.db
+      .select({
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+        gameDate: scheduleGames.gameDate,
+      })
+      .from(scheduleGames)
+      .where(
+        and(
+          eq(scheduleGames.gameStatus, 3),
+          sql`${scheduleGames.homeTeamScore} + ${scheduleGames.awayTeamScore} > 0`,
+          or(
+            eq(scheduleGames.homeTeamTricode, tricode),
+            eq(scheduleGames.awayTeamTricode, tricode),
+          ),
+        ),
+      )
+      .orderBy(desc(scheduleGames.gameDateTimeUTC))
+      .limit(5);
+
+    const lastGames: LastGameResponse[] = lastRows.map((g) => {
+      const isHome = g.homeTricode === tricode;
+      const ourScore = isHome ? (g.homeScore ?? 0) : (g.awayScore ?? 0);
+      const oppScore = isHome ? (g.awayScore ?? 0) : (g.homeScore ?? 0);
+      const oppTricode = isHome ? (g.awayTricode ?? '') : (g.homeTricode ?? '');
+      return {
+        opponentAbbr: ABBR_MAP[oppTricode] ?? oppTricode,
+        isHome,
+        ourScore,
+        oppScore,
+        gameDate: g.gameDate,
+      };
+    });
+
+    return response(true, 'Team record fetched.', {
+      wins,
+      losses,
+      conference: team.conference === 'East' ? 'Eastern Conference' : 'Western Conference',
+      division: `${team.division} Division`,
+      lastGames,
+    });
+  }
+
+  @Get(':abbr/games')
+  @ApiOperation({ summary: 'Next 5 upcoming games for a team' })
+  @ApiDataResponse(GameResponse, HttpStatus.OK, 'Upcoming games.', 'Upcoming games.', true)
+  async getUpcomingGames(@Param('abbr') abbr: string): Promise<ApiResponse<GameResponse[]>> {
+    await this.findTeam(abbr);
+
+    // Schedule tricodes use BKN; teams table uses BRK
+    const tricode = abbr === 'BRK' ? 'BKN' : abbr;
+
+    const rows = await this.db.db
+      .select({
+        id: scheduleGames.gameId,
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+        gameDateTime: scheduleGames.gameDateTimeUTC,
+        status: scheduleGames.gameStatusText,
+      })
+      .from(scheduleGames)
+      .where(
+        and(
+          eq(scheduleGames.gameStatus, 1),
+          gte(scheduleGames.gameDateTimeUTC, new Date()),
+          or(
+            eq(scheduleGames.homeTeamTricode, tricode),
+            eq(scheduleGames.awayTeamTricode, tricode),
+          ),
+        ),
+      )
+      .orderBy(asc(scheduleGames.gameDateTimeUTC))
+      .limit(5);
+
+    if (rows.length === 0) {
+      return response(true, 'No upcoming games.', []);
+    }
+
+    const abbrs = Array.from(
+      new Set(
+        rows
+          .flatMap((r) => [r.homeTricode ?? '', r.awayTricode ?? ''])
+          .map((t) => ABBR_MAP[t] ?? t)
+          .filter(Boolean),
+      ),
+    );
+    const teamRows = await this.db.db
+      .select({ abbreviation: teams.abbreviation, fullName: teams.fullName })
+      .from(teams)
+      .where(inArray(teams.abbreviation, abbrs));
+    const nameByAbbr = new Map(teamRows.map((t) => [t.abbreviation, t.fullName]));
+
+    return response(
+      true,
+      'Upcoming games fetched.',
+      rows.map((g) => ({
+        id: g.id,
+        homeTeam: teamName(g.homeTricode, nameByAbbr),
+        awayTeam: teamName(g.awayTricode, nameByAbbr),
+        homeScore: g.homeScore,
+        awayScore: g.awayScore,
+        gameDateTime: g.gameDateTime?.toISOString() ?? '',
+        status: g.status ?? '',
+      })),
+    );
+  }
+
+  @Get(':abbr/players')
+  @ApiOperation({ summary: 'Top 3 players by combined per-game stats for a team' })
+  @ApiDataResponse(PlayerStatResponse, HttpStatus.OK, 'Top players.', 'Top players.', true)
+  async getTopPlayers(@Param('abbr') abbr: string): Promise<ApiResponse<PlayerStatResponse[]>> {
+    await this.findTeam(abbr);
+
+    // Players table uses BKN; teams table uses BRK
+    const tricode = abbr === 'BRK' ? 'BKN' : abbr;
+    const season = '2025-26';
+
+    // Min-games guard: half the league's most-played games, capped at 20 —
+    // keeps the panel populated early in the season, strict once it matures.
+    const maxGpRows = await this.db.db
+      .select({ maxGp: max(playerSeasonStats.gp) })
+      .from(playerSeasonStats)
+      .where(
+        and(
+          eq(playerSeasonStats.season, season),
+          eq(playerSeasonStats.statsTimeframe, 'ByYear-regular'),
+        ),
+      );
+    const minGp = Math.min(20, Math.max(1, Math.floor((maxGpRows[0]?.maxGp ?? 0) / 2)));
+
+    const rows = await this.db.db
+      .select({
+        id: players.id,
+        externalId: players.externalId,
+        firstName: players.firstName,
+        lastName: players.lastName,
+        displayName: players.displayName,
+        position: players.position,
+        points: playerSeasonStats.ptsPerGame,
+        rebounds: playerSeasonStats.rebPerGame,
+        assists: playerSeasonStats.astPerGame,
+      })
+      .from(playerSeasonStats)
+      .innerJoin(players, eq(playerSeasonStats.playerId, players.id))
+      .where(
+        and(
+          eq(playerSeasonStats.season, season),
+          eq(playerSeasonStats.statsTimeframe, 'ByYear-regular'),
+          eq(players.teamAbbr, tricode),
+          gte(playerSeasonStats.gp, minGp),
+        ),
+      )
+      .orderBy(
+        desc(
+          sql`COALESCE(${playerSeasonStats.ptsPerGame}, 0) + COALESCE(${playerSeasonStats.rebPerGame}, 0) + COALESCE(${playerSeasonStats.astPerGame}, 0)`,
+        ),
+        desc(playerSeasonStats.ptsPerGame),
+      )
+      .limit(3);
+
+    const round1 = (v: number | null) => (v == null ? 0 : Math.round(v * 10) / 10);
+
+    return response(
+      true,
+      'Top players fetched.',
+      rows.map((p) => ({
+        id: p.id,
+        name: p.displayName ?? `${p.firstName} ${p.lastName}`,
+        position: p.position ?? '',
+        headshotUrl: `https://cdn.nba.com/headshots/nba/latest/260x190/${p.externalId}.png`,
+        points: round1(p.points),
+        rebounds: round1(p.rebounds),
+        assists: round1(p.assists),
+      })),
+    );
   }
 }

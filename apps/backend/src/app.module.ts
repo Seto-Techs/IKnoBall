@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AdminController } from './admin.controller';
 import { UserController } from './user.controller';
 import { TeamsController } from './teams.controller';
+import { StandingsController } from './standings.controller';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { emailConfig } from './infrastructure/email/email.config';
@@ -38,7 +39,13 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
       useFactory: (email: EmailService) => ({ auth: createAuth(email) }),
     }),
   ],
-  controllers: [AppController, AdminController, UserController, TeamsController],
+  controllers: [
+    AppController,
+    AdminController,
+    UserController,
+    TeamsController,
+    StandingsController,
+  ],
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

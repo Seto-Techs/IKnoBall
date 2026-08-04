@@ -1,12 +1,23 @@
-import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
-import { useEffect } from 'react';
-import { useSession } from '../lib/use-auth';
-import { getSelectedTeam, setSelectedTeam } from '../lib/team';
-import { nbaTeams } from '../config/nba-teams';
+import { Outlet, createRootRoute, Link, useLocation, useNavigate } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { useSession, useSignOut } from '../lib/use-auth';
+import { ChevronDown } from 'lucide-react';
 
 function Header() {
   const { data: session } = useSession();
   const user = session?.user;
+  const signOut = useSignOut();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   return (
     <header className="border-b border-court-200 bg-white">
@@ -20,7 +31,36 @@ function Header() {
 
         <div className="ml-auto flex items-center gap-3">
           {user ? (
-            <span className="text-sm text-stone-600">{user.name}</span>
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-court-100"
+              >
+                {user.name}
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-full z-20 mt-2 min-w-[10rem] rounded-lg border border-court-200 bg-white py-1 shadow-lg">
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        signOut.mutate(undefined, {
+                          onSuccess: () => navigate({ to: '/' }),
+                        });
+                      }}
+                      className="block w-full px-4 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-court-100"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           ) : (
             <>
               <Link
@@ -45,26 +85,10 @@ function Header() {
 
 export const Route = createRootRoute({
   component: () => {
-    const { data: session } = useSession();
     const { pathname } = useLocation();
     const isOnboarding = pathname.startsWith('/onboarding');
+    const isDashboard = pathname.startsWith('/dashboard');
 
-    // Sync favoriteTeam from session → localStorage (cross-device login)
-    useEffect(() => {
-      const favTeam = session?.user?.favoriteTeam;
-      if (!favTeam) return;
-      const local = getSelectedTeam();
-      if (local?.abbr === favTeam) return;
-      const team = nbaTeams.find((t) => t.abbreviation === favTeam);
-      if (team) {
-        setSelectedTeam({
-          abbr: team.abbreviation,
-          name: team.fullName,
-          primaryColor: team.primaryColor,
-          logoUrl: team.logoUrl,
-        });
-      }
-    }, [session?.user?.favoriteTeam]);
     return (
       <div
         className="min-h-screen text-stone-900 antialiased"
@@ -74,7 +98,11 @@ export const Route = createRootRoute({
         }}
       >
         {!isOnboarding && <Header />}
-        <main className={isOnboarding ? 'px-8 py-4' : 'mx-auto max-w-6xl px-4 py-6'}>
+        <main
+          className={
+            isOnboarding ? 'px-8 py-4' : `mx-auto px-4 py-6 ${isDashboard ? 'w-full' : 'max-w-6xl'}`
+          }
+        >
           <Outlet />
         </main>
       </div>

@@ -101,6 +101,9 @@ export function useSignIn() {
     },
     onSuccess: () => {
       qc.setQueryData(['session'], MOCK_SESSION);
+      if (!isMock()) {
+        qc.invalidateQueries({ queryKey: ['session'] });
+      }
     },
   });
 }
