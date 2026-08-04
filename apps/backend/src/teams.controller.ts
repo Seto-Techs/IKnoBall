@@ -10,7 +10,7 @@ import { eq, and, or, notInArray, desc, sql, gte, asc, inArray, max } from 'driz
 const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
 
 function teamName(tricode: string | null, byAbbr: Map<string, string>): string {
-  const abbr = ABBR_MAP[tricode ?? ''] ?? (tricode ?? '');
+  const abbr = ABBR_MAP[tricode ?? ''] ?? tricode ?? '';
   return byAbbr.get(abbr) ?? abbr;
 }
 
@@ -157,11 +157,7 @@ export class TeamsController {
   constructor(private readonly db: DatabaseService) {}
 
   private async findTeam(abbr: string) {
-    const rows = await this.db.db
-      .select()
-      .from(teams)
-      .where(eq(teams.abbreviation, abbr))
-      .limit(1);
+    const rows = await this.db.db.select().from(teams).where(eq(teams.abbreviation, abbr)).limit(1);
     if (rows.length === 0) {
       throw new NotFoundException(`Team '${abbr}' not found`);
     }
@@ -216,7 +212,6 @@ export class TeamsController {
         value: Math.round((best?.[field] ?? 0) * 10) / 10,
       };
     }
-
 
     const result: TeamResponse[] = allTeams.map((t) => {
       const lookup = ABBR_MAP[t.abbreviation] ?? t.abbreviation;
