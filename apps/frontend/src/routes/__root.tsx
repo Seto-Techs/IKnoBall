@@ -51,11 +51,7 @@ export const Route = createRootRoute({
         {!isOnboarding && !isDashboard && <Header />}
         <main
           className={
-            isOnboarding
-              ? 'px-8 py-4'
-              : isDashboard
-                ? 'w-full'
-                : 'mx-auto max-w-6xl px-4 py-6'
+            isOnboarding ? 'px-8 py-4' : isDashboard ? 'w-full' : 'mx-auto max-w-6xl px-4 py-6'
           }
         >
           <Outlet />

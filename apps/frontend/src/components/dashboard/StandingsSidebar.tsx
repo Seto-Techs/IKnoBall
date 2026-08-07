@@ -18,7 +18,9 @@ export function StandingsSidebar({
     <aside
       className={`flex h-[calc(100vh-5rem)] min-h-0 flex-col self-start overflow-y-auto scrollbar-hide rounded-lg border border-brand-line bg-white ${className ?? ''}`}
     >
-      <h2 className="px-5 pt-5 font-heading text-2xl font-bold text-brand-ink">CONFERENCE STANDING</h2>
+      <h2 className="px-5 pt-5 font-heading text-2xl font-bold text-brand-ink">
+        CONFERENCE STANDING
+      </h2>
       <div aria-hidden="true" className="mx-5 mt-3 h-px bg-brand-line" />
 
       <div className="mt-1 pb-4">
@@ -41,7 +43,9 @@ export function StandingsSidebar({
 
           return (
             <section key={conf.key} className="mt-4 pb-5">
-              <h3 className="px-5 font-heading text-xl font-semibold text-brand-red">{conf.label}</h3>
+              <h3 className="px-5 font-heading text-xl font-semibold text-brand-red">
+                {conf.label}
+              </h3>
               <div className="mt-2 flex items-center gap-3 px-5 pb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">
                 <span className="w-6 shrink-0 text-right">#</span>
                 <span className="min-w-0 flex-1">Team</span>
@@ -54,9 +58,7 @@ export function StandingsSidebar({
 
                   return (
                     <li key={team.abbreviation}>
-                      {isPlayoffCutoff && (
-                        <div className="mx-5 border-t-2 border-brand-ink/20" />
-                      )}
+                      {isPlayoffCutoff && <div className="mx-5 border-t-2 border-brand-ink/20" />}
                       {isPlayInCutoff && (
                         <div className="mx-5 border-t border-dashed border-brand-ink/20" />
                       )}

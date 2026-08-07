@@ -64,7 +64,11 @@ function DashboardPage() {
       <DashboardHeader userName={user?.name} />
 
       <div className="mx-auto grid max-w-[1920px] grid-cols-1 grid-rows-[1fr] gap-6 overflow-hidden px-6 py-6 xl:grid-cols-[288px_minmax(0,1fr)_288px]">
-        <StandingsSidebar selectedAbbr={team.abbr} standings={mockStandings} className="hidden xl:block" />
+        <StandingsSidebar
+          selectedAbbr={team.abbr}
+          standings={mockStandings}
+          className="hidden xl:block"
+        />
 
         <main className="flex min-w-0 flex-col gap-6">
           <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
@@ -118,4 +122,3 @@ function DashboardPage() {
     </div>
   );
 }
-

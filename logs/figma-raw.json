@@ -159,16 +159,8 @@
                                 "scaleMode": "STRETCH",
                                 "imageRef": "6f657389c6f50b71103012536470613e4b379ad1",
                                 "imageTransform": [
-                                  [
-                                    0.618055522441864,
-                                    0,
-                                    0.1909722238779068
-                                  ],
-                                  [
-                                    0,
-                                    0.9166667461395264,
-                                    0.04629629850387573
-                                  ]
+                                  [0.618055522441864, 0, 0.1909722238779068],
+                                  [0, 0.9166667461395264, 0.04629629850387573]
                                 ]
                               }
                             ],
@@ -248,12 +240,8 @@
                                 "characters": "Golden State Warriors",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Oswald",
                                   "fontPostScriptName": "Oswald-SemiBold",
@@ -327,12 +315,8 @@
                                         "characters": "1st",
                                         "characterStyleOverrides": [],
                                         "styleOverrideTable": {},
-                                        "lineTypes": [
-                                          "NONE"
-                                        ],
-                                        "lineIndentations": [
-                                          0
-                                        ],
+                                        "lineTypes": ["NONE"],
+                                        "lineIndentations": [0],
                                         "style": {
                                           "fontFamily": "Poppins",
                                           "fontPostScriptName": "Poppins-SemiBold",
@@ -393,12 +377,8 @@
                                         "characters": "Western Conf.",
                                         "characterStyleOverrides": [],
                                         "styleOverrideTable": {},
-                                        "lineTypes": [
-                                          "NONE"
-                                        ],
-                                        "lineIndentations": [
-                                          0
-                                        ],
+                                        "lineTypes": ["NONE"],
+                                        "lineIndentations": [0],
                                         "style": {
                                           "fontFamily": "Poppins",
                                           "fontPostScriptName": "Poppins-Medium",
@@ -426,12 +406,7 @@
                                     "background": [],
                                     "fills": [],
                                     "strokes": [],
-                                    "rectangleCornerRadii": [
-                                      0,
-                                      0,
-                                      0,
-                                      0
-                                    ],
+                                    "rectangleCornerRadii": [0, 0, 0, 0],
                                     "cornerSmoothing": 0,
                                     "strokeWeight": 1,
                                     "strokeAlign": "INSIDE",
@@ -509,12 +484,8 @@
                                         "characters": "24-0",
                                         "characterStyleOverrides": [],
                                         "styleOverrideTable": {},
-                                        "lineTypes": [
-                                          "NONE"
-                                        ],
-                                        "lineIndentations": [
-                                          0
-                                        ],
+                                        "lineTypes": ["NONE"],
+                                        "lineIndentations": [0],
                                         "style": {
                                           "fontFamily": "Poppins",
                                           "fontPostScriptName": "Poppins-SemiBold",
@@ -576,12 +547,8 @@
                                         "characters": "Record",
                                         "characterStyleOverrides": [],
                                         "styleOverrideTable": {},
-                                        "lineTypes": [
-                                          "NONE"
-                                        ],
-                                        "lineIndentations": [
-                                          0
-                                        ],
+                                        "lineTypes": ["NONE"],
+                                        "lineIndentations": [0],
                                         "style": {
                                           "fontFamily": "Poppins",
                                           "fontPostScriptName": "Poppins-Medium",
@@ -654,12 +621,7 @@
                                     "background": [],
                                     "fills": [],
                                     "strokes": [],
-                                    "rectangleCornerRadii": [
-                                      0,
-                                      0,
-                                      0,
-                                      0
-                                    ],
+                                    "rectangleCornerRadii": [0, 0, 0, 0],
                                     "cornerSmoothing": 0,
                                     "strokeWeight": 1,
                                     "strokeAlign": "INSIDE",
@@ -697,12 +659,7 @@
                                 "background": [],
                                 "fills": [],
                                 "strokes": [],
-                                "rectangleCornerRadii": [
-                                  0,
-                                  0,
-                                  0,
-                                  0
-                                ],
+                                "rectangleCornerRadii": [0, 0, 0, 0],
                                 "cornerSmoothing": 0,
                                 "strokeWeight": 1,
                                 "strokeAlign": "INSIDE",
@@ -740,12 +697,7 @@
                             "background": [],
                             "fills": [],
                             "strokes": [],
-                            "rectangleCornerRadii": [
-                              0,
-                              0,
-                              0,
-                              0
-                            ],
+                            "rectangleCornerRadii": [0, 0, 0, 0],
                             "cornerSmoothing": 0,
                             "strokeWeight": 1,
                             "strokeAlign": "INSIDE",
@@ -911,12 +863,8 @@
                                 "characters": "NEXT GAME",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Poppins",
                                   "fontPostScriptName": "Poppins-Medium",
@@ -978,12 +926,8 @@
                                 "characters": "Houston Rockets",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Oswald",
                                   "fontPostScriptName": "Oswald-Medium",
@@ -1045,12 +989,8 @@
                                 "characters": "November 10th 2026",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Poppins",
                                   "fontPostScriptName": "Poppins-Regular",
@@ -1112,12 +1052,8 @@
                                 "characters": "Chase Center, SF",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Poppins",
                                   "fontPostScriptName": "Poppins-Regular",
@@ -1179,12 +1115,8 @@
                                 "characters": "Regular Season",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Poppins",
                                   "fontPostScriptName": "Poppins-Regular",
@@ -1252,12 +1184,8 @@
                                     "characters": "VS",
                                     "characterStyleOverrides": [],
                                     "styleOverrideTable": {},
-                                    "lineTypes": [
-                                      "NONE"
-                                    ],
-                                    "lineIndentations": [
-                                      0
-                                    ],
+                                    "lineTypes": ["NONE"],
+                                    "lineIndentations": [0],
                                     "style": {
                                       "fontFamily": "Oswald",
                                       "fontPostScriptName": "Oswald-Medium",
@@ -1285,12 +1213,7 @@
                                 "background": [],
                                 "fills": [],
                                 "strokes": [],
-                                "rectangleCornerRadii": [
-                                  0,
-                                  0,
-                                  0,
-                                  0
-                                ],
+                                "rectangleCornerRadii": [0, 0, 0, 0],
                                 "cornerSmoothing": 0,
                                 "strokeWeight": 1,
                                 "strokeAlign": "INSIDE",
@@ -1511,12 +1434,8 @@
                                     "characters": "Win Propability",
                                     "characterStyleOverrides": [],
                                     "styleOverrideTable": {},
-                                    "lineTypes": [
-                                      "NONE"
-                                    ],
-                                    "lineIndentations": [
-                                      0
-                                    ],
+                                    "lineTypes": ["NONE"],
+                                    "lineIndentations": [0],
                                     "style": {
                                       "fontFamily": "Poppins",
                                       "fontPostScriptName": "Poppins-Medium",
@@ -1578,12 +1497,8 @@
                                     "characters": "80%",
                                     "characterStyleOverrides": [],
                                     "styleOverrideTable": {},
-                                    "lineTypes": [
-                                      "NONE"
-                                    ],
-                                    "lineIndentations": [
-                                      0
-                                    ],
+                                    "lineTypes": ["NONE"],
+                                    "lineIndentations": [0],
                                     "style": {
                                       "fontFamily": "Poppins",
                                       "fontPostScriptName": "Poppins-Bold",
@@ -1611,12 +1526,7 @@
                                 "background": [],
                                 "fills": [],
                                 "strokes": [],
-                                "rectangleCornerRadii": [
-                                  0,
-                                  0,
-                                  0,
-                                  0
-                                ],
+                                "rectangleCornerRadii": [0, 0, 0, 0],
                                 "cornerSmoothing": 0,
                                 "strokeWeight": 1,
                                 "strokeAlign": "INSIDE",
@@ -1775,12 +1685,8 @@
                                 "characters": "Change Team",
                                 "characterStyleOverrides": [],
                                 "styleOverrideTable": {},
-                                "lineTypes": [
-                                  "NONE"
-                                ],
-                                "lineIndentations": [
-                                  0
-                                ],
+                                "lineTypes": ["NONE"],
+                                "lineIndentations": [0],
                                 "style": {
                                   "fontFamily": "Poppins",
                                   "fontPostScriptName": "Poppins-Medium",
@@ -1846,12 +1752,7 @@
                         "background": [],
                         "fills": [],
                         "strokes": [],
-                        "rectangleCornerRadii": [
-                          0,
-                          0,
-                          0,
-                          0
-                        ],
+                        "rectangleCornerRadii": [0, 0, 0, 0],
                         "cornerSmoothing": 0,
                         "strokeWeight": 1,
                         "strokeAlign": "INSIDE",
@@ -1889,12 +1790,7 @@
                     "background": [],
                     "fills": [],
                     "strokes": [],
-                    "rectangleCornerRadii": [
-                      0,
-                      0,
-                      0,
-                      0
-                    ],
+                    "rectangleCornerRadii": [0, 0, 0, 0],
                     "cornerSmoothing": 0,
                     "strokeWeight": 1,
                     "strokeAlign": "INSIDE",
@@ -2290,12 +2186,8 @@
                     "characters": "Prediction W/L",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Poppins",
                       "fontPostScriptName": "Poppins-SemiBold",
@@ -2457,12 +2349,8 @@
                     "characters": "Current Rank",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Poppins",
                       "fontPostScriptName": "Poppins-SemiBold",
@@ -2624,12 +2512,8 @@
                     "characters": "Games Live Today",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Poppins",
                       "fontPostScriptName": "Poppins-SemiBold",
@@ -2791,12 +2675,8 @@
                     "characters": "Prediction Accuracy",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Poppins",
                       "fontPostScriptName": "Poppins-SemiBold",
@@ -2858,12 +2738,8 @@
                     "characters": "This Week",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Poppins",
                       "fontPostScriptName": "Poppins-Medium",
@@ -2925,12 +2801,8 @@
                     "characters": "67%",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Poppins",
                       "fontPostScriptName": "Poppins-SemiBold",
@@ -3157,12 +3029,7 @@
                 "background": [],
                 "fills": [],
                 "strokes": [],
-                "rectangleCornerRadii": [
-                  0,
-                  0,
-                  0,
-                  0
-                ],
+                "rectangleCornerRadii": [0, 0, 0, 0],
                 "cornerSmoothing": 0,
                 "strokeWeight": 1,
                 "strokeAlign": "INSIDE",
@@ -3346,12 +3213,8 @@
                 "characters": "CONFERENCE STANDING",
                 "characterStyleOverrides": [],
                 "styleOverrideTable": {},
-                "lineTypes": [
-                  "NONE"
-                ],
-                "lineIndentations": [
-                  0
-                ],
+                "lineTypes": ["NONE"],
+                "lineIndentations": [0],
                 "style": {
                   "fontFamily": "Oswald",
                   "fontPostScriptName": "Oswald-Regular",
@@ -3413,12 +3276,8 @@
                 "characters": "EASTERN CONFERENCE",
                 "characterStyleOverrides": [],
                 "styleOverrideTable": {},
-                "lineTypes": [
-                  "NONE"
-                ],
-                "lineIndentations": [
-                  0
-                ],
+                "lineTypes": ["NONE"],
+                "lineIndentations": [0],
                 "style": {
                   "fontFamily": "Oswald",
                   "fontPostScriptName": "Oswald-Regular",
@@ -3480,12 +3339,8 @@
                 "characters": "WESTERN CONFERENCE",
                 "characterStyleOverrides": [],
                 "styleOverrideTable": {},
-                "lineTypes": [
-                  "NONE"
-                ],
-                "lineIndentations": [
-                  0
-                ],
+                "lineTypes": ["NONE"],
+                "lineIndentations": [0],
                 "style": {
                   "fontFamily": "Oswald",
                   "fontPostScriptName": "Oswald-Regular",
@@ -3563,16 +3418,8 @@
                     "scaleMode": "STRETCH",
                     "imageRef": "e32415952d4cb98359d0c9908daec6ec46c8fd72",
                     "imageTransform": [
-                      [
-                        0.6740946769714355,
-                        0,
-                        0
-                      ],
-                      [
-                        0,
-                        0.6934749484062195,
-                        0
-                      ]
+                      [0.6740946769714355, 0, 0],
+                      [0, 0.6934749484062195, 0]
                     ]
                   }
                 ],
@@ -3619,16 +3466,8 @@
                     "scaleMode": "STRETCH",
                     "imageRef": "e32415952d4cb98359d0c9908daec6ec46c8fd72",
                     "imageTransform": [
-                      [
-                        0.6740946769714355,
-                        0,
-                        0
-                      ],
-                      [
-                        0,
-                        0.4931715130805969,
-                        0
-                      ]
+                      [0.6740946769714355, 0, 0],
+                      [0, 0.4931715130805969, 0]
                     ]
                   }
                 ],
@@ -4002,12 +3841,8 @@
                 "characters": "My Team",
                 "characterStyleOverrides": [],
                 "styleOverrideTable": {},
-                "lineTypes": [
-                  "NONE"
-                ],
-                "lineIndentations": [
-                  0
-                ],
+                "lineTypes": ["NONE"],
+                "lineIndentations": [0],
                 "style": {
                   "fontFamily": "Oswald",
                   "fontPostScriptName": "Oswald-SemiBold",
@@ -4069,12 +3904,8 @@
                 "characters": "IKnowBall",
                 "characterStyleOverrides": [],
                 "styleOverrideTable": {},
-                "lineTypes": [
-                  "NONE"
-                ],
-                "lineIndentations": [
-                  0
-                ],
+                "lineTypes": ["NONE"],
+                "lineIndentations": [0],
                 "style": {
                   "fontFamily": "Oswald",
                   "fontPostScriptName": "Oswald-SemiBold",
@@ -4136,12 +3967,8 @@
                 "characters": "Schedule",
                 "characterStyleOverrides": [],
                 "styleOverrideTable": {},
-                "lineTypes": [
-                  "NONE"
-                ],
-                "lineIndentations": [
-                  0
-                ],
+                "lineTypes": ["NONE"],
+                "lineIndentations": [0],
                 "style": {
                   "fontFamily": "Oswald",
                   "fontPostScriptName": "Oswald-SemiBold",
@@ -4254,12 +4081,8 @@
                     "characters": "Overview",
                     "characterStyleOverrides": [],
                     "styleOverrideTable": {},
-                    "lineTypes": [
-                      "NONE"
-                    ],
-                    "lineIndentations": [
-                      0
-                    ],
+                    "lineTypes": ["NONE"],
+                    "lineIndentations": [0],
                     "style": {
                       "fontFamily": "Oswald",
                       "fontPostScriptName": "Oswald-SemiBold",
@@ -4761,14 +4584,8 @@
             "characters": "background\n",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE",
-              "NONE"
-            ],
-            "lineIndentations": [
-              0,
-              0
-            ],
+            "lineTypes": ["NONE", "NONE"],
+            "lineIndentations": [0, 0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -4830,12 +4647,8 @@
             "characters": "Card",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -4897,12 +4710,8 @@
             "characters": "TExt",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -4964,12 +4773,8 @@
             "characters": "TExt",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -5031,12 +4836,8 @@
             "characters": "Secondary text",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -5098,12 +4899,8 @@
             "characters": "Primary",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -5165,12 +4962,8 @@
             "characters": "secondary",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,
@@ -5232,12 +5025,8 @@
             "characters": "Highlight",
             "characterStyleOverrides": [],
             "styleOverrideTable": {},
-            "lineTypes": [
-              "NONE"
-            ],
-            "lineIndentations": [
-              0
-            ],
+            "lineTypes": ["NONE"],
+            "lineIndentations": [0],
             "style": {
               "fontFamily": "Inter",
               "fontPostScriptName": null,

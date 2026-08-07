@@ -4,9 +4,19 @@ import type { ReactNode } from 'react';
 
 /* ── Panels ──────────────────────────────────────────────── */
 
-export function Panel({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
+export function Panel({
+  title,
+  children,
+  className,
+}: {
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <section className={`flex flex-col rounded-lg border border-brand-line bg-white ${className ?? ''}`}>
+    <section
+      className={`flex flex-col rounded-lg border border-brand-line bg-white ${className ?? ''}`}
+    >
       <h2 className="border-b border-brand-line px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
         {title}
       </h2>

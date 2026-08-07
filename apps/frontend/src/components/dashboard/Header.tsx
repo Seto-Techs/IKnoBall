@@ -21,7 +21,11 @@ export function DashboardHeader({ userName }: { userName?: string }) {
             aria-label={userName ? `Account: ${userName}` : 'Account'}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-navy text-sm font-semibold text-white transition-colors hover:bg-brand-navyDark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
           >
-            {userName ? userName.charAt(0).toUpperCase() : <User className="h-4 w-4" aria-hidden="true" />}
+            {userName ? (
+              userName.charAt(0).toUpperCase()
+            ) : (
+              <User className="h-4 w-4" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>

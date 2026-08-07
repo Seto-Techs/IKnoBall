@@ -7,8 +7,7 @@ import type { Game, PlayerStat, TeamRecord } from './api';
  * Houston Rockets up next.
  */
 
-const day = (offset: number) =>
-  new Date(Date.now() + offset * 24 * 60 * 60 * 1000).toISOString();
+const day = (offset: number) => new Date(Date.now() + offset * 24 * 60 * 60 * 1000).toISOString();
 
 export const mockRecord: TeamRecord = {
   wins: 24,
@@ -116,11 +115,51 @@ export const mockGames: Game[] = [
 ];
 
 export const mockPlayers: PlayerStat[] = [
-  { id: '201939', name: 'Stephen Curry', position: 'PG', points: 28.7, rebounds: 5.1, assists: 6.9, imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/201939.png' },
-  { id: '202691', name: 'Klay Thompson', position: 'SG', points: 17.9, rebounds: 3.3, assists: 2.4, imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/202691.png' },
-  { id: '203110', name: 'Draymond Green', position: 'PF', points: 8.5, rebounds: 7.2, assists: 6.5, imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/203110.png' },
-  { id: '203952', name: 'Andrew Wiggins', position: 'SF', points: 16.4, rebounds: 4.6, assists: 2.1, imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/203952.png' },
-  { id: '1630228', name: 'Jonathan Kuminga', position: 'PF', points: 14.2, rebounds: 5.8, assists: 2.2, imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/1630228.png' },
+  {
+    id: '201939',
+    name: 'Stephen Curry',
+    position: 'PG',
+    points: 28.7,
+    rebounds: 5.1,
+    assists: 6.9,
+    imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/201939.png',
+  },
+  {
+    id: '202691',
+    name: 'Klay Thompson',
+    position: 'SG',
+    points: 17.9,
+    rebounds: 3.3,
+    assists: 2.4,
+    imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/202691.png',
+  },
+  {
+    id: '203110',
+    name: 'Draymond Green',
+    position: 'PF',
+    points: 8.5,
+    rebounds: 7.2,
+    assists: 6.5,
+    imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/203110.png',
+  },
+  {
+    id: '203952',
+    name: 'Andrew Wiggins',
+    position: 'SF',
+    points: 16.4,
+    rebounds: 4.6,
+    assists: 2.1,
+    imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/203952.png',
+  },
+  {
+    id: '1630228',
+    name: 'Jonathan Kuminga',
+    position: 'PF',
+    points: 14.2,
+    rebounds: 5.8,
+    assists: 2.2,
+    imageUrl: 'https://cdn.nba.com/headshots/nba/latest/1040x760/1630228.png',
+  },
 ];
 
 export interface RecentGame {

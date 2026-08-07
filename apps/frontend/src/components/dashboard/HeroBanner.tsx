@@ -74,7 +74,9 @@ export function HeroBanner({
       <div className="relative z-10">
         {/* ── Row 1: Team identity — horizontal ── */}
         <div className="flex items-center justify-center gap-8 px-8 pt-7 pb-5">
-          <p className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}>
+          <p
+            className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}
+          >
             {topLine}
           </p>
           <img
@@ -82,7 +84,9 @@ export function HeroBanner({
             alt={`${team.name} logo`}
             className="h-auto max-h-32 w-auto max-w-32 shrink object-contain"
           />
-          <h1 className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}>
+          <h1
+            className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}
+          >
             {bottomLine}
           </h1>
         </div>
@@ -102,12 +106,16 @@ export function HeroBanner({
               <p className={`font-heading text-4xl font-semibold leading-none tabular-nums ${tx}`}>
                 {record ? `${record.wins}-${record.losses}` : '—'}
               </p>
-              <p className={`mt-0.5 text-xs font-semibold uppercase tracking-[0.2em] ${txHint}`}>Record</p>
+              <p className={`mt-0.5 text-xs font-semibold uppercase tracking-[0.2em] ${txHint}`}>
+                Record
+              </p>
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-6">
-            <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${txHint}`}>Last 5</span>
+            <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${txHint}`}>
+              Last 5
+            </span>
             <div className="flex gap-2.5">
               {mockLastFive.map((game, i) => {
                 const opp = teamByFullName[game.opponent] ?? teamByTeamName[game.opponent];
@@ -117,7 +125,12 @@ export function HeroBanner({
                     className={`relative flex h-12 w-12 items-center justify-center rounded-lg ${isBright ? 'bg-brand-ink/10' : 'bg-white/10'}`}
                   >
                     {opp && (
-                      <img src={opp.logoUrl} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
+                      <img
+                        src={opp.logoUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="h-7 w-7 object-contain"
+                      />
                     )}
                     <span
                       className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${game.result === 'W' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}
@@ -128,11 +141,18 @@ export function HeroBanner({
                 );
               })}
             </div>
-            <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>{recentWins}-{recentLosses}</span>
+            <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>
+              {recentWins}-{recentLosses}
+            </span>
             <div aria-hidden="true" className={`h-8 w-px shrink-0 ${rule}`} />
             <div className="flex items-center gap-3">
               {opponent?.logoUrl && (
-                <img src={opponent.logoUrl} alt="" aria-hidden="true" className="h-14 w-14 shrink-0 object-contain" />
+                <img
+                  src={opponent.logoUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-14 w-14 shrink-0 object-contain"
+                />
               )}
               <div className="min-w-0">
                 <p className={`truncate font-heading text-xl font-semibold uppercase ${tx}`}>

@@ -13,7 +13,12 @@ function TeamCell({ name }: { name: string }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       {team && (
-        <img src={team.logoUrl} alt="" aria-hidden="true" className="h-5 w-5 shrink-0 object-contain" />
+        <img
+          src={team.logoUrl}
+          alt=""
+          aria-hidden="true"
+          className="h-5 w-5 shrink-0 object-contain"
+        />
       )}
       <span className="font-medium text-brand-ink">{name}</span>
     </span>
@@ -24,7 +29,15 @@ export function ScheduleTable({
   games,
   loading = false,
 }: {
-  games?: { id: string; homeTeam: string; awayTeam: string; homeScore: number | null; awayScore: number | null; gameDateTime: string; status: string }[];
+  games?: {
+    id: string;
+    homeTeam: string;
+    awayTeam: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    gameDateTime: string;
+    status: string;
+  }[];
   loading?: boolean;
 }) {
   return (
@@ -36,11 +49,21 @@ export function ScheduleTable({
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-brand-line text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
-                <th scope="col" className="px-5 py-3">Date</th>
-                <th scope="col" className="px-5 py-3">Away</th>
-                <th scope="col" className="px-5 py-3">Score</th>
-                <th scope="col" className="px-5 py-3">Home</th>
-                <th scope="col" className="px-5 py-3">Status</th>
+                <th scope="col" className="px-5 py-3">
+                  Date
+                </th>
+                <th scope="col" className="px-5 py-3">
+                  Away
+                </th>
+                <th scope="col" className="px-5 py-3">
+                  Score
+                </th>
+                <th scope="col" className="px-5 py-3">
+                  Home
+                </th>
+                <th scope="col" className="px-5 py-3">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-line">
