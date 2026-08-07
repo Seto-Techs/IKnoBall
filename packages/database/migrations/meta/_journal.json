@@ -8,6 +8,20 @@
       "when": 1785019783440,
       "tag": "0000_cultured_victor_mancha",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785307007589,
+      "tag": "0001_great_doorman",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785354876765,
+      "tag": "0002_add_banned_to_users",
+      "breakpoints": true
     }
   ]
 }

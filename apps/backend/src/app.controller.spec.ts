@@ -4,10 +4,9 @@ describe('AppController', () => {
   it('returns the health contract', () => {
     const controller = new AppController({ getHello: () => 'Hello World!' });
     expect(controller.getHello()).toEqual({
-      status: 200,
+      is_success: true,
       message: 'Service is healthy.',
       data: { status: 'ok' },
-      meta: null,
     });
   });
 });

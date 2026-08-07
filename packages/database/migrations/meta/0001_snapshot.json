@@ -1,0 +1,2305 @@
+{
+  "id": "1da9c69a-0a91-4968-8df5-37ccda6d6eb3",
+  "prevId": "b0f6f334-0e26-4754-802a-0b62019ec341",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.account": {
+      "name": "account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "account_userId_idx": {
+          "name": "account_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "account_user_id_users_id_fk": {
+          "name": "account_user_id_users_id_fk",
+          "tableFrom": "account",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_logs": {
+      "name": "activity_logs",
+      "schema": "",
+      "columns": {
+        "activity_log_id": {
+          "name": "activity_log_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activity_name": {
+          "name": "activity_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_success": {
+          "name": "is_success",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "activity_logs_entity_type_entity_id_idx": {
+          "name": "activity_logs_entity_type_entity_id_idx",
+          "columns": [
+            {
+              "expression": "entity_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "activity_logs_user_id_created_at_idx": {
+          "name": "activity_logs_user_id_created_at_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_season_stats": {
+      "name": "player_season_stats",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "playerId": {
+          "name": "playerId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season": {
+          "name": "season",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gp": {
+          "name": "gp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wins": {
+          "name": "wins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "losses": {
+          "name": "losses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgPct": {
+          "name": "fgPct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Pct": {
+          "name": "fg3Pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftPct": {
+          "name": "ftPct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ptsTotal": {
+          "name": "ptsTotal",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rebTotal": {
+          "name": "rebTotal",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "astTotal": {
+          "name": "astTotal",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ptsPerGame": {
+          "name": "ptsPerGame",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rebPerGame": {
+          "name": "rebPerGame",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "astPerGame": {
+          "name": "astPerGame",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "statsTimeframe": {
+          "name": "statsTimeframe",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "player_season_stats_playerId_idx": {
+          "name": "player_season_stats_playerId_idx",
+          "columns": [
+            {
+              "expression": "playerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "player_season_stats_playerId_players_id_fk": {
+          "name": "player_season_stats_playerId_players_id_fk",
+          "tableFrom": "player_season_stats",
+          "tableTo": "players",
+          "columnsFrom": ["playerId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "player_season_stats_playerId_season_statsTimeframe_key": {
+          "name": "player_season_stats_playerId_season_statsTimeframe_key",
+          "nullsNotDistinct": false,
+          "columns": ["playerId", "season", "statsTimeframe"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.players": {
+      "name": "players",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "externalId": {
+          "name": "externalId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "firstName": {
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastName": {
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamSlug": {
+          "name": "teamSlug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isDefunct": {
+          "name": "isDefunct",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamCity": {
+          "name": "teamCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamName": {
+          "name": "teamName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamAbbr": {
+          "name": "teamAbbr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "jersey": {
+          "name": "jersey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "height": {
+          "name": "height",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weight": {
+          "name": "weight",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "college": {
+          "name": "college",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "draftYear": {
+          "name": "draftYear",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "draftRound": {
+          "name": "draftRound",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "draftPick": {
+          "name": "draftPick",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rosterStatus": {
+          "name": "rosterStatus",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "careerFrom": {
+          "name": "careerFrom",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "careerTo": {
+          "name": "careerTo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "players_externalId_unique": {
+          "name": "players_externalId_unique",
+          "nullsNotDistinct": false,
+          "columns": ["externalId"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.schedule_boxscore_players": {
+      "name": "schedule_boxscore_players",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "scheduleGameId": {
+          "name": "scheduleGameId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playerId": {
+          "name": "playerId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playerExternalId": {
+          "name": "playerExternalId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamExternalId": {
+          "name": "teamExternalId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "minutes": {
+          "name": "minutes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgMade": {
+          "name": "fgMade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgAttempted": {
+          "name": "fgAttempted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgPct": {
+          "name": "fgPct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Made": {
+          "name": "fg3Made",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Attempted": {
+          "name": "fg3Attempted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Pct": {
+          "name": "fg3Pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftMade": {
+          "name": "ftMade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftAttempted": {
+          "name": "ftAttempted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftPct": {
+          "name": "ftPct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oreb": {
+          "name": "oreb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dreb": {
+          "name": "dreb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reb": {
+          "name": "reb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ast": {
+          "name": "ast",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stl": {
+          "name": "stl",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blk": {
+          "name": "blk",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tov": {
+          "name": "tov",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pf": {
+          "name": "pf",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pts": {
+          "name": "pts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plusMinus": {
+          "name": "plusMinus",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "schedule_boxscore_players_scheduleGameId_idx": {
+          "name": "schedule_boxscore_players_scheduleGameId_idx",
+          "columns": [
+            {
+              "expression": "scheduleGameId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "schedule_boxscore_players_playerId_idx": {
+          "name": "schedule_boxscore_players_playerId_idx",
+          "columns": [
+            {
+              "expression": "playerId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "schedule_boxscore_players_playerExternalId_idx": {
+          "name": "schedule_boxscore_players_playerExternalId_idx",
+          "columns": [
+            {
+              "expression": "playerExternalId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "schedule_boxscore_players_scheduleGameId_schedule_games_id_fk": {
+          "name": "schedule_boxscore_players_scheduleGameId_schedule_games_id_fk",
+          "tableFrom": "schedule_boxscore_players",
+          "tableTo": "schedule_games",
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "schedule_boxscore_players_playerId_players_id_fk": {
+          "name": "schedule_boxscore_players_playerId_players_id_fk",
+          "tableFrom": "schedule_boxscore_players",
+          "tableTo": "players",
+          "columnsFrom": ["playerId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "schedule_boxscore_players_scheduleGameId_playerExternalId_key": {
+          "name": "schedule_boxscore_players_scheduleGameId_playerExternalId_key",
+          "nullsNotDistinct": false,
+          "columns": ["scheduleGameId", "playerExternalId"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.schedule_boxscore_summaries": {
+      "name": "schedule_boxscore_summaries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "scheduleGameId": {
+          "name": "scheduleGameId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameCode": {
+          "name": "gameCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameStatus": {
+          "name": "gameStatus",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameStatusText": {
+          "name": "gameStatusText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period": {
+          "name": "period",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameClock": {
+          "name": "gameClock",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameTimeUTC": {
+          "name": "gameTimeUTC",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameEt": {
+          "name": "gameEt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attendance": {
+          "name": "attendance",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sellout": {
+          "name": "sellout",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seriesGameNumber": {
+          "name": "seriesGameNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameLabel": {
+          "name": "gameLabel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameSubLabel": {
+          "name": "gameSubLabel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seriesText": {
+          "name": "seriesText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ifNecessary": {
+          "name": "ifNecessary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isNeutral": {
+          "name": "isNeutral",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "arenaId": {
+          "name": "arenaId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaName": {
+          "name": "arenaName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaCity": {
+          "name": "arenaCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaState": {
+          "name": "arenaState",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaCountry": {
+          "name": "arenaCountry",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaTimezone": {
+          "name": "arenaTimezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaStreet": {
+          "name": "arenaStreet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaPostalCode": {
+          "name": "arenaPostalCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamId": {
+          "name": "homeTeamId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "homeScore": {
+          "name": "homeScore",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeInBonus": {
+          "name": "homeInBonus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTimeouts": {
+          "name": "homeTimeouts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeSeed": {
+          "name": "homeSeed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homePeriods": {
+          "name": "homePeriods",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homePlayers": {
+          "name": "homePlayers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeInactives": {
+          "name": "homeInactives",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamId": {
+          "name": "awayTeamId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "awayTeamName": {
+          "name": "awayTeamName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamCity": {
+          "name": "awayTeamCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamTricode": {
+          "name": "awayTeamTricode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamSlug": {
+          "name": "awayTeamSlug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamWins": {
+          "name": "awayTeamWins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamLosses": {
+          "name": "awayTeamLosses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayScore": {
+          "name": "awayScore",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayInBonus": {
+          "name": "awayInBonus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTimeouts": {
+          "name": "awayTimeouts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awaySeed": {
+          "name": "awaySeed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayStatistics": {
+          "name": "awayStatistics",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayPeriods": {
+          "name": "awayPeriods",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayPlayers": {
+          "name": "awayPlayers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayInactives": {
+          "name": "awayInactives",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastFiveMeetings": {
+          "name": "lastFiveMeetings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pregameCharts": {
+          "name": "pregameCharts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "postgameCharts": {
+          "name": "postgameCharts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "schedule_boxscore_summaries_scheduleGameId_schedule_games_id_fk": {
+          "name": "schedule_boxscore_summaries_scheduleGameId_schedule_games_id_fk",
+          "tableFrom": "schedule_boxscore_summaries",
+          "tableTo": "schedule_games",
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "schedule_boxscore_summaries_scheduleGameId_unique": {
+          "name": "schedule_boxscore_summaries_scheduleGameId_unique",
+          "nullsNotDistinct": false,
+          "columns": ["scheduleGameId"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.schedule_boxscore_teams": {
+      "name": "schedule_boxscore_teams",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "scheduleGameId": {
+          "name": "scheduleGameId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamExternalId": {
+          "name": "teamExternalId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "side": {
+          "name": "side",
+          "type": "ScheduleTeamSide",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "minutes": {
+          "name": "minutes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgMade": {
+          "name": "fgMade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgAttempted": {
+          "name": "fgAttempted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fgPct": {
+          "name": "fgPct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Made": {
+          "name": "fg3Made",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Attempted": {
+          "name": "fg3Attempted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fg3Pct": {
+          "name": "fg3Pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftMade": {
+          "name": "ftMade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftAttempted": {
+          "name": "ftAttempted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ftPct": {
+          "name": "ftPct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oreb": {
+          "name": "oreb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dreb": {
+          "name": "dreb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reb": {
+          "name": "reb",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ast": {
+          "name": "ast",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stl": {
+          "name": "stl",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blk": {
+          "name": "blk",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tov": {
+          "name": "tov",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pf": {
+          "name": "pf",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pts": {
+          "name": "pts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plusMinus": {
+          "name": "plusMinus",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "schedule_boxscore_teams_scheduleGameId_idx": {
+          "name": "schedule_boxscore_teams_scheduleGameId_idx",
+          "columns": [
+            {
+              "expression": "scheduleGameId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "schedule_boxscore_teams_teamExternalId_idx": {
+          "name": "schedule_boxscore_teams_teamExternalId_idx",
+          "columns": [
+            {
+              "expression": "teamExternalId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "schedule_boxscore_teams_scheduleGameId_schedule_games_id_fk": {
+          "name": "schedule_boxscore_teams_scheduleGameId_schedule_games_id_fk",
+          "tableFrom": "schedule_boxscore_teams",
+          "tableTo": "schedule_games",
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "schedule_boxscore_teams_scheduleGameId_side_key": {
+          "name": "schedule_boxscore_teams_scheduleGameId_side_key",
+          "nullsNotDistinct": false,
+          "columns": ["scheduleGameId", "side"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.schedule_days": {
+      "name": "schedule_days",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "gameDate": {
+          "name": "gameDate",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seasonYear": {
+          "name": "seasonYear",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "leagueId": {
+          "name": "leagueId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metaVersion": {
+          "name": "metaVersion",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metaRequest": {
+          "name": "metaRequest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metaTime": {
+          "name": "metaTime",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "schedule_days_gameDate_idx": {
+          "name": "schedule_days_gameDate_idx",
+          "columns": [
+            {
+              "expression": "gameDate",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "schedule_days_gameDate_seasonYear_leagueId_key": {
+          "name": "schedule_days_gameDate_seasonYear_leagueId_key",
+          "nullsNotDistinct": false,
+          "columns": ["gameDate", "seasonYear", "leagueId"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.schedule_games": {
+      "name": "schedule_games",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "scheduleDayId": {
+          "name": "scheduleDayId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameId": {
+          "name": "gameId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameDate": {
+          "name": "gameDate",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameCode": {
+          "name": "gameCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameStatus": {
+          "name": "gameStatus",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameStatusText": {
+          "name": "gameStatusText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameSequence": {
+          "name": "gameSequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gameDateEst": {
+          "name": "gameDateEst",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameTimeEst": {
+          "name": "gameTimeEst",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameDateTimeEst": {
+          "name": "gameDateTimeEst",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameDateUTC": {
+          "name": "gameDateUTC",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameTimeUTC": {
+          "name": "gameTimeUTC",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameDateTimeUTC": {
+          "name": "gameDateTimeUTC",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamTime": {
+          "name": "awayTeamTime",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamTime": {
+          "name": "homeTeamTime",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day": {
+          "name": "day",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monthNum": {
+          "name": "monthNum",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weekNumber": {
+          "name": "weekNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "weekName": {
+          "name": "weekName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ifNecessary": {
+          "name": "ifNecessary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seriesGameNumber": {
+          "name": "seriesGameNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameLabel": {
+          "name": "gameLabel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameSubLabel": {
+          "name": "gameSubLabel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seriesText": {
+          "name": "seriesText",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaName": {
+          "name": "arenaName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaState": {
+          "name": "arenaState",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arenaCity": {
+          "name": "arenaCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "postponedStatus": {
+          "name": "postponedStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "branchLink": {
+          "name": "branchLink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gameSubtype": {
+          "name": "gameSubtype",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isNeutral": {
+          "name": "isNeutral",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "homeTeamId": {
+          "name": "homeTeamId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamName": {
+          "name": "homeTeamName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamCity": {
+          "name": "homeTeamCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamTricode": {
+          "name": "homeTeamTricode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamSlug": {
+          "name": "homeTeamSlug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamWins": {
+          "name": "homeTeamWins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamLosses": {
+          "name": "homeTeamLosses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamScore": {
+          "name": "homeTeamScore",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "homeTeamSeed": {
+          "name": "homeTeamSeed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamId": {
+          "name": "awayTeamId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamName": {
+          "name": "awayTeamName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamCity": {
+          "name": "awayTeamCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamTricode": {
+          "name": "awayTeamTricode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamSlug": {
+          "name": "awayTeamSlug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamWins": {
+          "name": "awayTeamWins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamLosses": {
+          "name": "awayTeamLosses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamScore": {
+          "name": "awayTeamScore",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "awayTeamSeed": {
+          "name": "awayTeamSeed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "schedule_games_gameDate_idx": {
+          "name": "schedule_games_gameDate_idx",
+          "columns": [
+            {
+              "expression": "gameDate",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "schedule_games_scheduleDayId_idx": {
+          "name": "schedule_games_scheduleDayId_idx",
+          "columns": [
+            {
+              "expression": "scheduleDayId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "schedule_games_scheduleDayId_schedule_days_id_fk": {
+          "name": "schedule_games_scheduleDayId_schedule_days_id_fk",
+          "tableFrom": "schedule_games",
+          "tableTo": "schedule_days",
+          "columnsFrom": ["scheduleDayId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "schedule_games_gameId_unique": {
+          "name": "schedule_games_gameId_unique",
+          "nullsNotDistinct": false,
+          "columns": ["gameId"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.schedule_points_leaders": {
+      "name": "schedule_points_leaders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "scheduleGameId": {
+          "name": "scheduleGameId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "personId": {
+          "name": "personId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "firstName": {
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lastName": {
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamCity": {
+          "name": "teamCity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamName": {
+          "name": "teamName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamTricode": {
+          "name": "teamTricode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "points": {
+          "name": "points",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "schedule_points_leaders_scheduleGameId_idx": {
+          "name": "schedule_points_leaders_scheduleGameId_idx",
+          "columns": [
+            {
+              "expression": "scheduleGameId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "schedule_points_leaders_scheduleGameId_schedule_games_id_fk": {
+          "name": "schedule_points_leaders_scheduleGameId_schedule_games_id_fk",
+          "tableFrom": "schedule_points_leaders",
+          "tableTo": "schedule_games",
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session": {
+      "name": "session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_userId_idx": {
+          "name": "session_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "session_user_id_users_id_fk": {
+          "name": "session_user_id_users_id_fk",
+          "tableFrom": "session",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "nullsNotDistinct": false,
+          "columns": ["token"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.teams": {
+      "name": "teams",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "externalId": {
+          "name": "externalId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fullName": {
+          "name": "fullName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "abbreviation": {
+          "name": "abbreviation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "teams_externalId_unique": {
+          "name": "teams_externalId_unique",
+          "nullsNotDistinct": false,
+          "columns": ["externalId"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_verified": {
+          "name": "is_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'user'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": ["email"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verification": {
+      "name": "verification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "verification_identifier_idx": {
+          "name": "verification_identifier_idx",
+          "columns": [
+            {
+              "expression": "identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.CategoryType": {
+      "name": "CategoryType",
+      "schema": "public",
+      "values": ["income", "expense"]
+    },
+    "public.ScheduleTeamSide": {
+      "name": "ScheduleTeamSide",
+      "schema": "public",
+      "values": ["home", "away"]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
