@@ -28,6 +28,7 @@ export interface PlayerStat {
   points: number;
   rebounds: number;
   assists: number;
+  imageUrl?: string;
 }
 
 /* ── API fetch helpers (use Vite proxy → backend) ── */

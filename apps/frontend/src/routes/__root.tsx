@@ -44,11 +44,20 @@ export const Route = createRootRoute({
   component: () => {
     const { pathname } = useLocation();
     const isOnboarding = pathname.startsWith('/onboarding');
+    const isDashboard = pathname.startsWith('/dashboard');
 
     return (
       <div className="min-h-screen bg-court-50 text-stone-900 antialiased">
-        {!isOnboarding && <Header />}
-        <main className={isOnboarding ? 'px-8 py-4' : 'mx-auto max-w-6xl px-4 py-6'}>
+        {!isOnboarding && !isDashboard && <Header />}
+        <main
+          className={
+            isOnboarding
+              ? 'px-8 py-4'
+              : isDashboard
+                ? 'w-full'
+                : 'mx-auto max-w-6xl px-4 py-6'
+          }
+        >
           <Outlet />
         </main>
       </div>

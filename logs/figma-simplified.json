@@ -1,0 +1,1867 @@
+{
+  "name": "IknoBall",
+  "nodes": [
+    {
+      "id": "0:1",
+      "name": "Page 1",
+      "type": "CANVAS",
+      "children": [
+        {
+          "id": "1:3",
+          "name": "desktop",
+          "type": "FRAME",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 1920,
+              "height": 1080
+            }
+          },
+          "fills": "fill_658ab2fa",
+          "children": [
+            {
+              "id": "14:32",
+              "name": "Frame 1",
+              "type": "FRAME",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 368,
+                  "y": 390
+                },
+                "dimensions": {
+                  "width": 1176,
+                  "height": 150
+                }
+              },
+              "borderRadius": "12px",
+              "children": [
+                {
+                  "id": "8:42",
+                  "name": "Rectangle 19",
+                  "type": "RECTANGLE",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 0,
+                      "y": 0
+                    },
+                    "dimensions": {
+                      "width": 1176,
+                      "height": 150
+                    }
+                  },
+                  "fills": [
+                    "#1C4188"
+                  ],
+                  "strokes": "fill_7cf287d2",
+                  "strokeWeight": "2px",
+                  "borderRadius": "12px"
+                },
+                {
+                  "id": "14:48",
+                  "name": "image 12",
+                  "type": "RECTANGLE",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 952,
+                      "y": -102
+                    },
+                    "dimensions": {
+                      "width": 354,
+                      "height": 354
+                    }
+                  },
+                  "fills": [
+                    {
+                      "type": "IMAGE",
+                      "imageRef": "5474136f5a8e7fbae205e4d5ea26cf80604ba19d",
+                      "scaleMode": "FILL",
+                      "objectFit": "cover",
+                      "isBackground": false,
+                      "imageDownloadArguments": {
+                        "needsCropping": false,
+                        "requiresImageDimensions": false
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "14:85",
+                  "name": "Group 13",
+                  "type": "GROUP",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 19,
+                      "y": 13
+                    },
+                    "dimensions": {
+                      "width": 1139,
+                      "height": 123
+                    }
+                  },
+                  "borderRadius": "0px 0px 0px 0px",
+                  "children": [
+                    {
+                      "id": "14:35",
+                      "name": "Group 2",
+                      "type": "GROUP",
+                      "layout": {
+                        "mode": "none",
+                        "sizing": {},
+                        "locationRelativeToParent": {
+                          "x": 0,
+                          "y": 0
+                        },
+                        "dimensions": {
+                          "width": 399,
+                          "height": 123
+                        }
+                      },
+                      "children": [
+                        {
+                          "id": "14:36",
+                          "name": "image 9",
+                          "type": "RECTANGLE",
+                          "layout": {
+                            "mode": "none",
+                            "sizing": {},
+                            "locationRelativeToParent": {
+                              "x": 0,
+                              "y": 0
+                            },
+                            "dimensions": {
+                              "width": 111,
+                              "height": 123
+                            }
+                          },
+                          "fills": [
+                            {
+                              "type": "IMAGE",
+                              "imageRef": "6f657389c6f50b71103012536470613e4b379ad1",
+                              "scaleMode": "STRETCH",
+                              "objectFit": "fill",
+                              "isBackground": false,
+                              "imageDownloadArguments": {
+                                "needsCropping": true,
+                                "requiresImageDimensions": false,
+                                "cropTransform": [
+                                  [
+                                    0.618055522441864,
+                                    0,
+                                    0.1909722238779068
+                                  ],
+                                  [
+                                    0,
+                                    0.9166667461395264,
+                                    0.04629629850387573
+                                  ]
+                                ],
+                                "filenameSuffix": "773a5f"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "id": "14:37",
+                          "name": "Group 3",
+                          "type": "GROUP",
+                          "layout": {
+                            "mode": "none",
+                            "sizing": {},
+                            "locationRelativeToParent": {
+                              "x": 119,
+                              "y": 6
+                            },
+                            "dimensions": {
+                              "width": 280,
+                              "height": 104
+                            }
+                          },
+                          "borderRadius": "0px 0px 0px 0px",
+                          "children": [
+                            {
+                              "id": "14:38",
+                              "name": "Golden State Warriors",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 0,
+                                  "y": 0
+                                },
+                                "dimensions": {
+                                  "width": 280,
+                                  "height": 47
+                                }
+                              },
+                              "text": "Golden State Warriors",
+                              "textStyle": {
+                                "fontFamily": "Oswald",
+                                "fontStyle": "SemiBold",
+                                "fontWeight": 600,
+                                "fontSize": 32,
+                                "textAlignHorizontal": "LEFT",
+                                "textAlignVertical": "TOP"
+                              },
+                              "fills": "fill_d4cfee18"
+                            },
+                            {
+                              "id": "14:39",
+                              "name": "Group 7",
+                              "type": "GROUP",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 0,
+                                  "y": 46
+                                },
+                                "dimensions": {
+                                  "width": 233,
+                                  "height": 58
+                                }
+                              },
+                              "borderRadius": "0px 0px 0px 0px",
+                              "children": [
+                                {
+                                  "id": "14:40",
+                                  "name": "Group 6",
+                                  "type": "GROUP",
+                                  "layout": {
+                                    "mode": "none",
+                                    "sizing": {},
+                                    "locationRelativeToParent": {
+                                      "x": 119,
+                                      "y": 0
+                                    },
+                                    "dimensions": {
+                                      "width": 114,
+                                      "height": 58
+                                    }
+                                  },
+                                  "borderRadius": "0px 0px 0px 0px",
+                                  "children": [
+                                    {
+                                      "id": "14:41",
+                                      "name": "1st",
+                                      "type": "TEXT",
+                                      "layout": {
+                                        "mode": "none",
+                                        "sizing": {},
+                                        "locationRelativeToParent": {
+                                          "x": 0,
+                                          "y": 0
+                                        },
+                                        "dimensions": {
+                                          "width": 32,
+                                          "height": 26
+                                        }
+                                      },
+                                      "text": "1st",
+                                      "textStyle": "style_4d9853a1",
+                                      "fills": "fill_658ab2fa"
+                                    },
+                                    {
+                                      "id": "14:42",
+                                      "name": "Western Conf.",
+                                      "type": "TEXT",
+                                      "layout": {
+                                        "mode": "none",
+                                        "sizing": {},
+                                        "locationRelativeToParent": {
+                                          "x": 0,
+                                          "y": 34
+                                        },
+                                        "dimensions": {
+                                          "width": 114,
+                                          "height": 24
+                                        }
+                                      },
+                                      "text": "Western Conf.",
+                                      "textStyle": "style_fd1921fc",
+                                      "fills": "fill_658ab2fa"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "id": "14:43",
+                                  "name": "Group 5",
+                                  "type": "GROUP",
+                                  "layout": {
+                                    "mode": "none",
+                                    "sizing": {},
+                                    "locationRelativeToParent": {
+                                      "x": 0,
+                                      "y": 1
+                                    },
+                                    "dimensions": {
+                                      "width": 102,
+                                      "height": 57
+                                    }
+                                  },
+                                  "borderRadius": "0px 0px 0px 0px",
+                                  "children": [
+                                    {
+                                      "id": "14:44",
+                                      "name": "24-0",
+                                      "type": "TEXT",
+                                      "layout": {
+                                        "mode": "none",
+                                        "sizing": {},
+                                        "locationRelativeToParent": {
+                                          "x": 0,
+                                          "y": 0
+                                        },
+                                        "dimensions": {
+                                          "width": 60,
+                                          "height": 36
+                                        }
+                                      },
+                                      "text": "24-0",
+                                      "textStyle": "style_4d9853a1",
+                                      "fills": "fill_658ab2fa"
+                                    },
+                                    {
+                                      "id": "14:45",
+                                      "name": "Record",
+                                      "type": "TEXT",
+                                      "layout": {
+                                        "mode": "none",
+                                        "sizing": {},
+                                        "locationRelativeToParent": {
+                                          "x": 0,
+                                          "y": 33
+                                        },
+                                        "dimensions": {
+                                          "width": 57,
+                                          "height": 24
+                                        }
+                                      },
+                                      "text": "Record",
+                                      "textStyle": "style_fd1921fc",
+                                      "fills": "fill_658ab2fa"
+                                    },
+                                    {
+                                      "id": "14:46",
+                                      "name": "Line 2",
+                                      "type": "LINE",
+                                      "layout": {
+                                        "mode": "none",
+                                        "sizing": {},
+                                        "locationRelativeToParent": {
+                                          "x": 102,
+                                          "y": 7
+                                        },
+                                        "dimensions": {
+                                          "width": 0,
+                                          "height": 50
+                                        }
+                                      },
+                                      "strokes": "fill_3ab53269",
+                                      "strokeWeight": "1px",
+                                      "strokeAlign": "CENTER"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "14:47",
+                      "name": "Line 2",
+                      "type": "LINE",
+                      "layout": {
+                        "mode": "none",
+                        "sizing": {},
+                        "locationRelativeToParent": {
+                          "x": 427,
+                          "y": 11
+                        },
+                        "dimensions": {
+                          "width": 1,
+                          "height": 109
+                        }
+                      },
+                      "strokes": "fill_3ab53269",
+                      "strokeWeight": "4px",
+                      "strokeAlign": "CENTER"
+                    },
+                    {
+                      "id": "14:84",
+                      "name": "Group 12",
+                      "type": "GROUP",
+                      "layout": {
+                        "mode": "none",
+                        "sizing": {},
+                        "locationRelativeToParent": {
+                          "x": 452,
+                          "y": 11
+                        },
+                        "dimensions": {
+                          "width": 687,
+                          "height": 102
+                        }
+                      },
+                      "borderRadius": "0px 0px 0px 0px",
+                      "children": [
+                        {
+                          "id": "14:83",
+                          "name": "Group 11",
+                          "type": "GROUP",
+                          "layout": {
+                            "mode": "none",
+                            "sizing": {},
+                            "locationRelativeToParent": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "dimensions": {
+                              "width": 348,
+                              "height": 97
+                            }
+                          },
+                          "children": [
+                            {
+                              "id": "14:33",
+                              "name": "NEXT GAME",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 6,
+                                  "y": 0
+                                },
+                                "dimensions": {
+                                  "width": 90,
+                                  "height": 24
+                                }
+                              },
+                              "text": "NEXT GAME",
+                              "textStyle": "style_fd1921fc",
+                              "fills": "fill_658ab2fa"
+                            },
+                            {
+                              "id": "14:55",
+                              "name": "Houston Rockets",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 192,
+                                  "y": 9
+                                },
+                                "dimensions": {
+                                  "width": 156,
+                                  "height": 36
+                                }
+                              },
+                              "text": "Houston Rockets",
+                              "textStyle": {
+                                "fontFamily": "Oswald",
+                                "fontStyle": "Medium",
+                                "fontWeight": 500,
+                                "fontSize": 24,
+                                "textAlignHorizontal": "LEFT",
+                                "textAlignVertical": "TOP"
+                              },
+                              "fills": "fill_658ab2fa"
+                            },
+                            {
+                              "id": "14:56",
+                              "name": "November 10th 2026",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 192,
+                                  "y": 45
+                                },
+                                "dimensions": {
+                                  "width": 142,
+                                  "height": 21
+                                }
+                              },
+                              "text": "November 10th 2026",
+                              "textStyle": "style_302562df",
+                              "fills": "fill_658ab2fa"
+                            },
+                            {
+                              "id": "14:59",
+                              "name": "Chase Center, SF",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 192,
+                                  "y": 69
+                                },
+                                "dimensions": {
+                                  "width": 119,
+                                  "height": 21
+                                }
+                              },
+                              "text": "Chase Center, SF",
+                              "textStyle": "style_302562df",
+                              "fills": "fill_658ab2fa"
+                            },
+                            {
+                              "id": "14:64",
+                              "name": "Regular Season",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 0,
+                                  "y": 77
+                                },
+                                "dimensions": {
+                                  "width": 102,
+                                  "height": 20
+                                }
+                              },
+                              "text": "Regular Season",
+                              "textStyle": {
+                                "fontFamily": "Poppins",
+                                "fontStyle": "Regular",
+                                "fontWeight": 400,
+                                "fontSize": 13,
+                                "textAlignHorizontal": "LEFT",
+                                "textAlignVertical": "TOP"
+                              },
+                              "fills": "fill_658ab2fa"
+                            },
+                            {
+                              "id": "14:54",
+                              "name": "Group 8",
+                              "type": "GROUP",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 26,
+                                  "y": 14
+                                },
+                                "dimensions": {
+                                  "width": 49,
+                                  "height": 71
+                                }
+                              },
+                              "borderRadius": "0px 0px 0px 0px",
+                              "children": [
+                                {
+                                  "id": "14:34",
+                                  "name": "VS",
+                                  "type": "TEXT",
+                                  "layout": {
+                                    "mode": "none",
+                                    "sizing": {},
+                                    "locationRelativeToParent": {
+                                      "x": 0,
+                                      "y": 0
+                                    },
+                                    "dimensions": {
+                                      "width": 49,
+                                      "height": 71
+                                    }
+                                  },
+                                  "text": "VS",
+                                  "textStyle": {
+                                    "fontFamily": "Oswald",
+                                    "fontStyle": "Medium",
+                                    "fontWeight": 500,
+                                    "fontSize": 48,
+                                    "textAlignHorizontal": "LEFT",
+                                    "textAlignVertical": "TOP"
+                                  },
+                                  "fills": "fill_658ab2fa"
+                                }
+                              ]
+                            },
+                            {
+                              "id": "14:51",
+                              "name": "image 13",
+                              "type": "RECTANGLE",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 102,
+                                  "y": 15
+                                },
+                                "dimensions": {
+                                  "width": 80,
+                                  "height": 75
+                                }
+                              },
+                              "fills": [
+                                {
+                                  "type": "IMAGE",
+                                  "imageRef": "ef2a50866488b782bf9a706590e8be6cc6d6f528",
+                                  "scaleMode": "FILL",
+                                  "objectFit": "cover",
+                                  "isBackground": false,
+                                  "imageDownloadArguments": {
+                                    "needsCropping": false,
+                                    "requiresImageDimensions": false
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "14:68",
+                          "name": "Frame 2",
+                          "type": "FRAME",
+                          "layout": {
+                            "mode": "none",
+                            "sizing": {},
+                            "locationRelativeToParent": {
+                              "x": 372,
+                              "y": 0
+                            },
+                            "dimensions": {
+                              "width": 158,
+                              "height": 102
+                            }
+                          },
+                          "children": [
+                            {
+                              "id": "14:65",
+                              "name": "Rectangle 35",
+                              "type": "RECTANGLE",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 0,
+                                  "y": 0
+                                },
+                                "dimensions": {
+                                  "width": 158,
+                                  "height": 102
+                                }
+                              },
+                              "fills": [
+                                "rgba(19, 54, 119, 0.2)"
+                              ],
+                              "strokes": "fill_d4cfee18",
+                              "strokeWeight": "1px",
+                              "borderRadius": "6px"
+                            },
+                            {
+                              "id": "14:72",
+                              "name": "Group 9",
+                              "type": "GROUP",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 18,
+                                  "y": 13
+                                },
+                                "dimensions": {
+                                  "width": 122,
+                                  "height": 72
+                                }
+                              },
+                              "borderRadius": "0px 0px 0px 0px",
+                              "children": [
+                                {
+                                  "id": "14:69",
+                                  "name": "Win Propability",
+                                  "type": "TEXT",
+                                  "layout": {
+                                    "mode": "none",
+                                    "sizing": {},
+                                    "locationRelativeToParent": {
+                                      "x": 0,
+                                      "y": 0
+                                    },
+                                    "dimensions": {
+                                      "width": 122,
+                                      "height": 24
+                                    }
+                                  },
+                                  "text": "Win Propability",
+                                  "textStyle": "style_fd1921fc",
+                                  "fills": "fill_658ab2fa"
+                                },
+                                {
+                                  "id": "14:71",
+                                  "name": "80%",
+                                  "type": "TEXT",
+                                  "layout": {
+                                    "mode": "none",
+                                    "sizing": {},
+                                    "locationRelativeToParent": {
+                                      "x": 26,
+                                      "y": 24
+                                    },
+                                    "dimensions": {
+                                      "width": 70,
+                                      "height": 48
+                                    }
+                                  },
+                                  "text": "80%",
+                                  "textStyle": {
+                                    "fontFamily": "Poppins",
+                                    "fontStyle": "Bold",
+                                    "fontWeight": 700,
+                                    "fontSize": 32,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "TOP"
+                                  },
+                                  "fills": "fill_d4cfee18"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "14:82",
+                          "name": "Group 10",
+                          "type": "GROUP",
+                          "layout": {
+                            "mode": "none",
+                            "sizing": {},
+                            "locationRelativeToParent": {
+                              "x": 540,
+                              "y": 31
+                            },
+                            "dimensions": {
+                              "width": 147,
+                              "height": 40
+                            }
+                          },
+                          "borderRadius": "6px",
+                          "children": [
+                            {
+                              "id": "14:74",
+                              "name": "Rectangle 36",
+                              "type": "RECTANGLE",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 0,
+                                  "y": 0
+                                },
+                                "dimensions": {
+                                  "width": 147,
+                                  "height": 40
+                                }
+                              },
+                              "fills": [
+                                "#0A2250"
+                              ],
+                              "borderRadius": "6px"
+                            },
+                            {
+                              "id": "14:80",
+                              "name": "Change Team",
+                              "type": "TEXT",
+                              "layout": {
+                                "mode": "none",
+                                "sizing": {},
+                                "locationRelativeToParent": {
+                                  "x": 16,
+                                  "y": 8
+                                },
+                                "dimensions": {
+                                  "width": 116,
+                                  "height": 24
+                                }
+                              },
+                              "text": "Change Team",
+                              "textStyle": "style_fd1921fc",
+                              "fills": "fill_658ab2fa"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "8:43",
+              "name": "Rectangle 20",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 368,
+                  "y": 573
+                },
+                "dimensions": {
+                  "width": 578,
+                  "height": 295
+                }
+              },
+              "fills": "fill_2af8b51a",
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "2px",
+              "borderRadius": "12px"
+            },
+            {
+              "id": "12:22",
+              "name": "Rectangle 31",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 974,
+                  "y": 573
+                },
+                "dimensions": {
+                  "width": 578,
+                  "height": 295
+                }
+              },
+              "fills": "fill_2af8b51a",
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "2px",
+              "borderRadius": "12px"
+            },
+            {
+              "id": "8:45",
+              "name": "Rectangle 22",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 1605,
+                  "y": 573
+                },
+                "dimensions": {
+                  "width": 290,
+                  "height": 477
+                }
+              },
+              "fills": "fill_2af8b51a",
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "2px",
+              "borderRadius": "12px"
+            },
+            {
+              "id": "8:44",
+              "name": "Rectangle 21",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 368,
+                  "y": 911
+                },
+                "dimensions": {
+                  "width": 1184,
+                  "height": 366
+                }
+              },
+              "fills": "fill_2af8b51a",
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "2px",
+              "borderRadius": "12px"
+            },
+            {
+              "id": "14:101",
+              "name": "Group 16",
+              "type": "GROUP",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 671,
+                  "y": 181
+                },
+                "dimensions": {
+                  "width": 275,
+                  "height": 174
+                }
+              },
+              "borderRadius": "12px",
+              "children": [
+                {
+                  "id": "8:35",
+                  "name": "Rectangle 13",
+                  "template": "EL-6d094a93"
+                },
+                {
+                  "id": "14:97",
+                  "name": "Prediction W/L",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 78,
+                      "y": 12
+                    },
+                    "dimensions": {
+                      "width": 118,
+                      "height": 24
+                    }
+                  },
+                  "text": "Prediction W/L",
+                  "textStyle": "style_7c9944e2",
+                  "fills": "fill_ca9229da"
+                }
+              ]
+            },
+            {
+              "id": "14:100",
+              "name": "Group 15",
+              "type": "GROUP",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 368,
+                  "y": 181
+                },
+                "dimensions": {
+                  "width": 275,
+                  "height": 174
+                }
+              },
+              "borderRadius": "12px",
+              "children": [
+                {
+                  "id": "8:32",
+                  "name": "Rectangle 10",
+                  "template": "EL-6d094a93"
+                },
+                {
+                  "id": "14:99",
+                  "name": "Current Rank",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 76,
+                      "y": 12
+                    },
+                    "dimensions": {
+                      "width": 108,
+                      "height": 24
+                    }
+                  },
+                  "text": "Current Rank",
+                  "textStyle": "style_7c9944e2",
+                  "fills": "fill_ca9229da"
+                }
+              ]
+            },
+            {
+              "id": "14:102",
+              "name": "Group 17",
+              "type": "GROUP",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 974,
+                  "y": 181
+                },
+                "dimensions": {
+                  "width": 275,
+                  "height": 174
+                }
+              },
+              "borderRadius": "12px",
+              "children": [
+                {
+                  "id": "8:40",
+                  "name": "Rectangle 17",
+                  "template": "EL-6d094a93"
+                },
+                {
+                  "id": "14:95",
+                  "name": "Games Live Today",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 60,
+                      "y": 12
+                    },
+                    "dimensions": {
+                      "width": 149,
+                      "height": 24
+                    }
+                  },
+                  "text": "Games Live Today",
+                  "textStyle": "style_7c9944e2",
+                  "fills": "fill_ca9229da"
+                }
+              ]
+            },
+            {
+              "id": "14:88",
+              "name": "Group 14",
+              "type": "GROUP",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 1277,
+                  "y": 181
+                },
+                "dimensions": {
+                  "width": 275,
+                  "height": 174
+                }
+              },
+              "borderRadius": "0px 0px 0px 0px",
+              "children": [
+                {
+                  "id": "8:41",
+                  "name": "Rectangle 18",
+                  "template": "EL-6d094a93"
+                },
+                {
+                  "id": "14:86",
+                  "name": "Prediction Accuracy",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 55,
+                      "y": 12
+                    },
+                    "dimensions": {
+                      "width": 165,
+                      "height": 24
+                    }
+                  },
+                  "text": "Prediction Accuracy",
+                  "textStyle": "style_7c9944e2",
+                  "fills": "fill_ca9229da"
+                },
+                {
+                  "id": "14:94",
+                  "name": "This Week",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 100,
+                      "y": 135
+                    },
+                    "dimensions": {
+                      "width": 76,
+                      "height": 23
+                    }
+                  },
+                  "text": "This Week",
+                  "textStyle": {
+                    "fontFamily": "Poppins",
+                    "fontStyle": "Medium",
+                    "fontWeight": 500,
+                    "fontSize": 15,
+                    "textAlignHorizontal": "CENTER",
+                    "textAlignVertical": "TOP"
+                  },
+                  "fills": [
+                    "#989DA6"
+                  ]
+                },
+                {
+                  "id": "14:89",
+                  "name": "67%",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 121,
+                      "y": 51
+                    },
+                    "dimensions": {
+                      "width": 97,
+                      "height": 72
+                    }
+                  },
+                  "text": "67%",
+                  "textStyle": {
+                    "fontFamily": "Poppins",
+                    "fontStyle": "SemiBold",
+                    "fontWeight": 600,
+                    "fontSize": 48,
+                    "textAlignHorizontal": "CENTER",
+                    "textAlignVertical": "TOP"
+                  },
+                  "fills": [
+                    "#00AE46"
+                  ]
+                },
+                {
+                  "id": "14:90",
+                  "name": "at-icons:bullseye",
+                  "type": "IMAGE-SVG",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 58,
+                      "y": 51
+                    },
+                    "dimensions": {
+                      "width": 63,
+                      "height": 63
+                    }
+                  },
+                  "fills": []
+                }
+              ]
+            },
+            {
+              "id": "8:38",
+              "name": "Rectangle 15",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 1605,
+                  "y": 163
+                },
+                "dimensions": {
+                  "width": 290,
+                  "height": 384
+                }
+              },
+              "fills": "fill_2af8b51a",
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "2px",
+              "borderRadius": "12px"
+            },
+            {
+              "id": "8:39",
+              "name": "Rectangle 16",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 25,
+                  "y": 124
+                },
+                "dimensions": {
+                  "width": 290,
+                  "height": 1021
+                }
+              },
+              "fills": "fill_2af8b51a",
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "2px",
+              "borderRadius": "12px"
+            },
+            {
+              "id": "12:9",
+              "name": "CONFERENCE STANDING",
+              "type": "TEXT",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 41,
+                  "y": 152
+                },
+                "dimensions": {
+                  "width": 209,
+                  "height": 36
+                }
+              },
+              "text": "CONFERENCE STANDING",
+              "textStyle": {
+                "fontFamily": "Oswald",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 24,
+                "textAlignHorizontal": "LEFT",
+                "textAlignVertical": "TOP"
+              },
+              "fills": "fill_ca9229da"
+            },
+            {
+              "id": "12:11",
+              "name": "EASTERN CONFERENCE",
+              "type": "TEXT",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 40,
+                  "y": 718
+                },
+                "dimensions": {
+                  "width": 165,
+                  "height": 30
+                }
+              },
+              "text": "EASTERN CONFERENCE",
+              "textStyle": "style_71a7ca94",
+              "fills": "fill_ef0391ef"
+            },
+            {
+              "id": "12:19",
+              "name": "WESTERN CONFERENCE",
+              "type": "TEXT",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 41,
+                  "y": 220
+                },
+                "dimensions": {
+                  "width": 170,
+                  "height": 30
+                }
+              },
+              "text": "WESTERN CONFERENCE",
+              "textStyle": "style_71a7ca94",
+              "fills": "fill_ef0391ef"
+            },
+            {
+              "id": "12:10",
+              "name": "Line 1",
+              "type": "LINE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 41,
+                  "y": 199
+                },
+                "dimensions": {
+                  "width": 258,
+                  "height": 0
+                }
+              },
+              "strokes": "fill_7cf287d2",
+              "strokeWeight": "1px",
+              "strokeAlign": "CENTER"
+            },
+            {
+              "id": "12:15",
+              "name": "image 6",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 41,
+                  "y": 250
+                },
+                "dimensions": {
+                  "width": 242,
+                  "height": 457
+                }
+              },
+              "fills": [
+                {
+                  "type": "IMAGE",
+                  "imageRef": "e32415952d4cb98359d0c9908daec6ec46c8fd72",
+                  "scaleMode": "STRETCH",
+                  "objectFit": "fill",
+                  "isBackground": false,
+                  "imageDownloadArguments": {
+                    "needsCropping": true,
+                    "requiresImageDimensions": false,
+                    "cropTransform": [
+                      [
+                        0.6740946769714355,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        0.6934749484062195,
+                        0
+                      ]
+                    ],
+                    "filenameSuffix": "1b1973"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "12:20",
+              "name": "image 8",
+              "type": "RECTANGLE",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 40,
+                  "y": 748
+                },
+                "dimensions": {
+                  "width": 242,
+                  "height": 325
+                }
+              },
+              "fills": [
+                {
+                  "type": "IMAGE",
+                  "imageRef": "e32415952d4cb98359d0c9908daec6ec46c8fd72",
+                  "scaleMode": "STRETCH",
+                  "objectFit": "fill",
+                  "isBackground": false,
+                  "imageDownloadArguments": {
+                    "needsCropping": true,
+                    "requiresImageDimensions": false,
+                    "cropTransform": [
+                      [
+                        0.6740946769714355,
+                        0,
+                        0
+                      ],
+                      [
+                        0,
+                        0.4931715130805969,
+                        0
+                      ]
+                    ],
+                    "filenameSuffix": "5b0fed"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "12:39",
+              "name": "Group 4",
+              "type": "IMAGE-SVG",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 1750,
+                  "y": 34
+                },
+                "dimensions": {
+                  "width": 72,
+                  "height": 72
+                }
+              }
+            },
+            {
+              "id": "14:110",
+              "name": "My Team",
+              "type": "TEXT",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 919,
+                  "y": 39
+                },
+                "dimensions": {
+                  "width": 123,
+                  "height": 53
+                }
+              },
+              "text": "My Team",
+              "textStyle": "style_512ce521",
+              "fills": "fill_ed0e54d2"
+            },
+            {
+              "id": "15:2",
+              "name": "IKnowBall",
+              "type": "TEXT",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 82,
+                  "y": 39
+                },
+                "dimensions": {
+                  "width": 159,
+                  "height": 59
+                }
+              },
+              "text": "IKnowBall",
+              "textStyle": {
+                "fontFamily": "Oswald",
+                "fontStyle": "SemiBold",
+                "fontWeight": 600,
+                "fontSize": 40,
+                "textAlignHorizontal": "CENTER",
+                "textAlignVertical": "TOP"
+              },
+              "fills": "fill_ef0391ef"
+            },
+            {
+              "id": "14:111",
+              "name": "Schedule",
+              "type": "TEXT",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 1199,
+                  "y": 39
+                },
+                "dimensions": {
+                  "width": 131,
+                  "height": 53
+                }
+              },
+              "text": "Schedule",
+              "textStyle": "style_512ce521",
+              "fills": "fill_ed0e54d2"
+            },
+            {
+              "id": "14:113",
+              "name": "Group 18",
+              "type": "GROUP",
+              "layout": {
+                "mode": "none",
+                "sizing": {},
+                "locationRelativeToParent": {
+                  "x": 615,
+                  "y": 39
+                },
+                "dimensions": {
+                  "width": 147,
+                  "height": 57
+                }
+              },
+              "borderRadius": "6px",
+              "children": [
+                {
+                  "id": "14:114",
+                  "name": "Rectangle 37",
+                  "type": "RECTANGLE",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 0,
+                      "y": 53
+                    },
+                    "dimensions": {
+                      "width": 147,
+                      "height": 4
+                    }
+                  },
+                  "fills": "fill_ef0391ef",
+                  "borderRadius": "6px"
+                },
+                {
+                  "id": "14:115",
+                  "name": "Overview",
+                  "type": "TEXT",
+                  "layout": {
+                    "mode": "none",
+                    "sizing": {},
+                    "locationRelativeToParent": {
+                      "x": 10,
+                      "y": 0
+                    },
+                    "dimensions": {
+                      "width": 128,
+                      "height": 53
+                    }
+                  },
+                  "text": "Overview",
+                  "textStyle": "style_512ce521",
+                  "fills": "fill_ef0391ef"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "5:19",
+          "name": "Rectangle 6",
+          "type": "RECTANGLE",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 1856,
+              "height": 252
+            }
+          },
+          "fills": "fill_fef61db7"
+        },
+        {
+          "id": "5:11",
+          "name": "Rectangle 1",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": [
+            "#F7F8FA"
+          ]
+        },
+        {
+          "id": "5:13",
+          "name": "Rectangle 2",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "5:14",
+          "name": "Rectangle 3",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": "fill_ca9229da"
+        },
+        {
+          "id": "5:15",
+          "name": "Rectangle 4",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": [
+            "#71717A"
+          ]
+        },
+        {
+          "id": "5:16",
+          "name": "Rectangle 5",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": [
+            "#C96832"
+          ]
+        },
+        {
+          "id": "5:24",
+          "name": "Rectangle 7",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": [
+            "#285B4D"
+          ]
+        },
+        {
+          "id": "5:26",
+          "name": "Rectangle 8",
+          "type": "RECTANGLE",
+          "layout": "layout_ef458385",
+          "fills": [
+            "#E4B544"
+          ]
+        },
+        {
+          "id": "5:12",
+          "name": "background",
+          "type": "TEXT",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 270,
+              "height": 116
+            }
+          },
+          "text": "background\\n",
+          "textStyle": "style_9cdb7aee",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "5:17",
+          "name": "Card",
+          "type": "TEXT",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 109,
+              "height": 58
+            }
+          },
+          "text": "Card",
+          "textStyle": "style_9cdb7aee",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "5:18",
+          "name": "TExt",
+          "template": "EL-dcab85a6"
+        },
+        {
+          "id": "5:20",
+          "name": "TExt",
+          "template": "EL-dcab85a6"
+        },
+        {
+          "id": "5:22",
+          "name": "Secondary text",
+          "type": "TEXT",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 233,
+              "height": 116
+            }
+          },
+          "text": "Secondary text",
+          "textStyle": "style_9cdb7aee",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "5:23",
+          "name": "Primary",
+          "type": "TEXT",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 233,
+              "height": 58
+            }
+          },
+          "text": "Primary",
+          "textStyle": "style_9cdb7aee",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "5:25",
+          "name": "secondary",
+          "type": "TEXT",
+          "layout": "layout_7dd13011",
+          "text": "secondary",
+          "textStyle": "style_9cdb7aee",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "5:27",
+          "name": "Highlight",
+          "type": "TEXT",
+          "layout": "layout_7dd13011",
+          "text": "Highlight",
+          "textStyle": "style_9cdb7aee",
+          "fills": "fill_658ab2fa"
+        },
+        {
+          "id": "12:2",
+          "name": "Rectangle 31",
+          "type": "RECTANGLE",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 57,
+              "height": 57
+            }
+          },
+          "fills": "fill_fef61db7"
+        },
+        {
+          "id": "12:3",
+          "name": "Rectangle 32",
+          "type": "RECTANGLE",
+          "layout": "layout_b810cd11",
+          "fills": [
+            "#D7A542"
+          ]
+        },
+        {
+          "id": "12:4",
+          "name": "Rectangle 33",
+          "type": "RECTANGLE",
+          "layout": {
+            "mode": "none",
+            "sizing": {},
+            "dimensions": {
+              "width": 213,
+              "height": 214
+            }
+          },
+          "fills": [
+            "#A6ACB4"
+          ]
+        },
+        {
+          "id": "12:5",
+          "name": "Rectangle 34",
+          "type": "RECTANGLE",
+          "layout": "layout_b810cd11",
+          "fills": "fill_ef0391ef"
+        }
+      ]
+    }
+  ],
+  "components": {},
+  "componentSets": {},
+  "globalVars": {
+    "styles": {
+      "fill_658ab2fa": [
+        "#FFFFFF"
+      ],
+      "fill_7cf287d2": [
+        "#E8E3DD"
+      ],
+      "fill_d4cfee18": [
+        "#FDB927"
+      ],
+      "style_4d9853a1": {
+        "fontFamily": "Poppins",
+        "fontStyle": "SemiBold",
+        "fontWeight": 600,
+        "fontSize": 24,
+        "textAlignHorizontal": "LEFT",
+        "textAlignVertical": "TOP"
+      },
+      "style_fd1921fc": {
+        "fontFamily": "Poppins",
+        "fontStyle": "Medium",
+        "fontWeight": 500,
+        "fontSize": 16,
+        "textAlignHorizontal": "LEFT",
+        "textAlignVertical": "TOP"
+      },
+      "fill_3ab53269": [
+        "rgba(255, 255, 255, 0.21)"
+      ],
+      "style_302562df": {
+        "fontFamily": "Poppins",
+        "fontStyle": "Regular",
+        "fontWeight": 400,
+        "fontSize": 14,
+        "textAlignHorizontal": "LEFT",
+        "textAlignVertical": "TOP"
+      },
+      "fill_2af8b51a": [
+        "#FEFEFE"
+      ],
+      "style_7c9944e2": {
+        "fontFamily": "Poppins",
+        "fontStyle": "SemiBold",
+        "fontWeight": 600,
+        "fontSize": 16,
+        "textAlignHorizontal": "CENTER",
+        "textAlignVertical": "TOP"
+      },
+      "fill_ca9229da": [
+        "#20201E"
+      ],
+      "style_71a7ca94": {
+        "fontFamily": "Oswald",
+        "fontStyle": "Regular",
+        "fontWeight": 400,
+        "fontSize": 20,
+        "textAlignHorizontal": "LEFT",
+        "textAlignVertical": "TOP"
+      },
+      "fill_ef0391ef": [
+        "#882233"
+      ],
+      "style_512ce521": {
+        "fontFamily": "Oswald",
+        "fontStyle": "SemiBold",
+        "fontWeight": 600,
+        "fontSize": 36,
+        "textAlignHorizontal": "CENTER",
+        "textAlignVertical": "TOP"
+      },
+      "fill_ed0e54d2": [
+        "#A7ADB3"
+      ],
+      "fill_fef61db7": [
+        "#D9D9D9"
+      ],
+      "layout_ef458385": {
+        "mode": "none",
+        "sizing": {},
+        "dimensions": {
+          "width": 184,
+          "height": 184
+        }
+      },
+      "style_9cdb7aee": {
+        "fontFamily": "Inter",
+        "fontStyle": "Regular",
+        "fontWeight": 400,
+        "fontSize": 48,
+        "textAlignHorizontal": "CENTER",
+        "textAlignVertical": "TOP"
+      },
+      "layout_7dd13011": {
+        "mode": "none",
+        "sizing": {},
+        "dimensions": {
+          "width": 253,
+          "height": 58
+        }
+      },
+      "layout_b810cd11": {
+        "mode": "none",
+        "sizing": {},
+        "dimensions": {
+          "width": 214,
+          "height": 214
+        }
+      }
+    }
+  },
+  "elements": {
+    "EL-6d094a93": {
+      "type": "RECTANGLE",
+      "layout": {
+        "mode": "none",
+        "sizing": {},
+        "locationRelativeToParent": {
+          "x": 0,
+          "y": 0
+        },
+        "dimensions": {
+          "width": 275,
+          "height": 174
+        }
+      },
+      "fills": "fill_2af8b51a",
+      "strokes": "fill_7cf287d2",
+      "strokeWeight": "2px",
+      "borderRadius": "12px"
+    },
+    "EL-dcab85a6": {
+      "type": "TEXT",
+      "layout": {
+        "mode": "none",
+        "sizing": {},
+        "dimensions": {
+          "width": 103,
+          "height": 58
+        }
+      },
+      "text": "TExt",
+      "textStyle": "style_9cdb7aee",
+      "fills": "fill_658ab2fa"
+    }
+  }
+}

@@ -10,6 +10,7 @@ export interface NBATeam {
   arena: string;
   headCoach: string;
   primaryColor: string;
+  secondaryColor: string;
 }
 
 const L = 'https://cdn.nba.com/logos/nba';
@@ -29,6 +30,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Ball Arena',
     headCoach: 'David Adelman',
     primaryColor: '#0E2240',
+    secondaryColor: '#FEC524',
   },
   {
     externalId: 1610612750,
@@ -42,6 +44,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Target Center',
     headCoach: 'Chris Finch',
     primaryColor: '#0C2340',
+    secondaryColor: '#236192',
   },
   {
     externalId: 1610612760,
@@ -55,6 +58,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Paycom Center',
     headCoach: 'Mark Daigneault',
     primaryColor: '#007AC1',
+    secondaryColor: '#EF3B24',
   },
   {
     externalId: 1610612757,
@@ -68,6 +72,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Moda Center',
     headCoach: 'Chauncey Billups',
     primaryColor: '#E03A3E',
+    secondaryColor: '#000000',
   },
   {
     externalId: 1610612762,
@@ -81,6 +86,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Delta Center',
     headCoach: 'Will Hardy',
     primaryColor: '#002B5C',
+    secondaryColor: '#F9A01B',
   },
   // Pacific
   {
@@ -95,6 +101,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Chase Center',
     headCoach: 'Steve Kerr',
     primaryColor: '#1D428A',
+    secondaryColor: '#FDB927',
   },
   {
     externalId: 1610612746,
@@ -108,6 +115,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Intuit Dome',
     headCoach: 'Tyronn Lue',
     primaryColor: '#C8102E',
+    secondaryColor: '#1D428A',
   },
   {
     externalId: 1610612747,
@@ -121,6 +129,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Crypto.com Arena',
     headCoach: 'JJ Redick',
     primaryColor: '#552583',
+    secondaryColor: '#FDB927',
   },
   {
     externalId: 1610612756,
@@ -134,6 +143,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Footprint Center',
     headCoach: 'Mike Budenholzer',
     primaryColor: '#1D1160',
+    secondaryColor: '#E56020',
   },
   {
     externalId: 1610612758,
@@ -147,6 +157,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Golden 1 Center',
     headCoach: 'Doug Christie',
     primaryColor: '#5A2D81',
+    secondaryColor: '#63727A',
   },
   // Southwest
   {
@@ -161,6 +172,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'American Airlines Center',
     headCoach: 'Jason Kidd',
     primaryColor: '#00538C',
+    secondaryColor: '#002B5E',
   },
   {
     externalId: 1610612745,
@@ -174,6 +186,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Toyota Center',
     headCoach: 'Ime Udoka',
     primaryColor: '#CE1141',
+    secondaryColor: '#000000',
   },
   {
     externalId: 1610612763,
@@ -187,6 +200,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'FedExForum',
     headCoach: 'Taylor Jenkins',
     primaryColor: '#5D76A9',
+    secondaryColor: '#12173F',
   },
   {
     externalId: 1610612740,
@@ -200,6 +214,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Smoothie King Center',
     headCoach: 'Willie Green',
     primaryColor: '#0C2340',
+    secondaryColor: '#85714D',
   },
   {
     externalId: 1610612759,
@@ -213,6 +228,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Frost Bank Center',
     headCoach: 'Mitch Johnson',
     primaryColor: '#C4CED4',
+    secondaryColor: '#000000',
   },
 
   // ── Eastern Conference ──────────────────────────────────────
@@ -229,6 +245,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'TD Garden',
     headCoach: 'Joe Mazzulla',
     primaryColor: '#007A33',
+    secondaryColor: '#BA9653',
   },
   {
     externalId: 1610612751,
@@ -242,6 +259,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Barclays Center',
     headCoach: 'Jordi Fernández',
     primaryColor: '#000000',
+    secondaryColor: '#FFFFFF',
   },
   {
     externalId: 1610612752,
@@ -255,6 +273,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Madison Square Garden',
     headCoach: 'Tom Thibodeau',
     primaryColor: '#006BB6',
+    secondaryColor: '#F58426',
   },
   {
     externalId: 1610612755,
@@ -268,6 +287,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Wells Fargo Center',
     headCoach: 'Nick Nurse',
     primaryColor: '#006BB6',
+    secondaryColor: '#ED174C',
   },
   {
     externalId: 1610612761,
@@ -281,6 +301,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Scotiabank Arena',
     headCoach: 'Darko Rajaković',
     primaryColor: '#CE1141',
+    secondaryColor: '#000000',
   },
   // Central
   {
@@ -295,6 +316,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'United Center',
     headCoach: 'Billy Donovan',
     primaryColor: '#CE1141',
+    secondaryColor: '#000000',
   },
   {
     externalId: 1610612739,
@@ -308,6 +330,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Rocket Mortgage FieldHouse',
     headCoach: 'Kenny Atkinson',
     primaryColor: '#860038',
+    secondaryColor: '#FDBB30',
   },
   {
     externalId: 1610612765,
@@ -321,6 +344,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Little Caesars Arena',
     headCoach: 'J.B. Bickerstaff',
     primaryColor: '#C8102E',
+    secondaryColor: '#006BB6',
   },
   {
     externalId: 1610612754,
@@ -334,6 +358,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Gainbridge Fieldhouse',
     headCoach: 'Rick Carlisle',
     primaryColor: '#002D62',
+    secondaryColor: '#FDBB30',
   },
   {
     externalId: 1610612749,
@@ -347,6 +372,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Fiserv Forum',
     headCoach: 'Doc Rivers',
     primaryColor: '#00471B',
+    secondaryColor: '#EEE1C6',
   },
   // Southeast
   {
@@ -361,6 +387,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'State Farm Arena',
     headCoach: 'Quin Snyder',
     primaryColor: '#E03A3E',
+    secondaryColor: '#C1D32F',
   },
   {
     externalId: 1610612766,
@@ -374,6 +401,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Spectrum Center',
     headCoach: 'Charles Lee',
     primaryColor: '#1D1160',
+    secondaryColor: '#00788C',
   },
   {
     externalId: 1610612748,
@@ -387,6 +415,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Kaseya Center',
     headCoach: 'Erik Spoelstra',
     primaryColor: '#98002E',
+    secondaryColor: '#F9A01B',
   },
   {
     externalId: 1610612753,
@@ -400,6 +429,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Kia Center',
     headCoach: 'Jamahl Mosley',
     primaryColor: '#0077C0',
+    secondaryColor: '#C4CED4',
   },
   {
     externalId: 1610612764,
@@ -413,6 +443,7 @@ export const nbaTeams: NBATeam[] = [
     arena: 'Capital One Arena',
     headCoach: 'Brian Keefe',
     primaryColor: '#002B5C',
+    secondaryColor: '#E31837',
   },
 ];
 
