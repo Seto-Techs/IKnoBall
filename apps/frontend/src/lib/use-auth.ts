@@ -7,9 +7,8 @@ export interface AuthUser {
   email: string;
   emailVerified: boolean;
   image: string | null;
-  favoriteTeam?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthSession {
@@ -34,9 +33,8 @@ const MOCK_USER: AuthUser = {
   email: 'admin@iknoball.dev',
   emailVerified: true,
   image: null,
-  favoriteTeam: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 const MOCK_SESSION: AuthSession = {
@@ -76,15 +74,6 @@ export function useSession() {
   });
 }
 
-export class AuthError extends Error {
-  code: string;
-  constructor(message: string, code: string) {
-    super(message);
-    this.name = 'AuthError';
-    this.code = code;
-  }
-}
-
 export function useSignIn() {
   const qc = useQueryClient();
 
@@ -96,14 +85,11 @@ export function useSignIn() {
         email,
         password,
       });
-      if (error) throw new AuthError(error.message ?? 'Sign in failed', error.code ?? 'UNKNOWN');
+      if (error) throw new Error(error.message ?? error.code ?? 'Sign in failed');
       return data as { token: string; user: AuthUser };
     },
     onSuccess: () => {
       qc.setQueryData(['session'], MOCK_SESSION);
-      if (!isMock()) {
-        qc.invalidateQueries({ queryKey: ['session'] });
-      }
     },
   });
 }

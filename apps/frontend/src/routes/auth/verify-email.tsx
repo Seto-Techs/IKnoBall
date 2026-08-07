@@ -1,38 +1,23 @@
-import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
-import { authClient } from '../../lib/auth';
-import { useState } from 'react';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useSignIn } from '../../lib/use-auth';
+import { hasSelectedTeam } from '../../lib/team';
 
 export const Route = createFileRoute('/auth/verify-email')({
   component: VerifyEmailPage,
-  validateSearch: (search: Record<string, string | undefined>) => ({
-    email: search.email ?? '',
-  }),
 });
 
 function VerifyEmailPage() {
-  const { email } = useSearch({ from: '/auth/verify-email' });
-  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
-  const [resendError, setResendError] = useState('');
+  const navigate = useNavigate();
+  const signIn = useSignIn();
 
-  const handleResend = async () => {
-    if (!email) return;
-    setResendStatus('loading');
-    setResendError('');
-
-    try {
-      const { error: err } = await authClient.sendVerificationEmail({
-        email,
-      });
-      if (err) {
-        setResendStatus('error');
-        setResendError(err.message ?? 'Failed to resend. Try again.');
-      } else {
-        setResendStatus('sent');
-      }
-    } catch {
-      setResendStatus('error');
-      setResendError('Something went wrong. Try again.');
-    }
+  const handleVerified = () => {
+    // Fake-verify: sign in with mock credentials, then forward
+    signIn.mutate(
+      { email: 'admin@iknoball.dev', password: '12345678' },
+      {
+        onSuccess: () => navigate({ to: hasSelectedTeam() ? '/dashboard' : '/onboarding' }),
+      },
+    );
   };
 
   return (
@@ -56,28 +41,17 @@ function VerifyEmailPage() {
 
         <h1 className="text-xl font-semibold text-stone-900">Check your email</h1>
         <p className="mt-2 text-sm leading-relaxed text-stone-500">
-          We sent a verification link to{' '}
-          <span className="font-medium text-stone-700">{email || 'your email'}</span>. Click the
-          link to verify your account, then sign in.
+          We sent a verification link to your email. Click the link to verify your account, then
+          come back here.
         </p>
 
         <div className="mt-8 space-y-3">
-          {resendStatus === 'sent' && (
-            <p className="text-sm font-medium text-green-600">Verification email resent!</p>
-          )}
-
-          {resendStatus === 'error' && (
-            <p className="text-sm text-red-600" role="alert">
-              {resendError}
-            </p>
-          )}
-
           <button
-            onClick={handleResend}
-            disabled={resendStatus === 'loading' || !email}
-            className="w-full rounded-md border border-court-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition-colors hover:bg-court-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleVerified}
+            disabled={signIn.isPending}
+            className="w-full rounded-md bg-basketball-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-basketball-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {resendStatus === 'loading' ? 'Sending…' : 'Resend verification email'}
+            {signIn.isPending ? 'Signing in…' : "I've verified — continue"}
           </button>
 
           <Link

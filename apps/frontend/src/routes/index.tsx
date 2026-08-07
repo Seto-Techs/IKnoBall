@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useSession } from '../lib/use-auth';
+import { hasSelectedTeam } from '../lib/team';
 import { useEffect } from 'react';
 
 export const Route = createFileRoute('/')({
@@ -8,14 +8,12 @@ export const Route = createFileRoute('/')({
 
 function IndexPage() {
   const navigate = useNavigate();
-  const { data: session, isPending: sessionLoading } = useSession();
 
   useEffect(() => {
-    if (sessionLoading) return;
-    if (session?.user) {
-      navigate({ to: session.user.favoriteTeam ? '/dashboard' : '/onboarding' });
+    if (hasSelectedTeam()) {
+      navigate({ to: '/dashboard' });
     }
-  }, [session, sessionLoading, navigate]);
+  }, [navigate]);
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-20">
