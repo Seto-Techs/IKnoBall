@@ -1,23 +1,9 @@
-import { Outlet, createRootRoute, Link, useLocation, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { useSession, useSignOut } from '../lib/use-auth';
-import { ChevronDown } from 'lucide-react';
+import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
+import { useSession } from '../lib/use-auth';
 
 function Header() {
   const { data: session } = useSession();
   const user = session?.user;
-  const signOut = useSignOut();
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [menuOpen]);
 
   return (
     <header className="border-b border-court-200 bg-white">
@@ -31,36 +17,7 @@ function Header() {
 
         <div className="ml-auto flex items-center gap-3">
           {user ? (
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen((o) => !o)}
-                className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-court-100"
-              >
-                {user.name}
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-full z-20 mt-2 min-w-[10rem] rounded-lg border border-court-200 bg-white py-1 shadow-lg">
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        signOut.mutate(undefined, {
-                          onSuccess: () => navigate({ to: '/' }),
-                        });
-                      }}
-                      className="block w-full px-4 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-court-100"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <span className="text-sm text-stone-600">{user.name}</span>
           ) : (
             <>
               <Link
@@ -90,17 +47,11 @@ export const Route = createRootRoute({
     const isDashboard = pathname.startsWith('/dashboard');
 
     return (
-      <div
-        className="min-h-screen text-stone-900 antialiased"
-        style={{
-          backgroundColor: 'var(--team-bg, #faf8f6)',
-          transition: 'background-color 0.5s ease',
-        }}
-      >
-        {!isOnboarding && <Header />}
+      <div className="min-h-screen bg-court-50 text-stone-900 antialiased">
+        {!isOnboarding && !isDashboard && <Header />}
         <main
           className={
-            isOnboarding ? 'px-8 py-4' : `mx-auto px-4 py-6 ${isDashboard ? 'w-full' : 'max-w-6xl'}`
+            isOnboarding ? 'px-8 py-4' : isDashboard ? 'w-full' : 'mx-auto max-w-6xl px-4 py-6'
           }
         >
           <Outlet />

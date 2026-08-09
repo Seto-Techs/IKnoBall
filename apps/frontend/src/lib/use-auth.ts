@@ -8,8 +8,8 @@ export interface AuthUser {
   emailVerified: boolean;
   image: string | null;
   favoriteTeam?: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthSession {
@@ -35,8 +35,8 @@ const MOCK_USER: AuthUser = {
   emailVerified: true,
   image: null,
   favoriteTeam: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 const MOCK_SESSION: AuthSession = {
@@ -57,6 +57,15 @@ const isMock = () => import.meta.env.VITE_MOCK_AUTH === 'true';
 
 /* ---------- hooks ---------- */
 
+export class AuthError extends Error {
+  code: string;
+  constructor(message: string, code: string) {
+    super(message);
+    this.name = 'AuthError';
+    this.code = code;
+  }
+}
+
 export function useSession() {
   return useQuery<AuthSession | null>({
     queryKey: ['session'],
@@ -76,15 +85,6 @@ export function useSession() {
   });
 }
 
-export class AuthError extends Error {
-  code: string;
-  constructor(message: string, code: string) {
-    super(message);
-    this.name = 'AuthError';
-    this.code = code;
-  }
-}
-
 export function useSignIn() {
   const qc = useQueryClient();
 
@@ -97,7 +97,7 @@ export function useSignIn() {
         password,
       });
       if (error) throw new AuthError(error.message ?? 'Sign in failed', error.code ?? 'UNKNOWN');
-      return data as { token: string; user: AuthUser };
+      return data as unknown as { token: string; user: AuthUser };
     },
     onSuccess: () => {
       qc.setQueryData(['session'], MOCK_SESSION);
@@ -127,7 +127,7 @@ export function useSignUp() {
         password,
       });
       if (error) throw new Error(error.message ?? error.code ?? 'Sign up failed');
-      return data as { user: AuthUser };
+      return data as unknown as { user: AuthUser };
     },
   });
 }

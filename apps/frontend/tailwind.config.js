@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
@@ -40,9 +41,18 @@ export default {
           800: '#245564',
           900: '#224755',
         },
+        brand: {
+          navy: '#1C4188',
+          navyDark: '#0A2250',
+          gold: '#FDB927',
+          red: '#882233',
+          ink: '#20201E',
+          line: '#E8E3DD',
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Poppins', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        heading: ['Oswald', 'Poppins', 'system-ui', 'sans-serif'],
       },
     },
   },
