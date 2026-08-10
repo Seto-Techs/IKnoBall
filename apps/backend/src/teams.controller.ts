@@ -400,7 +400,7 @@ export class TeamsController {
   }
 
   @Get(':abbr/players')
-  @ApiOperation({ summary: 'Top 3 players by combined per-game stats for a team' })
+  @ApiOperation({ summary: 'Top 5 players by combined per-game stats for a team' })
   @ApiDataResponse(PlayerStatResponse, HttpStatus.OK, 'Top players.', 'Top players.', true)
   async getTopPlayers(@Param('abbr') abbr: string): Promise<ApiResponse<PlayerStatResponse[]>> {
     await this.findTeam(abbr);
@@ -450,7 +450,7 @@ export class TeamsController {
         ),
         desc(playerSeasonStats.ptsPerGame),
       )
-      .limit(3);
+      .limit(5);
 
     const round1 = (v: number | null) => (v == null ? 0 : Math.round(v * 10) / 10);
 
