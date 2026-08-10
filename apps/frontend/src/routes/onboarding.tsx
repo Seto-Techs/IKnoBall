@@ -55,8 +55,8 @@ function OnboardingPage() {
 
   return (
     <div
-      className="grid gap-8"
-      style={{ gridTemplateColumns: '1fr 340px', minHeight: 'calc(100vh - 80px)' }}
+      className="relative grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]"
+      style={{ minHeight: 'calc(100vh - 80px)' }}
     >
       {/* ── Left: Team Grid ─────────────────────────────────── */}
       <div className="flex flex-col justify-center">
@@ -109,8 +109,8 @@ function OnboardingPage() {
                                   text-left outline-none transition-all duration-300 ease-out
                                   ${
                                     isSelected
-                                      ? 'shadow-lg scale-[1.02]'
-                                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5'
+                                      ? 'shadow-lg scale-[1.02] translate-y-px'
+                                      : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
                                   }
                                 `}
                                 style={
@@ -183,12 +183,12 @@ function OnboardingPage() {
 
       {/* ── Right: Detail Sidebar — always rendered, animated ── */}
       <div
-        className={`sticky top-0 self-stretch rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 ease-out ${
+        className={`lg:absolute lg:inset-y-0 lg:right-0 lg:w-[340px] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 ease-out ${
           selected ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'
         }`}
       >
         {selected && (
-          <div className="flex h-full flex-col gap-3 py-3">
+          <div className="flex h-full flex-col gap-2 py-3">
             {/* Logo */}
             <div className="flex justify-center">
               <img
@@ -325,10 +325,13 @@ function OnboardingPage() {
             {/* Continue button */}
             <button
               onClick={() => {
-                saveTeam.mutate(selected.abbreviation);
-                navigate({ to: '/dashboard' });
+                if (saveTeam.isPending) return;
+                saveTeam.mutate(selected.abbreviation, {
+                  onSuccess: () => navigate({ to: '/dashboard' }),
+                });
               }}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'}`}
+              disabled={saveTeam.isPending}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
               style={{ backgroundColor: selected.primaryColor }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.filter = 'brightness(1.1)';
@@ -337,7 +340,7 @@ function OnboardingPage() {
                 e.currentTarget.style.filter = '';
               }}
             >
-              Continue
+              {saveTeam.isPending ? 'Saving…' : 'Continue'}
               <svg
                 className="h-4 w-4"
                 fill="none"
@@ -352,6 +355,12 @@ function OnboardingPage() {
                 />
               </svg>
             </button>
+
+            {saveTeam.isError && (
+              <p className="text-center text-sm font-medium text-red-600">
+                Couldn't save your team. Check your connection and try again.
+              </p>
+            )}
           </div>
         )}
       </div>
