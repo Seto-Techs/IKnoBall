@@ -1,5 +1,4 @@
 import { useRef } from 'react';
-import { nbaTeams } from '../../config/nba-teams';
 import type { TeamWithLeaders } from '../../lib/api';
 import { formatGameDate, Panel, LoadingSpinner, EmptyState } from './shared';
 
@@ -7,6 +6,7 @@ export function UpcomingGamesPanel({
   games,
   loading = false,
   userTeam,
+  teams,
 }: {
   games?: {
     id: string;
@@ -19,11 +19,14 @@ export function UpcomingGamesPanel({
   }[];
   loading?: boolean;
   userTeam?: TeamWithLeaders | null;
+  teams?: TeamWithLeaders[] | null;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const findTeam = (name: string) =>
-    nbaTeams.find((t) => t.fullName === name || t.teamName === name || t.abbreviation === name);
+    (teams ?? []).find(
+      (t) => t.fullName === name || t.teamName === name || t.abbreviation === name,
+    );
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;

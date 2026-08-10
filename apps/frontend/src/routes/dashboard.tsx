@@ -93,14 +93,25 @@ function DashboardPage() {
             />
           </div>
 
-          <HeroBanner team={team} record={record} nextGame={nextGame} onChooseTeam={chooseTeam} />
+          <HeroBanner
+            team={team}
+            record={record}
+            nextGame={nextGame}
+            onChooseTeam={chooseTeam}
+            teams={teams}
+          />
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <UpcomingGamesPanel games={games} loading={gamesLoading} userTeam={team} />
+            <UpcomingGamesPanel
+              games={games}
+              loading={gamesLoading}
+              userTeam={team}
+              teams={teams}
+            />
             <TopPlayersPanel players={players} loading={playersLoading} />
           </div>
 
-          <ScheduleTable games={games} loading={gamesLoading} />
+          <ScheduleTable games={games} loading={gamesLoading} teams={teams} />
         </main>
 
         <aside className="hidden flex-col gap-6 xl:flex">

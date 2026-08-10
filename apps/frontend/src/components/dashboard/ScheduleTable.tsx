@@ -1,15 +1,8 @@
-import { nbaTeams, type NBATeam } from '../../config/nba-teams';
+import type { TeamWithLeaders } from '../../lib/api';
 import { formatGameDate, Panel, LoadingSpinner, EmptyState } from './shared';
 
-const teamByFullName: Record<string, NBATeam> = Object.fromEntries(
-  nbaTeams.map((t) => [t.fullName, t]),
-);
-const teamByTeamName: Record<string, NBATeam> = Object.fromEntries(
-  nbaTeams.map((t) => [t.teamName, t]),
-);
-
-function TeamCell({ name }: { name: string }) {
-  const team = teamByFullName[name] ?? teamByTeamName[name];
+function TeamCell({ name, teams }: { name: string; teams?: TeamWithLeaders[] | null }) {
+  const team = (teams ?? []).find((t) => t.fullName === name || t.teamName === name);
   return (
     <span className="inline-flex items-center gap-2.5">
       {team && (
@@ -28,6 +21,7 @@ function TeamCell({ name }: { name: string }) {
 export function ScheduleTable({
   games,
   loading = false,
+  teams,
 }: {
   games?: {
     id: string;
@@ -39,6 +33,7 @@ export function ScheduleTable({
     status: string;
   }[];
   loading?: boolean;
+  teams?: TeamWithLeaders[] | null;
 }) {
   return (
     <Panel title="Schedule">
@@ -75,7 +70,7 @@ export function ScheduleTable({
                       {formatGameDate(game.gameDateTime, 'EEE, MMM d · h:mm a')}
                     </td>
                     <td className="px-5 py-3">
-                      <TeamCell name={game.awayTeam} />
+                      <TeamCell name={game.awayTeam} teams={teams} />
                     </td>
                     <td className="px-5 py-3 tabular-nums text-stone-600">
                       {game.homeScore !== null && game.awayScore !== null
@@ -83,7 +78,7 @@ export function ScheduleTable({
                         : '—'}
                     </td>
                     <td className="px-5 py-3">
-                      <TeamCell name={game.homeTeam} />
+                      <TeamCell name={game.homeTeam} teams={teams} />
                     </td>
                     <td className="px-5 py-3">
                       <span

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Panel, LoadingSpinner, EmptyState } from './shared';
 
 export function TopPlayersPanel({
@@ -12,11 +12,26 @@ export function TopPlayersPanel({
     points: number;
     rebounds: number;
     assists: number;
-    imageUrl?: string;
+    headshotUrl: string;
   }[];
   loading?: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(true);
+
+  const updateScrollState = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const epsilon = 1; // snap rounding tolerance
+    setCanScrollPrev(scrollLeft > epsilon);
+    setCanScrollNext(scrollLeft < scrollWidth - clientWidth - epsilon);
+  };
+
+  useEffect(() => {
+    updateScrollState();
+  }, [players, loading]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -33,6 +48,7 @@ export function TopPlayersPanel({
         <div className="relative flex-1">
           <div
             ref={scrollRef}
+            onScroll={updateScrollState}
             className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
           >
             {players.slice(0, 5).map((player, index) => (
@@ -46,9 +62,9 @@ export function TopPlayersPanel({
                   >
                     {index + 1}
                   </span>
-                  {player.imageUrl ? (
+                  {player.headshotUrl ? (
                     <img
-                      src={player.imageUrl}
+                      src={player.headshotUrl}
                       alt={player.name}
                       className="h-48 w-36 rounded-lg object-cover"
                     />
@@ -101,7 +117,8 @@ export function TopPlayersPanel({
           <button
             type="button"
             onClick={() => scroll('left')}
-            className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-line bg-white text-stone-500 transition-colors hover:bg-stone-50 hover:text-brand-ink"
+            disabled={!canScrollPrev}
+            className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-line bg-white text-stone-500 transition-colors hover:bg-stone-50 hover:text-brand-ink disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-stone-500"
             aria-label="Previous"
           >
             ‹
@@ -109,7 +126,8 @@ export function TopPlayersPanel({
           <button
             type="button"
             onClick={() => scroll('right')}
-            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-line bg-white text-stone-500 transition-colors hover:bg-stone-50 hover:text-brand-ink"
+            disabled={!canScrollNext}
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-line bg-white text-stone-500 transition-colors hover:bg-stone-50 hover:text-brand-ink disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-stone-500"
             aria-label="Next"
           >
             ›

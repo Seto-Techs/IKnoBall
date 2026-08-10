@@ -1,14 +1,5 @@
-import { nbaTeams, type NBATeam } from '../../config/nba-teams';
-import { mockLastFive } from '../../lib/mock-data';
-import type { TeamWithLeaders } from '../../lib/api';
+import type { TeamRecord, TeamWithLeaders } from '../../lib/api';
 import { formatGameDate } from './shared';
-
-const teamByFullName: Record<string, NBATeam> = Object.fromEntries(
-  nbaTeams.map((t) => [t.fullName, t]),
-);
-const teamByTeamName: Record<string, NBATeam> = Object.fromEntries(
-  nbaTeams.map((t) => [t.teamName, t]),
-);
 
 function hexLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -23,31 +14,40 @@ export function HeroBanner({
   record,
   nextGame,
   onChooseTeam,
+  teams,
 }: {
   team: TeamWithLeaders;
-  record?: { wins: number; losses: number } | null;
+  record?: TeamRecord | null;
   nextGame?: { homeTeam: string; awayTeam: string; gameDateTime: string } | null;
   onChooseTeam: () => void;
+  teams?: TeamWithLeaders[] | null;
 }) {
+  const teamByAbbr: Record<string, TeamWithLeaders> = Object.fromEntries(
+    (teams ?? []).map((t) => [t.abbreviation, t]),
+  );
   const opponentName = nextGame
     ? nextGame.homeTeam === team.fullName || nextGame.homeTeam === team.teamName
       ? nextGame.awayTeam
       : nextGame.homeTeam
     : null;
   const opponent = opponentName
-    ? nbaTeams.find((t) => t.fullName === opponentName || t.teamName === opponentName)
+    ? (teams ?? []).find((t) => t.fullName === opponentName || t.teamName === opponentName)
     : undefined;
-  const recentWins = mockLastFive.filter((g) => g.result === 'W').length;
-  const recentLosses = mockLastFive.length - recentWins;
+  const lastGames = record?.lastGames ?? [];
+  const recentWins = lastGames.filter((g) => g.ourScore > g.oppScore).length;
+  const recentLosses = lastGames.length - recentWins;
   const isBright = hexLuminance(team.primaryColor) > 0.45;
   const tx = isBright ? 'text-brand-ink' : 'text-white';
   const txMuted = isBright ? 'text-brand-ink/75' : 'text-white/80';
   const txHint = isBright ? 'text-brand-ink/60' : 'text-white/65';
   const rule = isBright ? 'bg-brand-ink/15' : 'bg-white/15';
 
-  const nameParts = team.fullName.split(' ');
-  const topLine = nameParts.slice(0, -1).join(' ');
-  const bottomLine = nameParts[nameParts.length - 1];
+  // Logo sits between the city/region line and the team name. Split on
+  // teamName (fullName minus the trailing teamName), not word count —
+  // "Portland Trail Blazers" renders Portland · logo · Trail Blazers
+  // without special-casing. Verified: every fullName ends with teamName.
+  const bottomLine = team.teamName;
+  const topLine = team.fullName.slice(0, -bottomLine.length).trim();
 
   return (
     <section
@@ -112,31 +112,37 @@ export function HeroBanner({
             <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${txHint}`}>
               Last 5
             </span>
-            <div className="flex gap-2.5">
-              {mockLastFive.map((game, i) => {
-                const opp = teamByFullName[game.opponent] ?? teamByTeamName[game.opponent];
-                return (
-                  <div
-                    key={i}
-                    className={`relative flex h-12 w-12 items-center justify-center rounded-lg ${isBright ? 'bg-brand-ink/10' : 'bg-white/10'}`}
-                  >
-                    {opp && (
-                      <img
-                        src={opp.logoUrl}
-                        alt=""
-                        aria-hidden="true"
-                        className="h-7 w-7 object-contain"
-                      />
-                    )}
-                    <span
-                      className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${game.result === 'W' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}
+            {lastGames.length > 0 ? (
+              <div className="flex gap-2.5">
+                {lastGames.map((game, i) => {
+                  const opp = teamByAbbr[game.opponentAbbr];
+                  const result = game.ourScore > game.oppScore ? 'W' : 'L';
+                  return (
+                    <div
+                      key={i}
+                      title={`${game.isHome ? 'vs' : '@'} ${game.opponentAbbr} · ${game.ourScore}-${game.oppScore} · ${formatGameDate(game.gameDate, 'MMM d')}`}
+                      className={`relative flex h-12 w-12 items-center justify-center rounded-lg ${isBright ? 'bg-brand-ink/10' : 'bg-white/10'}`}
                     >
-                      {game.result}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                      {opp && (
+                        <img
+                          src={opp.logoUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="h-7 w-7 object-contain"
+                        />
+                      )}
+                      <span
+                        className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${result === 'W' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}
+                      >
+                        {result}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>—</span>
+            )}
             <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>
               {recentWins}-{recentLosses}
             </span>
