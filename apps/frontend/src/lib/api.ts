@@ -28,6 +28,7 @@ export interface PlayerStat {
   points: number;
   rebounds: number;
   assists: number;
+  team?: string;
   imageUrl?: string;
 }
 

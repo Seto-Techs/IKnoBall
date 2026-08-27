@@ -1,120 +1,128 @@
-import { useRef } from 'react';
+import { useState } from 'react';
+import type { PlayerStat } from '../../lib/api';
 import { Panel, LoadingSpinner, EmptyState } from './shared';
 
+const STATS = [
+  { key: 'points', label: 'Points', unit: 'PTS' },
+  { key: 'rebounds', label: 'Rebounds', unit: 'REB' },
+  { key: 'assists', label: 'Assists', unit: 'AST' },
+] as const;
+
+type StatKey = (typeof STATS)[number]['key'];
+
+const RANK_CHIPS = [
+  'bg-brand-gold text-brand-navyDark',
+  'bg-stone-300 text-stone-700',
+  'bg-amber-600 text-amber-950',
+];
+
+function PlayerCard({
+  player,
+  rank,
+  stat,
+  unit,
+}: {
+  player: PlayerStat;
+  rank: number;
+  stat: StatKey;
+  unit: string;
+}) {
+  return (
+    <div
+      className={`relative flex flex-col overflow-hidden rounded-lg border bg-white ${
+        rank === 1 ? 'border-brand-gold/70' : 'border-brand-line'
+      }`}
+    >
+      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden bg-brand-navy/5">
+        <span className="font-heading text-5xl font-semibold text-brand-navy/15">
+          {player.name.charAt(0)}
+        </span>
+        {player.imageUrl && (
+          <img
+            src={player.imageUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-top"
+            aria-hidden="true"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+        <span
+          className={`absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-md text-sm font-bold ${RANK_CHIPS[rank - 1]}`}
+        >
+          {rank}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-brand-line px-3 py-2.5">
+        <span className="min-w-0">
+          <span className="block truncate text-base font-semibold text-brand-ink" title={player.name}>
+            {player.name}
+          </span>
+          <span className="block text-sm text-stone-500">{player.position}</span>
+        </span>
+        <span className="shrink-0 text-right">
+          <span className="block font-heading text-2xl font-semibold leading-none tabular-nums text-brand-ink">
+            {player[stat].toFixed(1)}
+          </span>
+          <span className="mt-1 block text-sm font-medium text-stone-500">{unit}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * League leaders by stat category: a dropdown filters points/rebounds/assists
+ * and the top 3 players are shown as trading-card style headshot cards.
+ */
 export function TopPlayersPanel({
   players,
   loading = false,
 }: {
-  players?: {
-    id: string;
-    name: string;
-    position: string;
-    points: number;
-    rebounds: number;
-    assists: number;
-    imageUrl?: string;
-  }[];
+  players?: PlayerStat[];
   loading?: boolean;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (!scrollRef.current) return;
-    const amount =
-      direction === 'left' ? -scrollRef.current.clientWidth : scrollRef.current.clientWidth;
-    scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
-  };
+  const [stat, setStat] = useState<StatKey>('points');
+  const active = STATS.find((s) => s.key === stat)!;
+  const top3 = [...(players ?? [])].sort((a, b) => b[stat] - a[stat]).slice(0, 3);
 
   return (
-    <Panel title="Top Players" className="min-h-72">
+    <Panel title="Top Players">
       {loading ? (
         <LoadingSpinner />
       ) : players && players.length > 0 ? (
-        <div className="relative flex-1">
-          <div
-            ref={scrollRef}
-            className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
-          >
-            {players.slice(0, 5).map((player, index) => (
-              <div
-                key={player.id}
-                className="flex w-full shrink-0 snap-center items-center gap-8 px-10 py-8"
-              >
-                <div className="relative shrink-0">
-                  <span
-                    className={`absolute -left-2 -top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${index === 0 ? 'bg-brand-red text-white' : 'bg-stone-200 text-stone-600'}`}
-                  >
-                    {index + 1}
-                  </span>
-                  {player.imageUrl ? (
-                    <img
-                      src={player.imageUrl}
-                      alt={player.name}
-                      className="h-48 w-36 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-48 w-36 items-center justify-center rounded-lg bg-stone-100" />
-                  )}
-                </div>
-
-                <div className="flex flex-1 flex-col gap-5">
-                  <div>
-                    <h3 className="font-heading text-3xl font-semibold uppercase tracking-wide text-brand-ink">
-                      {player.name}
-                    </h3>
-                    <p className="mt-0.5 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                      {player.position}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <p className="font-heading text-5xl font-semibold leading-none tabular-nums text-brand-ink">
-                        {player.points.toFixed(1)}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                        PTS
-                      </p>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-heading text-5xl font-semibold leading-none tabular-nums text-brand-ink">
-                        {player.rebounds.toFixed(1)}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                        REB
-                      </p>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-heading text-5xl font-semibold leading-none tabular-nums text-brand-ink">
-                        {player.assists.toFixed(1)}
-                      </p>
-                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-                        AST
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <>
+          <div className="flex items-center justify-between gap-3 border-b border-brand-line px-5 py-3">
+            <span className="text-sm font-semibold uppercase tracking-wide text-stone-600">
+              Top 3 by
+            </span>
+            <label className="sr-only" htmlFor="top-player-stat">
+              Stat category
+            </label>
+            <select
+              id="top-player-stat"
+              value={stat}
+              onChange={(e) => setStat(e.target.value as StatKey)}
+              className="rounded-md border border-brand-line bg-white px-3 py-1.5 text-base font-medium text-brand-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
+            >
+              {STATS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <button
-            type="button"
-            onClick={() => scroll('left')}
-            className="absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-line bg-white text-stone-500 transition-colors hover:bg-stone-50 hover:text-brand-ink"
-            aria-label="Previous"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll('right')}
-            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-line bg-white text-stone-500 transition-colors hover:bg-stone-50 hover:text-brand-ink"
-            aria-label="Next"
-          >
-            ›
-          </button>
-        </div>
+          <ul className="grid grid-cols-3 gap-3 p-4">
+            {top3.map((player, index) => (
+              <li key={player.id} className="min-w-0">
+                <PlayerCard player={player} rank={index + 1} stat={stat} unit={active.unit} />
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <EmptyState message="Run the worker to sync player stats." />
       )}

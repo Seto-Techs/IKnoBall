@@ -6,21 +6,26 @@ import type { ReactNode } from 'react';
 
 export function Panel({
   title,
+  icon,
   children,
   className,
+  contentClassName,
 }: {
   title: string;
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
+  contentClassName?: string;
 }) {
   return (
     <section
       className={`flex flex-col rounded-lg border border-brand-line bg-white ${className ?? ''}`}
     >
-      <h2 className="border-b border-brand-line px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
+      <h2 className="flex items-center gap-2 border-b border-brand-line px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
+        {icon}
         {title}
       </h2>
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className={`flex min-h-0 flex-1 flex-col ${contentClassName ?? ''}`}>{children}</div>
     </section>
   );
 }
