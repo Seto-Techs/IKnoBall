@@ -80,7 +80,9 @@ export function UpcomingGamesPanel({
                         )}
                         <span
                           className={`mt-1 rounded px-3 py-1 text-sm font-semibold uppercase ${
-                            isLive ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-700'
+                            isLive
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-stone-100 text-stone-700'
                           }`}
                         >
                           {game.status}

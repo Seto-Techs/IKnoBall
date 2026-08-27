@@ -148,7 +148,17 @@ export function LeaderboardPanel({
     >
       <div className="grid grid-cols-3 gap-2 px-4 pt-4">
         {PODIUM.map(
-          ({ rank, label, icon: Icon, iconSize, column, iconClass, labelClass, nameClass, pointsClass }) => {
+          ({
+            rank,
+            label,
+            icon: Icon,
+            iconSize,
+            column,
+            iconClass,
+            labelClass,
+            nameClass,
+            pointsClass,
+          }) => {
             const entry = podium.find((e) => e.rank === rank)!;
             const isUser = inBoard && entry.rank === userRank;
             return (

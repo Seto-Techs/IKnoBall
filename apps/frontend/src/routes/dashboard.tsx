@@ -37,13 +37,8 @@ function conferenceRank(standings: StandingEntry[], abbr: string): number {
   const team = nbaTeams.find((t) => t.abbreviation === abbr);
   if (!team) return 0;
   const sorted = standings
-    .filter(
-      (s) => nbaTeams.find((t) => t.abbreviation === s.abbr)?.conference === team.conference,
-    )
-    .sort(
-      (a, b) =>
-        b.wins / (b.wins + b.losses || 1) - a.wins / (a.wins + a.losses || 1),
-    );
+    .filter((s) => nbaTeams.find((t) => t.abbreviation === s.abbr)?.conference === team.conference)
+    .sort((a, b) => b.wins / (b.wins + b.losses || 1) - a.wins / (a.wins + a.losses || 1));
   return sorted.findIndex((s) => s.abbr === abbr) + 1;
 }
 
@@ -112,7 +107,9 @@ function DashboardPage() {
   const leagueBest = [...mockStandings].sort(
     (a, b) => b.wins / (b.wins + b.losses || 1) - a.wins / (a.wins + a.losses || 1),
   )[0];
-  const bestRecord = leagueBest ? `${leagueBest.abbr} ${leagueBest.wins}-${leagueBest.losses}` : '—';
+  const bestRecord = leagueBest
+    ? `${leagueBest.abbr} ${leagueBest.wins}-${leagueBest.losses}`
+    : '—';
   const liveNowCount = mockLeagueToday.filter((g) => g.status.toLowerCase() === 'live').length;
 
   const chooseTeam = () => navigate({ to: '/onboarding' });
@@ -129,7 +126,11 @@ function DashboardPage() {
         />
 
         <main className="flex min-w-0 flex-col gap-6">
-          <div role="tablist" aria-label="Dashboard view" className="flex gap-5 border-b border-brand-line">
+          <div
+            role="tablist"
+            aria-label="Dashboard view"
+            className="flex gap-5 border-b border-brand-line"
+          >
             <ViewTab id="view-team" active={view === 'team'} onClick={() => setView('team')}>
               My Team
             </ViewTab>
@@ -154,7 +155,15 @@ function DashboardPage() {
                 <StatCard
                   icon={<TrendingUp className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
                   label="Conf Rank"
-                  value={teamConfRank === 1 ? '1st' : teamConfRank === 2 ? '2nd' : teamConfRank === 3 ? '3rd' : `${teamConfRank}th`}
+                  value={
+                    teamConfRank === 1
+                      ? '1st'
+                      : teamConfRank === 2
+                        ? '2nd'
+                        : teamConfRank === 3
+                          ? '3rd'
+                          : `${teamConfRank}th`
+                  }
                   caption={teamInfo ? `${teamInfo.division} Division` : 'Division'}
                 />
                 <StatCard

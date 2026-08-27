@@ -83,9 +83,7 @@ export function TeamLeaderPanel({
               <StatBlock label="AST" value={leader.assists.toFixed(1)} />
             </dl>
 
-            <p className="mt-3 text-sm text-stone-600">
-              Best all-around on the team this season.
-            </p>
+            <p className="mt-3 text-sm text-stone-600">Best all-around on the team this season.</p>
           </div>
         </div>
       ) : (

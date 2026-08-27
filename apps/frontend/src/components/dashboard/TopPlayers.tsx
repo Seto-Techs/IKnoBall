@@ -57,7 +57,10 @@ function PlayerCard({
 
       <div className="flex items-center justify-between gap-2 border-t border-brand-line px-3 py-2.5">
         <span className="min-w-0">
-          <span className="block truncate text-base font-semibold text-brand-ink" title={player.name}>
+          <span
+            className="block truncate text-base font-semibold text-brand-ink"
+            title={player.name}
+          >
             {player.name}
           </span>
           <span className="block text-sm text-stone-500">{player.position}</span>
