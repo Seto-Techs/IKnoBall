@@ -9,9 +9,20 @@ import { HeroBanner } from '../components/dashboard/HeroBanner';
 import { UpcomingGamesPanel } from '../components/dashboard/UpcomingMatches';
 import { TopPlayersPanel } from '../components/dashboard/TopPlayers';
 import { ScheduleTable } from '../components/dashboard/ScheduleTable';
+import { LeaderboardPanel } from '../components/dashboard/LeaderboardPanel';
 import { TeamCard, AccountCard } from '../components/dashboard/AccountCard';
 import { useTeamRecord, useUpcomingGames, useTopPlayers, useStandings, useTeams } from '../lib/api';
-import { mockAccuracy, mockUserPredictions, mockUserRank } from '../lib/mock-data';
+import {
+  mockAccuracy,
+  mockLeaderboard,
+  mockUserPoints,
+  mockUserPointsWeighted,
+  mockUserPredictions,
+  mockUserRank,
+  mockUserRankNumber,
+  mockUserRankWeightedNumber,
+  mockWeightedLeaderboard,
+} from '../lib/mock-data';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/dashboard')({
@@ -115,6 +126,21 @@ function DashboardPage() {
         </main>
 
         <aside className="hidden flex-col gap-6 xl:flex">
+          <LeaderboardPanel
+            title="Leaderboard"
+            entries={mockLeaderboard}
+            userRank={mockUserRankNumber}
+            userPoints={mockUserPoints}
+            userName={user.name}
+          />
+          <LeaderboardPanel
+            title="Weighted"
+            weighted
+            entries={mockWeightedLeaderboard}
+            userRank={mockUserRankWeightedNumber}
+            userPoints={mockUserPointsWeighted}
+            userName={user.name}
+          />
           <TeamCard team={team} />
           <AccountCard user={user} onChooseTeam={chooseTeam} onSignOut={handleSignOut} />
         </aside>

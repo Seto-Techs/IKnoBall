@@ -14,7 +14,7 @@ export function StandingsSidebar({
 }) {
   return (
     <aside
-      className={`flex h-[calc(100vh-5rem)] min-h-0 flex-col self-start overflow-y-auto scrollbar-hide rounded-lg border border-brand-line bg-white ${className ?? ''}`}
+      className={`flex flex-col rounded-lg border border-brand-line bg-white ${className ?? ''}`}
     >
       <h2 className="px-5 pt-5 font-heading text-2xl font-bold text-brand-ink">
         CONFERENCE STANDING
