@@ -25,6 +25,9 @@ export interface Game {
   awayScore: number | null;
   gameDateTime: string;
   status: string;
+  arenaName?: string | null;
+  arenaCity?: string | null;
+  arenaState?: string | null;
 }
 
 export interface PlayerStat {
@@ -33,8 +36,16 @@ export interface PlayerStat {
   position: string;
   headshotUrl: string;
   points: number;
+  pointsTotal: number;
   rebounds: number;
+  reboundsTotal: number;
   assists: number;
+  assistsTotal: number;
+  steals: number;
+  stealsTotal: number;
+  blocks: number;
+  blocksTotal: number;
+  gamesPlayed: number;
 }
 
 export interface StandingRow {
@@ -121,6 +132,20 @@ export function useTopPlayers(abbr?: string) {
     },
     enabled: !!abbr,
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useTeamSchedule(abbr?: string, month?: string) {
+  return useQuery({
+    queryKey: ['team-schedule', abbr, month],
+    queryFn: async (): Promise<Game[]> => {
+      const res = await fetchJson<{ data: Game[] }>(
+        `/teams/${abbr}/schedule?month=${encodeURIComponent(month ?? '')}`,
+      );
+      return res.data;
+    },
+    enabled: !!abbr && !!month,
+    staleTime: 1000 * 60 * 15,
   });
 }
 
