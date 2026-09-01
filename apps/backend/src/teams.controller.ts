@@ -1,10 +1,18 @@
-import { Controller, Get, HttpStatus, NotFoundException, Param } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
 import { teams, players, playerSeasonStats, scheduleDays, scheduleGames } from '@iknoball/database';
-import { eq, and, or, notInArray, desc, sql, gte, asc, inArray, max } from 'drizzle-orm';
+import { eq, and, or, notInArray, desc, sql, gte, lt, asc, inArray, max } from 'drizzle-orm';
 
 // Map BKN → BRK (players/schedule tricodes use BKN, teams table uses BRK)
 const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
@@ -126,6 +134,15 @@ class GameResponse {
 
   @ApiProperty({ example: 'Scheduled' })
   status!: string;
+
+  @ApiProperty({ example: 'Frost Bank Center', nullable: true })
+  arenaName!: string | null;
+
+  @ApiProperty({ example: 'San Antonio', nullable: true })
+  arenaCity!: string | null;
+
+  @ApiProperty({ example: 'TX', nullable: true })
+  arenaState!: string | null;
 }
 
 class PlayerStatResponse {
@@ -144,11 +161,35 @@ class PlayerStatResponse {
   @ApiProperty({ example: 27.7 })
   points!: number;
 
+  @ApiProperty({ example: 1987 })
+  pointsTotal!: number;
+
   @ApiProperty({ example: 12.9 })
   rebounds!: number;
 
+  @ApiProperty({ example: 941 })
+  reboundsTotal!: number;
+
   @ApiProperty({ example: 10.7 })
   assists!: number;
+
+  @ApiProperty({ example: 773 })
+  assistsTotal!: number;
+
+  @ApiProperty({ example: 1.2 })
+  steals!: number;
+
+  @ApiProperty({ example: 91 })
+  stealsTotal!: number;
+
+  @ApiProperty({ example: 0.9 })
+  blocks!: number;
+
+  @ApiProperty({ example: 68 })
+  blocksTotal!: number;
+
+  @ApiProperty({ example: 72 })
+  gamesPlayed!: number;
 }
 
 @ApiTags('Teams')
@@ -351,6 +392,9 @@ export class TeamsController {
         awayScore: scheduleGames.awayTeamScore,
         gameDateTime: scheduleGames.gameDateTimeUTC,
         status: scheduleGames.gameStatusText,
+        arenaName: scheduleGames.arenaName,
+        arenaCity: scheduleGames.arenaCity,
+        arenaState: scheduleGames.arenaState,
       })
       .from(scheduleGames)
       .where(
@@ -395,12 +439,102 @@ export class TeamsController {
         awayScore: g.awayScore,
         gameDateTime: g.gameDateTime?.toISOString() ?? '',
         status: g.status ?? '',
+        arenaName: g.arenaName ?? null,
+        arenaCity: g.arenaCity ?? null,
+        arenaState: g.arenaState ?? null,
+      })),
+    );
+  }
+
+  @Get(':abbr/schedule')
+  @ApiOperation({ summary: 'Team schedule for a calendar month (YYYY-MM)' })
+  @ApiDataResponse(GameResponse, HttpStatus.OK, 'Schedule.', 'Schedule.', true)
+  async getTeamSchedule(
+    @Param('abbr') abbr: string,
+    @Query('month') month: string,
+  ): Promise<ApiResponse<GameResponse[]>> {
+    await this.findTeam(abbr);
+
+    const match = /^(\d{4})-(\d{2})$/.exec(month ?? '');
+    if (!match) {
+      throw new BadRequestException('month must be formatted as YYYY-MM');
+    }
+    const year = Number(match[1]);
+    const monthNum = Number(match[2]);
+    if (monthNum < 1 || monthNum > 12) {
+      throw new BadRequestException('month must be between 01 and 12');
+    }
+    const start = new Date(Date.UTC(year, monthNum - 1, 1));
+    const end = new Date(Date.UTC(year, monthNum, 1));
+
+    // Schedule tricodes use BKN; teams table uses BRK
+    const tricode = abbr === 'BRK' ? 'BKN' : abbr;
+
+    const rows = await this.db.db
+      .select({
+        id: scheduleGames.gameId,
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+        gameDateTime: scheduleGames.gameDateTimeUTC,
+        status: scheduleGames.gameStatusText,
+        arenaName: scheduleGames.arenaName,
+        arenaCity: scheduleGames.arenaCity,
+        arenaState: scheduleGames.arenaState,
+      })
+      .from(scheduleGames)
+      .where(
+        and(
+          gte(scheduleGames.gameDateTimeUTC, start),
+          lt(scheduleGames.gameDateTimeUTC, end),
+          notInArray(scheduleGames.gameLabel, ['Preseason', 'All-Star', 'All-Star Championship']),
+          or(
+            eq(scheduleGames.homeTeamTricode, tricode),
+            eq(scheduleGames.awayTeamTricode, tricode),
+          ),
+        ),
+      )
+      .orderBy(asc(scheduleGames.gameDateTimeUTC));
+
+    if (rows.length === 0) {
+      return response(true, 'No games this month.', []);
+    }
+
+    const abbrs = Array.from(
+      new Set(
+        rows
+          .flatMap((r) => [r.homeTricode ?? '', r.awayTricode ?? ''])
+          .map((t) => ABBR_MAP[t] ?? t)
+          .filter(Boolean),
+      ),
+    );
+    const teamRows = await this.db.db
+      .select({ abbreviation: teams.abbreviation, fullName: teams.fullName })
+      .from(teams)
+      .where(inArray(teams.abbreviation, abbrs));
+    const nameByAbbr = new Map(teamRows.map((t) => [t.abbreviation, t.fullName]));
+
+    return response(
+      true,
+      'Schedule fetched.',
+      rows.map((g) => ({
+        id: g.id,
+        homeTeam: teamName(g.homeTricode, nameByAbbr),
+        awayTeam: teamName(g.awayTricode, nameByAbbr),
+        homeScore: g.homeScore,
+        awayScore: g.awayScore,
+        gameDateTime: g.gameDateTime?.toISOString() ?? '',
+        status: g.status ?? '',
+        arenaName: g.arenaName ?? null,
+        arenaCity: g.arenaCity ?? null,
+        arenaState: g.arenaState ?? null,
       })),
     );
   }
 
   @Get(':abbr/players')
-  @ApiOperation({ summary: 'Top 5 players by combined per-game stats for a team' })
+  @ApiOperation({ summary: 'Team players with per-game and total stats' })
   @ApiDataResponse(PlayerStatResponse, HttpStatus.OK, 'Top players.', 'Top players.', true)
   async getTopPlayers(@Param('abbr') abbr: string): Promise<ApiResponse<PlayerStatResponse[]>> {
     await this.findTeam(abbr);
@@ -433,6 +567,14 @@ export class TeamsController {
         points: playerSeasonStats.ptsPerGame,
         rebounds: playerSeasonStats.rebPerGame,
         assists: playerSeasonStats.astPerGame,
+        pointsTotal: playerSeasonStats.ptsTotal,
+        reboundsTotal: playerSeasonStats.rebTotal,
+        assistsTotal: playerSeasonStats.astTotal,
+        steals: playerSeasonStats.stlPerGame,
+        stealsTotal: playerSeasonStats.stlTotal,
+        blocks: playerSeasonStats.blkPerGame,
+        blocksTotal: playerSeasonStats.blkTotal,
+        gamesPlayed: playerSeasonStats.gp,
       })
       .from(playerSeasonStats)
       .innerJoin(players, eq(playerSeasonStats.playerId, players.id))
@@ -449,8 +591,7 @@ export class TeamsController {
           sql`COALESCE(${playerSeasonStats.ptsPerGame}, 0) + COALESCE(${playerSeasonStats.rebPerGame}, 0) + COALESCE(${playerSeasonStats.astPerGame}, 0)`,
         ),
         desc(playerSeasonStats.ptsPerGame),
-      )
-      .limit(5);
+      );
 
     const round1 = (v: number | null) => (v == null ? 0 : Math.round(v * 10) / 10);
 
@@ -465,6 +606,14 @@ export class TeamsController {
         points: round1(p.points),
         rebounds: round1(p.rebounds),
         assists: round1(p.assists),
+        pointsTotal: Math.round(p.pointsTotal ?? 0),
+        reboundsTotal: Math.round(p.reboundsTotal ?? 0),
+        assistsTotal: Math.round(p.assistsTotal ?? 0),
+        steals: round1(p.steals),
+        stealsTotal: Math.round(p.stealsTotal ?? 0),
+        blocks: round1(p.blocks),
+        blocksTotal: Math.round(p.blocksTotal ?? 0),
+        gamesPlayed: p.gamesPlayed ?? 0,
       })),
     );
   }
