@@ -185,7 +185,7 @@ export class PlayerSeasonProcessor implements OnModuleInit {
   ) {
     const currentSeason = this.currentSeason;
     for (const row of rows) {
-      if (!row.GROUP_VALUE || this.isEmptyStats(row.PTS, row.REB, row.AST)) {
+      if (!row.GROUP_VALUE || this.isEmptyStats(row.PTS, row.REB, row.AST, row.STL, row.BLK)) {
         continue;
       }
 
@@ -240,8 +240,8 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     });
   }
 
-  private isEmptyStats(pts: number | null, reb: number | null, ast: number | null) {
-    return (pts ?? null) === null && (reb ?? null) === null && (ast ?? null) === null;
+  private isEmptyStats(...values: (number | null)[]) {
+    return values.every((v) => v === null);
   }
 
   private isRetryable(error: unknown) {
@@ -273,7 +273,9 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     const ptsTotal = row.PTS ?? null;
     const rebTotal = row.REB ?? null;
     const astTotal = row.AST ?? null;
-    if (this.isEmptyStats(ptsTotal, rebTotal, astTotal)) {
+    const stlTotal = row.STL ?? null;
+    const blkTotal = row.BLK ?? null;
+    if (this.isEmptyStats(ptsTotal, rebTotal, astTotal, stlTotal, blkTotal)) {
       return null;
     }
 
@@ -287,9 +289,13 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       ptsTotal,
       rebTotal,
       astTotal,
+      stlTotal,
+      blkTotal,
       ptsPerGame: ptsTotal !== null ? ptsTotal / gp : null,
       rebPerGame: rebTotal !== null ? rebTotal / gp : null,
       astPerGame: astTotal !== null ? astTotal / gp : null,
+      stlPerGame: stlTotal !== null ? stlTotal / gp : null,
+      blkPerGame: blkTotal !== null ? blkTotal / gp : null,
     };
   }
 }
