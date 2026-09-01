@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html,
+  body {
+    @apply bg-stone-200;
+  }
+}
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -21,4 +27,24 @@ h4,
 h5,
 h6 {
   font-family: 'Oswald', 'Poppins', system-ui, sans-serif !important;
+}
+@keyframes cal-cell-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cal-cell-in {
+  animation: cal-cell-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-cell-in {
+    animation: none;
+  }
 }
