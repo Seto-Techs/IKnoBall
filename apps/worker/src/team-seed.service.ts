@@ -105,7 +105,7 @@ const nbaTeams: NBATeamSeed[] = [
     externalId: 1610612746,
     abbreviation: 'LAC',
     teamName: 'Clippers',
-    fullName: 'LA Clippers',
+    fullName: 'Los Angeles Clippers',
     city: 'Los Angeles',
     conference: 'West',
     division: 'Pacific',
@@ -369,7 +369,7 @@ const nbaTeams: NBATeamSeed[] = [
   },
   {
     externalId: 1610612766,
-    abbreviation: 'CHO',
+    abbreviation: 'CHA',
     teamName: 'Hornets',
     fullName: 'Charlotte Hornets',
     city: 'Charlotte',

@@ -1,55 +1,39 @@
-import { nbaTeams, type NBATeam } from '../../config/nba-teams';
-import { mockLastFive } from '../../lib/mock-data';
-import { formatGameDate } from './shared';
-import type { SelectedTeam } from '../../lib/team';
-
-const teamByFullName: Record<string, NBATeam> = Object.fromEntries(
-  nbaTeams.map((t) => [t.fullName, t]),
-);
-const teamByTeamName: Record<string, NBATeam> = Object.fromEntries(
-  nbaTeams.map((t) => [t.teamName, t]),
-);
-
-function hexLuminance(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-}
+import type { TeamRecord, TeamWithLeaders } from '../../lib/api';
+import { formatGameDate, hexLuminance } from './shared';
 
 export function HeroBanner({
   team,
-  teamInfo,
   record,
   nextGame,
   onChooseTeam,
+  teams,
 }: {
-  team: SelectedTeam;
-  teamInfo?: NBATeam;
-  record?: { wins: number; losses: number } | null;
+  team: TeamWithLeaders;
+  record?: TeamRecord | null;
   nextGame?: { homeTeam: string; awayTeam: string; gameDateTime: string } | null;
   onChooseTeam: () => void;
+  teams?: TeamWithLeaders[] | null;
 }) {
   const opponentName = nextGame
-    ? nextGame.homeTeam === team.name || nextGame.homeTeam === teamInfo?.fullName
+    ? nextGame.homeTeam === team.fullName || nextGame.homeTeam === team.teamName
       ? nextGame.awayTeam
       : nextGame.homeTeam
     : null;
   const opponent = opponentName
-    ? nbaTeams.find((t) => t.fullName === opponentName || t.teamName === opponentName)
+    ? (teams ?? []).find((t) => t.fullName === opponentName || t.teamName === opponentName)
     : undefined;
-  const recentWins = mockLastFive.filter((g) => g.result === 'W').length;
-  const recentLosses = mockLastFive.length - recentWins;
   const isBright = hexLuminance(team.primaryColor) > 0.45;
   const tx = isBright ? 'text-brand-ink' : 'text-white';
   const txMuted = isBright ? 'text-brand-ink/75' : 'text-white/80';
   const txHint = isBright ? 'text-brand-ink/60' : 'text-white/65';
   const rule = isBright ? 'bg-brand-ink/15' : 'bg-white/15';
 
-  const nameParts = team.name.split(' ');
-  const topLine = nameParts.slice(0, -1).join(' ');
-  const bottomLine = nameParts[nameParts.length - 1];
+  // Logo sits between the city/region line and the team name. Split on
+  // teamName (fullName minus the trailing teamName), not word count —
+  // "Portland Trail Blazers" renders Portland · logo · Trail Blazers
+  // without special-casing. Verified: every fullName ends with teamName.
+  const bottomLine = team.teamName;
+  const topLine = team.fullName.slice(0, -bottomLine.length).trim();
 
   return (
     <section
@@ -81,7 +65,7 @@ export function HeroBanner({
           </p>
           <img
             src={team.logoUrl}
-            alt={`${team.name} logo`}
+            alt={`${team.fullName} logo`}
             className="h-auto max-h-32 w-auto max-w-32 shrink object-contain"
           />
           <h1
@@ -94,14 +78,12 @@ export function HeroBanner({
         {/* ── Row 2: Stats | Last 5 | Upcoming | CTA ── */}
         <div className={`flex items-center justify-between gap-6 border-t px-8 py-4 ${rule}`}>
           <div className="flex items-center gap-5">
-            {teamInfo && (
-              <>
-                <span className={`text-sm font-semibold ${txMuted}`}>
-                  {teamInfo.conference === 'East' ? 'Eastern' : 'Western'} · {teamInfo.division}
-                </span>
-                <div aria-hidden="true" className={`h-7 w-px shrink-0 ${rule}`} />
-              </>
-            )}
+            <>
+              <span className={`text-sm font-semibold ${txMuted}`}>
+                {team.conference === 'East' ? 'Eastern' : 'Western'} · {team.division}
+              </span>
+              <div aria-hidden="true" className={`h-7 w-px shrink-0 ${rule}`} />
+            </>
             <div className="text-center">
               <p className={`font-heading text-4xl font-semibold leading-none tabular-nums ${tx}`}>
                 {record ? `${record.wins}-${record.losses}` : '—'}
@@ -113,38 +95,6 @@ export function HeroBanner({
           </div>
 
           <div className="flex shrink-0 items-center gap-6">
-            <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${txHint}`}>
-              Last 5
-            </span>
-            <div className="flex gap-2.5">
-              {mockLastFive.map((game, i) => {
-                const opp = teamByFullName[game.opponent] ?? teamByTeamName[game.opponent];
-                return (
-                  <div
-                    key={i}
-                    className={`relative flex h-12 w-12 items-center justify-center rounded-lg ${isBright ? 'bg-brand-ink/10' : 'bg-white/10'}`}
-                  >
-                    {opp && (
-                      <img
-                        src={opp.logoUrl}
-                        alt=""
-                        aria-hidden="true"
-                        className="h-7 w-7 object-contain"
-                      />
-                    )}
-                    <span
-                      className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${game.result === 'W' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}
-                    >
-                      {game.result}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>
-              {recentWins}-{recentLosses}
-            </span>
-            <div aria-hidden="true" className={`h-8 w-px shrink-0 ${rule}`} />
             <div className="flex items-center gap-3">
               {opponent?.logoUrl && (
                 <img

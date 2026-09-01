@@ -47,7 +47,13 @@ export const Route = createRootRoute({
     const isDashboard = pathname.startsWith('/dashboard');
 
     return (
-      <div className="min-h-screen bg-court-50 text-stone-900 antialiased">
+      <div
+        className="min-h-screen bg-stone-200 text-stone-900 antialiased"
+        style={{
+          backgroundColor: 'var(--team-bg, #e7e5e4)',
+          transition: 'background-color 0.5s ease',
+        }}
+      >
         {!isOnboarding && !isDashboard && <Header />}
         <main
           className={

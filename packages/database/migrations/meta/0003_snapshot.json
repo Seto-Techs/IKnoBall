@@ -1,6 +1,6 @@
 {
-  "id": "0ec3164a-88ac-4e0d-9e44-d0f5cc25659c",
-  "prevId": "550207f9-55bd-4ed6-8f63-6a306bfb4fab",
+  "id": "9ba9f7b4-4e8b-4141-a6d9-3b0a65fb16b6",
+  "prevId": "ed45e929-edb0-4829-aceb-fb1d93276b30",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -329,6 +329,30 @@
         },
         "astPerGame": {
           "name": "astPerGame",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stlTotal": {
+          "name": "stlTotal",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blkTotal": {
+          "name": "blkTotal",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stlPerGame": {
+          "name": "stlPerGame",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blkPerGame": {
+          "name": "blkPerGame",
           "type": "double precision",
           "primaryKey": false,
           "notNull": false
@@ -2118,6 +2142,48 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conference": {
+          "name": "conference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "division": {
+          "name": "division",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "logoUrl": {
+          "name": "logoUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arena": {
+          "name": "arena",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "headCoach": {
+          "name": "headCoach",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "primaryColor": {
+          "name": "primaryColor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},

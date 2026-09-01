@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useSignIn } from '../../lib/use-auth';
-import { hasSelectedTeam } from '../../lib/team';
 
 export const Route = createFileRoute('/auth/verify-email')({
   component: VerifyEmailPage,
@@ -15,7 +14,8 @@ function VerifyEmailPage() {
     signIn.mutate(
       { email: 'admin@iknoball.dev', password: '12345678' },
       {
-        onSuccess: () => navigate({ to: hasSelectedTeam() ? '/dashboard' : '/onboarding' }),
+        onSuccess: (data) =>
+          navigate({ to: data?.user?.favoriteTeam ? '/dashboard' : '/onboarding' }),
       },
     );
   };

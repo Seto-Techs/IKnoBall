@@ -1,11 +1,17 @@
+import { setDefaultResultOrder } from 'node:dns';
 import { BadGatewayException, Controller, Get, HttpStatus, Logger } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
 import { RedisService } from './infrastructure/redis/redis.service';
-import { teams } from '@iknoball/database';
+import { teams, scheduleDays, scheduleGames } from '@iknoball/database';
+import { and, eq, sql } from 'drizzle-orm';
 import { inArray } from 'drizzle-orm';
+
+if (process.env.NBA_STATS_FORCE_IPV4 === 'true') {
+  setDefaultResultOrder('ipv4first');
+}
 
 type StandingValue = string | number | null;
 
@@ -47,6 +53,7 @@ class StandingsResponse {
 @Controller('standings')
 export class StandingsController {
   private readonly logger = new Logger(StandingsController.name);
+  private readonly requestTimeoutMs = 4000;
 
   constructor(
     private readonly db: DatabaseService,
@@ -59,21 +66,89 @@ export class StandingsController {
   async getStandings(): Promise<ApiResponse<StandingsResponse>> {
     const season = process.env.NBA_CURRENT_SEASON ?? '2025-26';
     const cacheKey = `standings:${season}`;
-    const cached = (await this.redis.keyExists(cacheKey))
-      ? await this.redis.getKey(cacheKey)
-      : null;
-    if (cached) {
-      return response(true, 'Standings fetched.', JSON.parse(cached) as StandingsResponse);
+    const staleKey = `${cacheKey}:stale`;
+
+    // 1) Try fast cache (30 min)
+    try {
+      const cached = (await this.redis.keyExists(cacheKey))
+        ? await this.redis.getKey(cacheKey)
+        : null;
+      if (cached) {
+        return response(true, 'Standings fetched.', JSON.parse(cached) as StandingsResponse);
+      }
+    } catch (e) {
+      this.logger.warn(`Redis cache read failed for ${cacheKey}: ${(e as Error).message}`);
     }
 
-    const raw = await this.fetchStandings(season);
-    const standings = await this.buildStandings(raw, season);
-    await this.redis.setKey(cacheKey, JSON.stringify(standings), 60 * 30);
+    // Check stale for fast serve (stale-while-revalidate)
+    let stale: string | null = null;
+    try {
+      stale = (await this.redis.keyExists(staleKey)) ? await this.redis.getKey(staleKey) : null;
+    } catch (e) {
+      this.logger.warn(`Redis stale read failed: ${(e as Error).message}`);
+    }
+    if (stale) {
+      // Serve stale immediately, refresh in background
+      this.refreshStandingsInBackground(season, cacheKey, staleKey).catch((e) =>
+        this.logger.warn(`Background refresh failed: ${(e as Error).message}`),
+      );
+      this.logger.warn(`Serving stale standings for ${season} (background refresh)`);
+      return response(true, 'Standings fetched.', JSON.parse(stale) as StandingsResponse);
+    }
 
-    return response(true, 'Standings fetched.', standings);
+    // 2) No stale: try upstream fetch (single attempt, short timeout, fast fallback)
+    try {
+      const raw = await this.fetchStandingsWithTimeout(season);
+      const standings = await this.buildStandings(raw, season);
+      try {
+        await this.redis.setKey(cacheKey, JSON.stringify(standings), 60 * 30);
+        await this.redis.setKey(staleKey, JSON.stringify(standings), 60 * 60 * 24 * 7);
+      } catch (e) {
+        this.logger.warn(`Redis cache write failed: ${(e as Error).message}`);
+      }
+      return response(true, 'Standings fetched.', standings);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Upstream standings fetch failed (${season}): ${msg}`);
+
+      // 3) Fallback: compute from DB (scheduleGames) — no stale left to try
+      try {
+        const fallback = await this.buildStandingsFromDb(season);
+        try {
+          await this.redis.setKey(staleKey, JSON.stringify(fallback), 60 * 60 * 24 * 7);
+          await this.redis.setKey(cacheKey, JSON.stringify(fallback), 60 * 5);
+        } catch {}
+        this.logger.warn(`Serving DB-fallback standings for ${season}`);
+        return response(true, 'Standings fetched.', fallback);
+      } catch (e) {
+        this.logger.error(`DB fallback failed: ${(e as Error).message}`, (e as Error).stack);
+      }
+
+      if (error instanceof BadGatewayException) throw error;
+      throw new BadGatewayException('Standings source unavailable');
+    }
   }
 
-  private async fetchStandings(season: string): Promise<{
+  private async refreshStandingsInBackground(season: string, cacheKey: string, staleKey: string) {
+    try {
+      const raw = await this.fetchStandingsWithTimeout(season);
+      const standings = await this.buildStandings(raw, season);
+      await this.redis.setKey(cacheKey, JSON.stringify(standings), 60 * 30);
+      await this.redis.setKey(staleKey, JSON.stringify(standings), 60 * 60 * 24 * 7);
+      this.logger.log(`Background refresh succeeded for ${season}`);
+    } catch (e) {
+      // fallback to DB if external still failing, keep stale fresh
+      try {
+        const fallback = await this.buildStandingsFromDb(season);
+        await this.redis.setKey(staleKey, JSON.stringify(fallback), 60 * 60 * 24 * 7);
+        await this.redis.setKey(cacheKey, JSON.stringify(fallback), 60 * 5);
+        this.logger.warn(`Background refresh used DB fallback for ${season}`);
+      } catch {}
+      throw e;
+    }
+  }
+
+  private async fetchStandingsWithTimeout(season: string): Promise<{
     resultSets: { name: string; headers: string[]; rowSet: StandingValue[][] }[];
   }> {
     const url = new URL(
@@ -85,12 +160,37 @@ export class StandingsController {
     url.searchParams.set('SeasonType', 'Regular Season');
     url.searchParams.set('Section', 'overall');
 
-    const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(15000) });
-    if (!res.ok) {
-      this.logger.error(`stats.nba.com responded ${res.status}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    try {
+      const res = await fetch(url, { headers: this.headers(), signal: controller.signal });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        this.logger.error(`stats.nba.com responded ${res.status}: ${body.slice(0, 500)}`);
+        throw new BadGatewayException('Standings source unavailable');
+      }
+      return (await res.json()) as {
+        resultSets: { name: string; headers: string[]; rowSet: StandingValue[][] }[];
+      };
+    } catch (error) {
+      if (error instanceof BadGatewayException) throw error;
+      const err = error as Error;
+      if (err.name === 'AbortError') {
+        throw new BadGatewayException('Standings source unavailable (timeout)');
+      }
+      const m = err.message?.toLowerCase() ?? '';
+      if (
+        m.includes('timeout') ||
+        m.includes('etimedout') ||
+        m.includes('econnreset') ||
+        m.includes('fetch failed')
+      ) {
+        throw new BadGatewayException('Standings source unavailable');
+      }
       throw new BadGatewayException('Standings source unavailable');
+    } finally {
+      clearTimeout(timeout);
     }
-    return res.json();
   }
 
   private headers(): Record<string, string> {
@@ -108,6 +208,9 @@ export class StandingsController {
         '"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"',
       'sec-ch-ua-mobile': '?0',
       'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-site',
+      origin: 'https://www.nba.com',
       'user-agent':
         process.env.NBA_STATS_USER_AGENT ||
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
@@ -153,6 +256,106 @@ export class StandingsController {
     }
     for (const conf of ['West', 'East'] as const) {
       byConference[conf].sort((a, b) => a.rank - b.rank);
+    }
+
+    return { season, ...byConference };
+  }
+
+  private async buildStandingsFromDb(season: string): Promise<StandingsResponse> {
+    const allTeams = await this.db.db
+      .select({
+        abbreviation: teams.abbreviation,
+        logoUrl: teams.logoUrl,
+        conference: teams.conference,
+        externalId: teams.externalId,
+      })
+      .from(teams);
+
+    // tricode fix: teams uses BRK, schedule uses BKN
+    const tricodeForTeam = (abbr: string) => (abbr === 'BRK' ? 'BKN' : abbr);
+    const abbrForTricode = (tri: string) => (tri === 'BKN' ? 'BRK' : tri);
+
+    const winsMap = new Map<string, number>();
+    const lossesMap = new Map<string, number>();
+    for (const t of allTeams) {
+      winsMap.set(t.abbreviation, 0);
+      lossesMap.set(t.abbreviation, 0);
+    }
+
+    // Pull final games for the season (gameStatus = 3, non-preseason) — mirrors TeamsController record filter
+    const games = await this.db.db
+      .select({
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+      })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(
+        and(
+          eq(scheduleDays.seasonYear, season),
+          eq(scheduleGames.gameStatus, 3),
+          eq(scheduleGames.seriesText, ''),
+          sql`${scheduleGames.homeTeamScore} IS NOT NULL AND ${scheduleGames.awayTeamScore} IS NOT NULL`,
+          sql`${scheduleGames.homeTeamScore} + ${scheduleGames.awayTeamScore} > 0`,
+          sql`${scheduleGames.gameLabel} NOT IN ('Preseason', 'All-Star', 'All-Star Championship')`,
+        ),
+      );
+    for (const g of games) {
+      const homeAbbr = abbrForTricode(g.homeTricode ?? '');
+      const awayAbbr = abbrForTricode(g.awayTricode ?? '');
+      if (!winsMap.has(homeAbbr) || !winsMap.has(awayAbbr)) continue;
+      const homeScore = g.homeScore ?? 0;
+      const awayScore = g.awayScore ?? 0;
+      if (homeScore > awayScore) {
+        winsMap.set(homeAbbr, (winsMap.get(homeAbbr) ?? 0) + 1);
+        lossesMap.set(awayAbbr, (lossesMap.get(awayAbbr) ?? 0) + 1);
+      } else if (awayScore > homeScore) {
+        winsMap.set(awayAbbr, (winsMap.get(awayAbbr) ?? 0) + 1);
+        lossesMap.set(homeAbbr, (lossesMap.get(homeAbbr) ?? 0) + 1);
+      }
+    }
+
+    const byConference: Record<'West' | 'East', StandingRow[]> = { West: [], East: [] };
+    // For GB: need leader per conference
+    const teamsByConf = new Map<'West' | 'East', typeof allTeams>();
+    teamsByConf.set('West', []);
+    teamsByConf.set('East', []);
+    for (const t of allTeams) {
+      const conf = t.conference === 'West' ? 'West' : 'East';
+      teamsByConf.get(conf)!.push(t);
+    }
+
+    for (const conf of ['West', 'East'] as const) {
+      const confTeams = teamsByConf.get(conf)!;
+      // sort by wins desc, losses asc for ranking, then abbr for stability
+      const sorted = [...confTeams].sort((a, b) => {
+        const wA = winsMap.get(a.abbreviation) ?? 0;
+        const wB = winsMap.get(b.abbreviation) ?? 0;
+        if (wB !== wA) return wB - wA;
+        const lA = lossesMap.get(a.abbreviation) ?? 0;
+        const lB = lossesMap.get(b.abbreviation) ?? 0;
+        if (lA !== lB) return lA - lB;
+        return a.abbreviation.localeCompare(b.abbreviation);
+      });
+      const leader = sorted[0];
+      const leaderW = leader ? (winsMap.get(leader.abbreviation) ?? 0) : 0;
+      const leaderL = leader ? (lossesMap.get(leader.abbreviation) ?? 0) : 0;
+      sorted.forEach((t, idx) => {
+        const w = winsMap.get(t.abbreviation) ?? 0;
+        const l = lossesMap.get(t.abbreviation) ?? 0;
+        const gb = idx === 0 ? 0 : (leaderW - w + (l - leaderL)) / 2;
+        byConference[conf].push({
+          rank: idx + 1,
+          teamAbbr: t.abbreviation,
+          logoUrl: t.logoUrl ?? '',
+          wins: w,
+          losses: l,
+          gamesBack: gb,
+          marker: null,
+        });
+      });
     }
 
     return { season, ...byConference };

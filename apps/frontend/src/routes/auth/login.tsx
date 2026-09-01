@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useSignIn } from '../../lib/use-auth';
-import { hasSelectedTeam } from '../../lib/team';
+import { useSignIn, AuthError } from '../../lib/use-auth';
 import { useState } from 'react';
 
 export const Route = createFileRoute('/auth/login')({
@@ -13,16 +12,21 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setErrorCode(null);
 
     signIn.mutate(
       { email, password },
       {
-        onError: (err) => setError(err.message),
-        onSuccess: () => navigate({ to: hasSelectedTeam() ? '/dashboard' : '/onboarding' }),
+        onError: (err) => {
+          setError(err.message);
+          setErrorCode(err instanceof AuthError ? err.code : null);
+        },
+        onSuccess: (data) =>
+          navigate({ to: data?.user?.favoriteTeam ? '/dashboard' : '/onboarding' }),
       },
     );
   };
@@ -71,7 +75,24 @@ function LoginPage() {
             />
           </div>
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && errorCode === 'EMAIL_NOT_VERIFIED' ? (
+            <div className="rounded-md bg-amber-50 px-3 py-3 text-sm">
+              <p className="font-medium text-amber-800">Email not verified</p>
+              <p className="mt-1 text-amber-700">
+                A new verification link has been sent to your email. Check your inbox or{' '}
+                <Link
+                  to="/auth/verify-email"
+                  search={{ email }}
+                  className="font-semibold underline underline-offset-2 hover:text-amber-900"
+                >
+                  resend it
+                </Link>
+                .
+              </p>
+            </div>
+          ) : error ? (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          ) : null}
 
           <button
             type="submit"

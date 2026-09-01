@@ -21,7 +21,7 @@ export function Panel({
     <section
       className={`flex flex-col rounded-lg border border-brand-line bg-white ${className ?? ''}`}
     >
-      <h2 className="flex items-center gap-2 border-b border-brand-line px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
+      <h2 className="sticky top-0 z-10 flex items-center gap-2 border-b border-brand-line bg-white px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
         {icon}
         {title}
       </h2>
@@ -52,4 +52,12 @@ export function formatGameDate(value: string, pattern: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return format(date, pattern);
+}
+
+export function hexLuminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
