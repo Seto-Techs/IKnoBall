@@ -1,86 +1,92 @@
 import { GiCrown, GiMedal, GiTrophyCup, GiWeightScale } from 'react-icons/gi';
-import type { IconType } from 'react-icons';
 import type { LeaderboardEntry } from '../../lib/mock-data';
 import { Panel } from './shared';
+import { darken, isLightColor } from '../../lib/color';
 
-/* The top 10 are visible before the list starts scrolling internally. */
-const TOP_VISIBLE = 10;
-
-type PodiumTier = {
-  rank: 1 | 2 | 3;
-  label: string;
-  icon: IconType;
-  iconSize: string;
-  column: string;
-  iconClass: string;
-  labelClass: string;
-  nameClass: string;
-  pointsClass: string;
-};
-
-/* 2nd / 1st / 3rd — classic podium order. 1st is the navy hero column. */
-const PODIUM: PodiumTier[] = [
-  {
-    rank: 2,
-    label: '2ND',
-    icon: GiMedal,
-    iconSize: 'h-12 w-12',
-    column: 'border-stone-300 bg-stone-50',
-    iconClass: 'text-stone-500',
-    labelClass: 'text-stone-500',
-    nameClass: 'text-brand-ink',
-    pointsClass: 'text-stone-600',
-  },
-  {
-    rank: 1,
-    label: '1ST',
-    icon: GiTrophyCup,
-    iconSize: 'h-14 w-14',
-    column: 'border-brand-navy bg-brand-navy',
-    iconClass: 'text-brand-gold',
-    labelClass: 'text-brand-gold',
-    nameClass: 'text-white',
-    pointsClass: 'text-white/85',
-  },
-  {
-    rank: 3,
-    label: '3RD',
-    icon: GiMedal,
-    iconSize: 'h-12 w-12',
-    column: 'border-amber-700/40 bg-amber-700/10',
-    iconClass: 'text-amber-700',
-    labelClass: 'text-amber-700',
-    nameClass: 'text-brand-ink',
-    pointsClass: 'text-stone-600',
-  },
-];
+/* Leaderboard shows top 50, viewport shows 10 rows at a time (scroll to see rest). */
+const LEADERBOARD_SIZE = 50;
 
 function ListRow({
   rank,
   name,
   points,
   isUser,
+  userColor,
 }: {
   rank: number;
   name: string;
   points: number;
   isUser?: boolean;
+  userColor?: string;
 }) {
+  const rowBg =
+    isUser && userColor ? (isLightColor(userColor) ? darken(userColor, 0.35) : userColor) : '';
+  const medal = !isUser
+    ? rank === 1
+      ? 'gold'
+      : rank === 2
+        ? 'silver'
+        : rank === 3
+          ? 'bronze'
+          : null
+    : null;
+  const medalRowBg =
+    medal === 'gold'
+      ? 'bg-yellow-50'
+      : medal === 'silver'
+        ? 'bg-stone-50'
+        : medal === 'bronze'
+          ? 'bg-orange-50'
+          : '';
+  const medalBorder =
+    medal === 'gold'
+      ? 'border-l-4 border-brand-gold'
+      : medal === 'silver'
+        ? 'border-l-4 border-stone-400'
+        : medal === 'bronze'
+          ? 'border-l-4 border-amber-700'
+          : '';
+  const rankColor = isUser
+    ? 'font-semibold text-brand-gold'
+    : medal === 'gold'
+      ? 'font-bold text-brand-gold'
+      : medal === 'silver'
+        ? 'font-bold text-stone-500'
+        : medal === 'bronze'
+          ? 'font-bold text-amber-700'
+          : 'text-stone-500';
+
   return (
-    <div className={`flex items-center gap-3 px-5 py-2 ${isUser ? 'bg-brand-navy' : ''}`}>
-      <span
-        className={`w-7 shrink-0 text-right text-sm tabular-nums ${
-          isUser ? 'font-semibold text-brand-gold' : 'text-stone-500'
-        }`}
-      >
-        {rank}
-      </span>
+    <div
+      className={`flex items-center gap-3 px-5 py-2 ${isUser ? 'bg-brand-navy' : medalRowBg} ${medal ? medalBorder : ''}`}
+      style={rowBg ? { backgroundColor: rowBg } : undefined}
+    >
+      <span className={`w-7 shrink-0 text-right text-sm tabular-nums ${rankColor}`}>{rank}</span>
       {isUser ? (
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold/20"
           aria-hidden="true"
         >
           <GiCrown className="h-5 w-5 text-brand-gold" />
+        </span>
+      ) : medal ? (
+        <span
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+            medal === 'gold'
+              ? 'bg-brand-gold/20'
+              : medal === 'silver'
+                ? 'bg-stone-200'
+                : 'bg-amber-700/15'
+          }`}
+          aria-hidden="true"
+        >
+          {medal === 'gold' ? (
+            <GiTrophyCup className="h-5 w-5 text-brand-gold" />
+          ) : (
+            <GiMedal
+              className={`h-5 w-5 ${medal === 'silver' ? 'text-stone-500' : 'text-amber-700'}`}
+            />
+          )}
         </span>
       ) : (
         <span
@@ -91,7 +97,7 @@ function ListRow({
         </span>
       )}
       <span
-        className={`min-w-0 flex-1 truncate text-base font-medium ${isUser ? 'text-white' : 'text-brand-ink'}`}
+        className={`min-w-0 flex-1 truncate text-base font-medium ${isUser ? 'text-white' : medal ? 'text-brand-ink font-semibold' : 'text-brand-ink'}`}
       >
         {name}
       </span>
@@ -105,10 +111,11 @@ function ListRow({
 }
 
 /**
- * A user leaderboard: illustrated podium (Game Icons) for the top 3, then a
- * ranked list that expands through rank 9 and scrolls internally past it.
- * The signed-in user is highlighted in place when ranked in the top 10,
- * otherwise pinned below the scroll with their actual position.
+ * Flat leaderboard — no podium columns. Ranks 1-3 use gold/silver/bronze row
+ * tints (via ListRow) to differentiate. Always 10 rows: 1-10 when user is
+ * inside top 10, otherwise top 9 + user row (inserted at natural rank, still
+ * 10 total). Column header sticky top-0 and user row sticky top/bottom mirrors
+ * StandingsSidebar conference headers.
  */
 export function LeaderboardPanel({
   title,
@@ -117,6 +124,7 @@ export function LeaderboardPanel({
   userRank,
   userPoints,
   userName,
+  userColor,
 }: {
   title: string;
   weighted?: boolean;
@@ -124,12 +132,23 @@ export function LeaderboardPanel({
   userRank: number;
   userPoints: number;
   userName?: string;
+  userColor?: string;
 }) {
   const userLabel = userName || 'You';
-  const inBoard = userRank <= TOP_VISIBLE;
-  const podium = entries.slice(0, 3);
-  const list = entries.slice(3).filter((entry) => entry.rank !== userRank);
-
+  const inTop50 = userRank <= LEADERBOARD_SIZE;
+  const displayList: (LeaderboardEntry & { isUser?: boolean })[] = inTop50
+    ? entries
+        .slice(0, LEADERBOARD_SIZE)
+        .map((entry) => ({ ...entry, isUser: entry.rank === userRank }))
+    : [
+        ...entries.slice(0, LEADERBOARD_SIZE - 1).map((entry) => ({ ...entry, isUser: false })),
+        {
+          rank: userRank,
+          name: userLabel,
+          points: userPoints,
+          isUser: true,
+        } as LeaderboardEntry & { isUser: boolean },
+      ];
   return (
     <Panel
       title={title}
@@ -146,78 +165,53 @@ export function LeaderboardPanel({
         </span>
       }
     >
-      <div className="grid grid-cols-3 gap-2 px-4 pt-4">
-        {PODIUM.map(
-          ({
-            rank,
-            label,
-            icon: Icon,
-            iconSize,
-            column,
-            iconClass,
-            labelClass,
-            nameClass,
-            pointsClass,
-          }) => {
-            const entry = podium.find((e) => e.rank === rank)!;
-            const isUser = inBoard && entry.rank === userRank;
+      <div className="max-h-[480px] overflow-y-auto overscroll-contain scrollbar-hide">
+        <div className="sticky top-0 z-[9] bg-white">
+          <div className="flex items-center gap-3 px-5 pb-1 pt-3 text-sm font-semibold uppercase tracking-wide text-stone-600">
+            <span className="w-7 shrink-0 text-right">#</span>
+            <span className="w-8 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">User</span>
+            <span className="w-12 shrink-0 text-right">Pts</span>
+          </div>
+        </div>
+
+        <ul>
+          {displayList.map((entry) => {
+            const isUser = !!entry.isUser;
+            const isStickyUser = isUser;
+            const stickyBg =
+              isStickyUser && userColor
+                ? isLightColor(userColor)
+                  ? darken(userColor, 0.35)
+                  : userColor
+                : '';
+            const stickyStyle = isStickyUser
+              ? stickyBg
+                ? { backgroundColor: stickyBg }
+                : { backgroundColor: '#1C4188' }
+              : undefined;
             return (
-              <div
-                key={rank}
-                className={`relative flex flex-col items-center gap-1.5 rounded-lg border px-1 py-3 text-center ${column}`}
+              <li
+                key={entry.rank}
+                className={
+                  isStickyUser
+                    ? 'sticky top-[36px] bottom-0 z-[8] border-y border-brand-line shadow-[0_4px_12px_rgba(0,0,0,0.08),0_-4px_12px_rgba(0,0,0,0.08)]'
+                    : ''
+                }
+                style={stickyStyle}
               >
-                {isUser && rank !== 1 && (
-                  <span
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-brand-gold"
-                    aria-hidden="true"
-                  >
-                    <GiCrown className="h-3.5 w-3.5 text-brand-navyDark" />
-                  </span>
-                )}
-                {rank === 1 && <GiCrown className="h-6 w-6 text-brand-gold" aria-hidden="true" />}
-                <Icon className={`${iconSize} ${iconClass}`} aria-hidden="true" />
-                <span className={`text-sm font-bold uppercase tracking-wide ${labelClass}`}>
-                  {label}
-                </span>
-                <span
-                  className={`w-full truncate text-base font-semibold ${nameClass}`}
-                  title={entry.name}
-                >
-                  {isUser ? userLabel : entry.name}
-                </span>
-                <span className={`text-sm tabular-nums ${pointsClass}`}>{entry.points} pts</span>
-              </div>
+                <ListRow
+                  rank={entry.rank}
+                  name={entry.name}
+                  points={entry.points}
+                  isUser={isUser}
+                  userColor={userColor}
+                />
+              </li>
             );
-          },
-        )}
+          })}
+        </ul>
       </div>
-
-      <div className="mt-3 flex items-center gap-3 px-5 pb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">
-        <span className="w-7 shrink-0 text-right">#</span>
-        <span className="w-8 shrink-0" aria-hidden="true" />
-        <span className="min-w-0 flex-1">User</span>
-        <span className="w-12 shrink-0 text-right">Pts</span>
-      </div>
-
-      <ul className="max-h-60 overflow-y-auto scrollbar-hide">
-        {list.map((entry) => (
-          <li key={entry.rank}>
-            <ListRow
-              rank={entry.rank}
-              name={inBoard && entry.rank === userRank ? userLabel : entry.name}
-              points={entry.points}
-              isUser={inBoard && entry.rank === userRank}
-            />
-          </li>
-        ))}
-      </ul>
-
-      {!inBoard && (
-        <>
-          <div aria-hidden="true" className="mx-5 border-t border-dashed border-brand-ink/20" />
-          <ListRow rank={userRank} name={userLabel} points={userPoints} isUser />
-        </>
-      )}
     </Panel>
   );
 }

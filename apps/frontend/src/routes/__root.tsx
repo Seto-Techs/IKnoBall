@@ -48,9 +48,9 @@ export const Route = createRootRoute({
 
     return (
       <div
-        className="min-h-screen text-stone-900 antialiased"
+        className="min-h-screen bg-stone-200 text-stone-900 antialiased"
         style={{
-          backgroundColor: 'var(--team-bg, #faf8f6)',
+          backgroundColor: 'var(--team-bg, #e7e5e4)',
           transition: 'background-color 0.5s ease',
         }}
       >

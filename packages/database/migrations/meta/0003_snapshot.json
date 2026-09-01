@@ -110,12 +110,8 @@
           "name": "account_user_id_users_id_fk",
           "tableFrom": "account",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -404,12 +400,8 @@
           "name": "player_season_stats_playerId_players_id_fk",
           "tableFrom": "player_season_stats",
           "tableTo": "players",
-          "columnsFrom": [
-            "playerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["playerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -419,11 +411,7 @@
         "player_season_stats_playerId_season_statsTimeframe_key": {
           "name": "player_season_stats_playerId_season_statsTimeframe_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "playerId",
-            "season",
-            "statsTimeframe"
-          ]
+          "columns": ["playerId", "season", "statsTimeframe"]
         }
       },
       "policies": {},
@@ -600,9 +588,7 @@
         "players_externalId_unique": {
           "name": "players_externalId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "externalId"
-          ]
+          "columns": ["externalId"]
         }
       },
       "policies": {},
@@ -830,12 +816,8 @@
           "name": "schedule_boxscore_players_scheduleGameId_schedule_games_id_fk",
           "tableFrom": "schedule_boxscore_players",
           "tableTo": "schedule_games",
-          "columnsFrom": [
-            "scheduleGameId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -843,12 +825,8 @@
           "name": "schedule_boxscore_players_playerId_players_id_fk",
           "tableFrom": "schedule_boxscore_players",
           "tableTo": "players",
-          "columnsFrom": [
-            "playerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["playerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -858,10 +836,7 @@
         "schedule_boxscore_players_scheduleGameId_playerExternalId_key": {
           "name": "schedule_boxscore_players_scheduleGameId_playerExternalId_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "scheduleGameId",
-            "playerExternalId"
-          ]
+          "columns": ["scheduleGameId", "playerExternalId"]
         }
       },
       "policies": {},
@@ -1205,12 +1180,8 @@
           "name": "schedule_boxscore_summaries_scheduleGameId_schedule_games_id_fk",
           "tableFrom": "schedule_boxscore_summaries",
           "tableTo": "schedule_games",
-          "columnsFrom": [
-            "scheduleGameId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1220,9 +1191,7 @@
         "schedule_boxscore_summaries_scheduleGameId_unique": {
           "name": "schedule_boxscore_summaries_scheduleGameId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "scheduleGameId"
-          ]
+          "columns": ["scheduleGameId"]
         }
       },
       "policies": {},
@@ -1430,12 +1399,8 @@
           "name": "schedule_boxscore_teams_scheduleGameId_schedule_games_id_fk",
           "tableFrom": "schedule_boxscore_teams",
           "tableTo": "schedule_games",
-          "columnsFrom": [
-            "scheduleGameId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1445,10 +1410,7 @@
         "schedule_boxscore_teams_scheduleGameId_side_key": {
           "name": "schedule_boxscore_teams_scheduleGameId_side_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "scheduleGameId",
-            "side"
-          ]
+          "columns": ["scheduleGameId", "side"]
         }
       },
       "policies": {},
@@ -1545,11 +1507,7 @@
         "schedule_days_gameDate_seasonYear_leagueId_key": {
           "name": "schedule_days_gameDate_seasonYear_leagueId_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "gameDate",
-            "seasonYear",
-            "leagueId"
-          ]
+          "columns": ["gameDate", "seasonYear", "leagueId"]
         }
       },
       "policies": {},
@@ -1912,12 +1870,8 @@
           "name": "schedule_games_scheduleDayId_schedule_days_id_fk",
           "tableFrom": "schedule_games",
           "tableTo": "schedule_days",
-          "columnsFrom": [
-            "scheduleDayId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scheduleDayId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1927,9 +1881,7 @@
         "schedule_games_gameId_unique": {
           "name": "schedule_games_gameId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "gameId"
-          ]
+          "columns": ["gameId"]
         }
       },
       "policies": {},
@@ -2037,12 +1989,8 @@
           "name": "schedule_points_leaders_scheduleGameId_schedule_games_id_fk",
           "tableFrom": "schedule_points_leaders",
           "tableTo": "schedule_games",
-          "columnsFrom": [
-            "scheduleGameId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["scheduleGameId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2129,12 +2077,8 @@
           "name": "session_user_id_users_id_fk",
           "tableFrom": "session",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2144,9 +2088,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -2251,9 +2193,7 @@
         "teams_externalId_unique": {
           "name": "teams_externalId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "externalId"
-          ]
+          "columns": ["externalId"]
         }
       },
       "policies": {},
@@ -2344,9 +2284,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -2425,18 +2363,12 @@
     "public.CategoryType": {
       "name": "CategoryType",
       "schema": "public",
-      "values": [
-        "income",
-        "expense"
-      ]
+      "values": ["income", "expense"]
     },
     "public.ScheduleTeamSide": {
       "name": "ScheduleTeamSide",
       "schema": "public",
-      "values": [
-        "home",
-        "away"
-      ]
+      "values": ["home", "away"]
     }
   },
   "schemas": {},

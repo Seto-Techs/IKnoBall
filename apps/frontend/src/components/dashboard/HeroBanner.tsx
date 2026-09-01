@@ -1,13 +1,5 @@
 import type { TeamRecord, TeamWithLeaders } from '../../lib/api';
-import { formatGameDate } from './shared';
-
-function hexLuminance(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-}
+import { formatGameDate, hexLuminance } from './shared';
 
 export function HeroBanner({
   team,
@@ -22,9 +14,6 @@ export function HeroBanner({
   onChooseTeam: () => void;
   teams?: TeamWithLeaders[] | null;
 }) {
-  const teamByAbbr: Record<string, TeamWithLeaders> = Object.fromEntries(
-    (teams ?? []).map((t) => [t.abbreviation, t]),
-  );
   const opponentName = nextGame
     ? nextGame.homeTeam === team.fullName || nextGame.homeTeam === team.teamName
       ? nextGame.awayTeam
@@ -33,9 +22,6 @@ export function HeroBanner({
   const opponent = opponentName
     ? (teams ?? []).find((t) => t.fullName === opponentName || t.teamName === opponentName)
     : undefined;
-  const lastGames = record?.lastGames ?? [];
-  const recentWins = lastGames.filter((g) => g.ourScore > g.oppScore).length;
-  const recentLosses = lastGames.length - recentWins;
   const isBright = hexLuminance(team.primaryColor) > 0.45;
   const tx = isBright ? 'text-brand-ink' : 'text-white';
   const txMuted = isBright ? 'text-brand-ink/75' : 'text-white/80';
@@ -109,44 +95,6 @@ export function HeroBanner({
           </div>
 
           <div className="flex shrink-0 items-center gap-6">
-            <span className={`text-xs font-semibold uppercase tracking-[0.16em] ${txHint}`}>
-              Last 5
-            </span>
-            {lastGames.length > 0 ? (
-              <div className="flex gap-2.5">
-                {lastGames.map((game, i) => {
-                  const opp = teamByAbbr[game.opponentAbbr];
-                  const result = game.ourScore > game.oppScore ? 'W' : 'L';
-                  return (
-                    <div
-                      key={i}
-                      title={`${game.isHome ? 'vs' : '@'} ${game.opponentAbbr} · ${game.ourScore}-${game.oppScore} · ${formatGameDate(game.gameDate, 'MMM d')}`}
-                      className={`relative flex h-12 w-12 items-center justify-center rounded-lg ${isBright ? 'bg-brand-ink/10' : 'bg-white/10'}`}
-                    >
-                      {opp && (
-                        <img
-                          src={opp.logoUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="h-7 w-7 object-contain"
-                        />
-                      )}
-                      <span
-                        className={`absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${result === 'W' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}
-                      >
-                        {result}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>—</span>
-            )}
-            <span className={`text-sm font-semibold tabular-nums ${txMuted}`}>
-              {recentWins}-{recentLosses}
-            </span>
-            <div aria-hidden="true" className={`h-8 w-px shrink-0 ${rule}`} />
             <div className="flex items-center gap-3">
               {opponent?.logoUrl && (
                 <img

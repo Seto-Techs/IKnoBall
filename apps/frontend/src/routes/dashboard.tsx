@@ -6,11 +6,10 @@ import { DashboardHeader } from '../components/dashboard/Header';
 import { StandingsSidebar } from '../components/dashboard/StandingsSidebar';
 import { StatCard } from '../components/dashboard/StatCard';
 import { HeroBanner } from '../components/dashboard/HeroBanner';
-import { UpcomingGamesPanel } from '../components/dashboard/UpcomingMatches';
-import { TopPlayersPanel } from '../components/dashboard/TopPlayers';
-import { ScheduleTable } from '../components/dashboard/ScheduleTable';
 import { LeaderboardPanel } from '../components/dashboard/LeaderboardPanel';
-import { TeamCard, AccountCard } from '../components/dashboard/AccountCard';
+import { MonthlyCalendar } from '../components/dashboard/MonthlyCalendar';
+import { RecentForm } from '../components/dashboard/RecentForm';
+import { StatLeadersPanel } from '../components/dashboard/StatLeaders';
 import { useTeamRecord, useUpcomingGames, useTopPlayers, useStandings, useTeams } from '../lib/api';
 import {
   mockAccuracy,
@@ -39,8 +38,8 @@ function DashboardPage() {
   const { data: teams } = useTeams({ enabled: !!user });
   const team = favTeam ? (teams?.find((t) => t.abbreviation === favTeam) ?? null) : null;
 
-  const { data: record } = useTeamRecord(favTeam ?? undefined);
-  const { data: games, isLoading: gamesLoading } = useUpcomingGames(favTeam ?? undefined);
+  const { data: record, isPending: recordLoading } = useTeamRecord(favTeam ?? undefined);
+  const { data: games } = useUpcomingGames(favTeam ?? undefined);
   const { data: players, isLoading: playersLoading } = useTopPlayers(favTeam ?? undefined);
   const { data: standings, isLoading: standingsLoading } = useStandings();
 
@@ -65,15 +64,16 @@ function DashboardPage() {
   const chooseTeam = () => navigate({ to: '/onboarding' });
 
   return (
-    <div className="min-h-screen bg-white">
-      <DashboardHeader userName={user.name} />
+    <div className="min-h-screen bg-stone-200">
+      <DashboardHeader userName={user.name} onSignOut={handleSignOut} />
 
-      <div className="mx-auto grid max-w-[1920px] grid-cols-1 grid-rows-[1fr] gap-6 overflow-hidden px-6 py-6 xl:grid-cols-[288px_minmax(0,1fr)_288px]">
+      <div className="mx-auto grid max-w-[1920px] grid-cols-1 items-start gap-6 px-6 py-6 xl:grid-cols-[288px_minmax(0,1fr)_288px]">
         <StandingsSidebar
           selectedAbbr={team.abbreviation}
           standings={standings ?? null}
           loading={standingsLoading}
-          className="hidden xl:block"
+          selectedColor={team.primaryColor}
+          className="hidden xl:flex"
         />
 
         <main className="flex min-w-0 flex-col gap-6">
@@ -112,26 +112,20 @@ function DashboardPage() {
             teams={teams}
           />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <UpcomingGamesPanel
-              games={games}
-              loading={gamesLoading}
-              userTeam={team}
-              teams={teams}
-            />
-            <TopPlayersPanel players={players} loading={playersLoading} />
-          </div>
+          <RecentForm record={record} loading={recordLoading} teams={teams} />
 
-          <ScheduleTable games={games} loading={gamesLoading} teams={teams} />
+          <StatLeadersPanel players={players} loading={playersLoading} />
+
+          <MonthlyCalendar abbr={team.abbreviation} team={team} teams={teams} />
         </main>
-
-        <aside className="hidden flex-col gap-6 xl:flex">
+        <aside className="hidden h-fit flex-col gap-6 self-start xl:sticky xl:top-6 xl:flex xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto xl:overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d6d3d1_transparent]">
           <LeaderboardPanel
             title="Leaderboard"
             entries={mockLeaderboard}
             userRank={mockUserRankNumber}
             userPoints={mockUserPoints}
             userName={user.name}
+            userColor={team.primaryColor}
           />
           <LeaderboardPanel
             title="Weighted"
@@ -140,9 +134,8 @@ function DashboardPage() {
             userRank={mockUserRankWeightedNumber}
             userPoints={mockUserPointsWeighted}
             userName={user.name}
+            userColor={team.primaryColor}
           />
-          <TeamCard team={team} />
-          <AccountCard user={user} onChooseTeam={chooseTeam} onSignOut={handleSignOut} />
         </aside>
       </div>
     </div>
