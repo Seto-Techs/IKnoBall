@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useSignIn, AuthError } from '../../lib/use-auth';
-import { useState } from 'react';
+import { useSignIn, AuthError, useDiscordSignIn } from '../../lib/use-auth';
+import { useState, useEffect } from 'react';
+import { FaDiscord } from 'react-icons/fa';
 
 export const Route = createFileRoute('/auth/login')({
   component: LoginPage,
@@ -9,10 +10,18 @@ export const Route = createFileRoute('/auth/login')({
 function LoginPage() {
   const navigate = useNavigate();
   const signIn = useSignIn();
+  const discordSignIn = useDiscordSignIn();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [discordError, setDiscordError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get('error');
+    if (oauthError) setDiscordError(decodeURIComponent(oauthError));
+  }, []);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -102,6 +111,33 @@ function LoginPage() {
             {signIn.isPending ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <div className="relative my-6 flex items-center">
+          <div className="flex-grow border-t border-court-200" />
+          <span className="mx-3 text-xs font-medium uppercase tracking-wider text-stone-400">
+            or
+          </span>
+          <div className="flex-grow border-t border-court-200" />
+        </div>
+
+        {discordError && (
+          <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{discordError}</p>
+        )}
+
+        <button
+          type="button"
+          disabled={discordSignIn.isPending}
+          onClick={() => {
+            setDiscordError(null);
+            discordSignIn.mutate(undefined, {
+              onError: (err) => setDiscordError(err.message),
+            });
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-[#5865F2] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#4752C4] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <FaDiscord className="h-4 w-4 shrink-0" />
+          {discordSignIn.isPending ? 'Redirecting…' : 'Continue with Discord'}
+        </button>
 
         <div className="mt-4 flex flex-col items-center gap-2 text-sm text-stone-500">
           <Link
