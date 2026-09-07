@@ -7,6 +7,8 @@ import { AdminController } from './admin.controller';
 import { UserController } from './user.controller';
 import { TeamsController } from './teams.controller';
 import { StandingsController } from './standings.controller';
+import { GamesController } from './games.controller';
+import { LeadersController } from './leaders.controller';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { emailConfig } from './infrastructure/email/email.config';
@@ -45,6 +47,8 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
     UserController,
     TeamsController,
     StandingsController,
+    GamesController,
+    LeadersController,
   ],
   providers: [
     AppService,

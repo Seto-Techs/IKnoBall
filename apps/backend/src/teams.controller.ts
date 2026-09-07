@@ -143,6 +143,19 @@ class GameResponse {
 
   @ApiProperty({ example: 'TX', nullable: true })
   arenaState!: string | null;
+
+  @ApiProperty({
+    example: '',
+    nullable: true,
+    description: 'Season context: ""=Regular Season, "Preseason"',
+  })
+  gameLabel!: string | null;
+
+  @ApiProperty({ example: null, nullable: true })
+  gameSubLabel!: string | null;
+
+  @ApiProperty({ example: null, nullable: true })
+  seriesText!: string | null;
 }
 
 class PlayerStatResponse {
@@ -395,6 +408,9 @@ export class TeamsController {
         arenaName: scheduleGames.arenaName,
         arenaCity: scheduleGames.arenaCity,
         arenaState: scheduleGames.arenaState,
+        gameLabel: scheduleGames.gameLabel,
+        gameSubLabel: scheduleGames.gameSubLabel,
+        seriesText: scheduleGames.seriesText,
       })
       .from(scheduleGames)
       .where(
@@ -442,6 +458,9 @@ export class TeamsController {
         arenaName: g.arenaName ?? null,
         arenaCity: g.arenaCity ?? null,
         arenaState: g.arenaState ?? null,
+        gameLabel: g.gameLabel ?? null,
+        gameSubLabel: g.gameSubLabel ?? null,
+        seriesText: g.seriesText ?? null,
       })),
     );
   }
@@ -482,13 +501,16 @@ export class TeamsController {
         arenaName: scheduleGames.arenaName,
         arenaCity: scheduleGames.arenaCity,
         arenaState: scheduleGames.arenaState,
+        gameLabel: scheduleGames.gameLabel,
+        gameSubLabel: scheduleGames.gameSubLabel,
+        seriesText: scheduleGames.seriesText,
       })
       .from(scheduleGames)
       .where(
         and(
           gte(scheduleGames.gameDateTimeUTC, start),
           lt(scheduleGames.gameDateTimeUTC, end),
-          notInArray(scheduleGames.gameLabel, ['Preseason', 'All-Star', 'All-Star Championship']),
+          notInArray(scheduleGames.gameLabel, ['All-Star', 'All-Star Championship']),
           or(
             eq(scheduleGames.homeTeamTricode, tricode),
             eq(scheduleGames.awayTeamTricode, tricode),
@@ -529,6 +551,9 @@ export class TeamsController {
         arenaName: g.arenaName ?? null,
         arenaCity: g.arenaCity ?? null,
         arenaState: g.arenaState ?? null,
+        gameLabel: g.gameLabel ?? null,
+        gameSubLabel: g.gameSubLabel ?? null,
+        seriesText: g.seriesText ?? null,
       })),
     );
   }

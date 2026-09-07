@@ -6,8 +6,42 @@ import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
 import { RedisService } from './infrastructure/redis/redis.service';
 import { teams, scheduleDays, scheduleGames } from '@iknoball/database';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, asc } from 'drizzle-orm';
 import { inArray } from 'drizzle-orm';
+
+function getPreviousSeason(season: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(season);
+  if (!m) return '2025-26';
+  const first = parseInt(m[1], 10);
+  const prevFirst = first - 1;
+  const prevSecond = String(prevFirst + 1)
+    .slice(-2)
+    .padStart(2, '0');
+  return `${prevFirst}-${prevSecond}`;
+}
+
+async function resolveSeasonStart(db: DatabaseService['db'], season: string): Promise<Date | null> {
+  if (process.env.NBA_SEASON_START_DATE) {
+    const d = new Date(process.env.NBA_SEASON_START_DATE);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  try {
+    const rows = await db
+      .select({ dt: scheduleGames.gameDateTimeUTC })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(and(eq(scheduleDays.seasonYear, season), sql`${scheduleGames.gameLabel} = ''`))
+      .orderBy(asc(scheduleGames.gameDateTimeUTC))
+      .limit(1);
+    if (rows.length && rows[0].dt) return rows[0].dt as Date;
+  } catch {}
+  const fallbackMap: Record<string, string> = {
+    '2026-27': '2026-10-20T00:00:00Z',
+    '2025-26': '2025-10-21T00:00:00Z',
+  };
+  if (fallbackMap[season]) return new Date(fallbackMap[season]);
+  return null;
+}
 
 if (process.env.NBA_STATS_FORCE_IPV4 === 'true') {
   setDefaultResultOrder('ipv4first');
@@ -60,11 +94,21 @@ export class StandingsController {
     private readonly redis: RedisService,
   ) {}
 
+  private async getEffectiveSeason(rawSeason: string): Promise<string> {
+    const start = await resolveSeasonStart(this.db.db, rawSeason);
+    if (!start || Number.isNaN(start.getTime())) return rawSeason;
+    const now = new Date();
+    const daysUntil = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysUntil > 7) return getPreviousSeason(rawSeason);
+    return rawSeason;
+  }
+
   @Get()
   @ApiOperation({ summary: 'Conference standings with clinch markers' })
   @ApiDataResponse(StandingsResponse, HttpStatus.OK, 'Standings fetched.', 'Standings fetched.')
   async getStandings(): Promise<ApiResponse<StandingsResponse>> {
-    const season = process.env.NBA_CURRENT_SEASON ?? '2025-26';
+    const rawSeason = process.env.NBA_CURRENT_SEASON ?? '2025-26';
+    const season = await this.getEffectiveSeason(rawSeason);
     const cacheKey = `standings:${season}`;
     const staleKey = `${cacheKey}:stale`;
 

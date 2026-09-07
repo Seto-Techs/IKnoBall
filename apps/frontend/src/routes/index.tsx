@@ -13,7 +13,10 @@ function IndexPage() {
   useEffect(() => {
     if (sessionLoading) return;
     if (session?.user) {
-      navigate({ to: session.user.favoriteTeam ? '/dashboard' : '/onboarding' });
+      navigate({
+        to: session.user.favoriteTeam ? '/dashboard' : '/onboarding',
+        search: session.user.favoriteTeam ? {} : undefined,
+      } as never);
     }
   }, [session, sessionLoading, navigate]);
 
