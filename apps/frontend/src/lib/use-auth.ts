@@ -132,6 +132,35 @@ export function useSignUp() {
   });
 }
 
+export async function signInWithDiscord() {
+  if (isMock()) {
+    // Mock: simulate successful Discord sign-in
+    return { url: window.location.origin };
+  }
+  const { data, error } = await authClient.signIn.social({
+    provider: 'discord',
+    callbackURL: `${window.location.origin}/`,
+  });
+  if (error) throw new Error(error.message ?? error.code ?? 'Discord sign-in failed');
+  // Better Auth returns a URL to redirect to Discord; follow it
+  if (data?.url) {
+    window.location.href = data.url;
+  }
+  return data;
+}
+
+export function useDiscordSignIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: signInWithDiscord,
+    onSuccess: () => {
+      if (isMock()) {
+        qc.setQueryData(['session'], MOCK_SESSION);
+      }
+    },
+  });
+}
+
 export function useSignOut() {
   const qc = useQueryClient();
 
