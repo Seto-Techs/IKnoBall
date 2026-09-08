@@ -55,6 +55,13 @@ function GameBlock({
   const pillBg = isBright ? 'bg-brand-ink/15' : 'bg-white/25';
   const ring = isBright ? 'ring-brand-ink/10' : 'ring-white/25';
   const abbr = opp?.abbreviation ?? oppName.slice(0, 3).toUpperCase();
+  const isPreseason = (game.gameLabel ?? '') === 'Preseason';
+  const isPlayoffs = !!(game.seriesText ?? '').trim();
+  const isFinal = (game.status ?? '').toLowerCase().includes('final');
+  const hasScore = game.homeScore != null && game.awayScore != null;
+  const favScore = isHome ? game.homeScore : game.awayScore;
+  const oppScore = isHome ? game.awayScore : game.homeScore;
+  const isWin = isFinal && hasScore ? (favScore ?? 0) > (oppScore ?? 0) : null;
 
   return (
     <div
@@ -89,21 +96,42 @@ function GameBlock({
           />
         </>
       )}
+      {isPreseason && (
+        <span className="absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-stone-900 shadow ring-1 ring-amber-300">
+          Preseason
+        </span>
+      )}
+      {isPlayoffs && !isPreseason && (
+        <span className="absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-full bg-brand-red px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-white shadow ring-1 ring-white/20">
+          Playoffs
+        </span>
+      )}
       {opp?.logoUrl ? (
         <img
           src={opp.logoUrl}
           alt=""
           aria-hidden="true"
-          className="relative z-10 h-[60%] aspect-square w-auto object-contain drop-shadow-[0_3px_4px_rgba(0,0,0,0.35)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110"
+          className={`relative z-10 h-[60%] aspect-square w-auto object-contain drop-shadow-[0_3px_4px_rgba(0,0,0,0.35)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 ${isFinal ? 'opacity-70 saturate-[0.7]' : ''}`}
         />
       ) : (
-        <span className={`relative z-10 text-base font-extrabold ${pillTx}`}>{abbr}</span>
+        <span
+          className={`relative z-10 text-base font-extrabold ${pillTx} ${isFinal ? 'opacity-70' : ''}`}
+        >
+          {abbr}
+        </span>
       )}
       <span
         className={`relative z-10 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-widest ring-1 ring-inset ${ring} ${pillBg} ${pillTx}`}
       >
         {isHome ? 'vs' : '@'}
       </span>
+      {isFinal && isWin !== null && hasScore && (
+        <span
+          className={`relative z-10 -mb-1 rounded-full px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white shadow ring-1 ${isWin ? 'bg-emerald-500 ring-white/20' : 'bg-stone-700 ring-white/15'}`}
+        >
+          {isWin ? `W ${favScore}-${oppScore}` : `L ${favScore}-${oppScore}`}
+        </span>
+      )}
     </div>
   );
 }

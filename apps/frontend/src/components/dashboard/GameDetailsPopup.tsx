@@ -139,6 +139,11 @@ export function GameDetailsPopup({
       ? 'bg-brand-red text-white animate-pulse'
       : 'bg-brand-navyDark text-white';
 
+  const isPreseason = (game.gameLabel ?? '') === 'Preseason';
+  const isAllStar =
+    (game.gameLabel ?? '') === 'All-Star' || (game.gameLabel ?? '') === 'All-Star Championship';
+  const isPlayoffsPopup = !!(game.seriesText ?? '').trim();
+
   // time formatting - local time
   let timeLabel = '';
   let dateLabel = '';
@@ -330,6 +335,12 @@ export function GameDetailsPopup({
                 </span>
               )}
               <span
+                className="max-w-[14ch] text-center font-heading text-[11px] font-bold uppercase tracking-wide text-white/95 sm:text-xs"
+                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' } as React.CSSProperties}
+              >
+                {isHome ? (opp?.teamName ?? oppName) : team.teamName}
+              </span>
+              <span
                 className="font-heading text-[13px] font-black uppercase tracking-[0.22em] text-white sm:text-sm"
                 style={
                   {
@@ -338,12 +349,6 @@ export function GameDetailsPopup({
                 }
               >
                 AWAY
-              </span>
-              <span
-                className="max-w-[14ch] text-center font-heading text-[11px] font-bold uppercase tracking-wide text-white/95 sm:text-xs"
-                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' } as React.CSSProperties}
-              >
-                {isHome ? (opp?.teamName ?? oppName) : team.teamName}
               </span>
             </div>
             {/* HOME — right */}
@@ -372,6 +377,12 @@ export function GameDetailsPopup({
                 </span>
               )}
               <span
+                className="max-w-[14ch] text-center font-heading text-[11px] font-bold uppercase tracking-wide text-white/95 sm:text-xs"
+                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' } as React.CSSProperties}
+              >
+                {isHome ? team.teamName : (opp?.teamName ?? oppName)}
+              </span>
+              <span
                 className="font-heading text-[13px] font-black uppercase tracking-[0.22em] text-white sm:text-sm"
                 style={
                   {
@@ -380,12 +391,6 @@ export function GameDetailsPopup({
                 }
               >
                 HOME
-              </span>
-              <span
-                className="max-w-[14ch] text-center font-heading text-[11px] font-bold uppercase tracking-wide text-white/95 sm:text-xs"
-                style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' } as React.CSSProperties}
-              >
-                {isHome ? team.teamName : (opp?.teamName ?? oppName)}
               </span>
             </div>
           </div>
@@ -428,6 +433,29 @@ export function GameDetailsPopup({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-brand-ink">{dateLabel}</div>
               <div className="text-sm text-stone-600">{timeLabel}</div>
+              {/* season pill — below date and time, mirrors hero/calendar differentiation */}
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {isPreseason ? (
+                  <span className="inline-flex rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-stone-900 ring-1 ring-amber-300">
+                    Preseason
+                  </span>
+                ) : isAllStar ? (
+                  <span className="inline-flex rounded-full bg-brand-gold px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-brand-navy ring-1 ring-white/20">
+                    All-Star
+                  </span>
+                ) : isPlayoffsPopup ? (
+                  <span
+                    className="inline-flex rounded-full bg-brand-red px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-white ring-1 ring-white/20"
+                    title={game.seriesText ?? undefined}
+                  >
+                    Playoffs{game.seriesText ? ` • ${game.seriesText}` : ''}
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-stone-600 ring-1 ring-black/10">
+                    Regular Season
+                  </span>
+                )}
+              </div>
               {!isFinal && !isLive && (
                 <div className="mt-1 text-xs font-medium uppercase tracking-widest text-stone-500">
                   Tip-off • {isHome ? 'Home' : 'Away'} game

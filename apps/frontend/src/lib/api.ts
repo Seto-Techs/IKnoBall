@@ -28,6 +28,31 @@ export interface Game {
   arenaName?: string | null;
   arenaCity?: string | null;
   arenaState?: string | null;
+  gameDate?: string;
+  homeTricode?: string | null;
+  awayTricode?: string | null;
+  gameLabel?: string | null;
+  gameSubLabel?: string | null;
+  seriesText?: string | null;
+}
+
+export interface LeaderEntry {
+  externalId: string;
+  name: string;
+  teamAbbr: string;
+  headshotUrl: string;
+  teamColor: string;
+  value: number;
+  gamesPlayed: number;
+}
+
+export interface LeadersResponse {
+  season: string;
+  PTS: LeaderEntry[];
+  REB: LeaderEntry[];
+  AST: LeaderEntry[];
+  STL: LeaderEntry[];
+  BLK: LeaderEntry[];
 }
 
 export interface PlayerStat {
@@ -157,6 +182,69 @@ export function useStandings() {
       return res.data;
     },
     staleTime: 1000 * 60 * 15,
+  });
+}
+
+/* ── League Wide: Games + Leaders ── */
+
+export function useLeagueGamesToday() {
+  return useQuery({
+    queryKey: ['league-games-today'],
+    queryFn: async (): Promise<Game[]> => {
+      const res = await fetchJson<{ data: Game[] }>('/games/today');
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function useLeagueGamesRange(from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: ['league-games-range', from, to],
+    queryFn: async (): Promise<Game[]> => {
+      const res = await fetchJson<{ data: Game[] }>(
+        `/games/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      );
+      return res.data;
+    },
+    enabled: enabled && !!from && !!to,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useLeagueGamesNext(enabled = true) {
+  return useQuery({
+    queryKey: ['league-games-next'],
+    queryFn: async (): Promise<Game[]> => {
+      const res = await fetchJson<{ data: Game[] }>('/games/next');
+      return res.data;
+    },
+    enabled,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useLeagueGamesPrevious(enabled = true) {
+  return useQuery({
+    queryKey: ['league-games-previous'],
+    queryFn: async (): Promise<Game[]> => {
+      const res = await fetchJson<{ data: Game[] }>('/games/previous');
+      return res.data;
+    },
+    enabled,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useLeagueLeaders(season?: string) {
+  return useQuery({
+    queryKey: ['league-leaders', season ?? 'current'],
+    queryFn: async (): Promise<LeadersResponse> => {
+      const qs = season ? `?season=${encodeURIComponent(season)}` : '';
+      const res = await fetchJson<{ data: LeadersResponse }>(`/leaders${qs}`);
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 30,
   });
 }
 

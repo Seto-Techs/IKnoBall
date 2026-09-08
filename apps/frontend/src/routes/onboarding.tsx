@@ -327,7 +327,7 @@ function OnboardingPage() {
               onClick={() => {
                 if (saveTeam.isPending) return;
                 saveTeam.mutate(selected.abbreviation, {
-                  onSuccess: () => navigate({ to: '/dashboard' }),
+                  onSuccess: () => navigate({ to: '/dashboard', search: {} as never }),
                 });
               }}
               disabled={saveTeam.isPending}
