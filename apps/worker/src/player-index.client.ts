@@ -86,6 +86,28 @@ export class PlayerIndexClient {
     return (await response.json()) as PlayerDashboardResponse;
   }
 
+  /**
+   * Season-wide leaderboard: one request returns totals for every player who
+   * played in the season (PerMode=Totals has no GP filter). Useful as a
+   * cheap bulk repair path when per-player dashboard endpoints are throttled.
+   */
+  async fetchLeagueLeaders(
+    season: string,
+    seasonType: string,
+    perMode = 'Totals',
+  ): Promise<PlayerDashboardResponse> {
+    const url = new URL(`${this.baseUrl}/leagueleaders`);
+    url.searchParams.set('LeagueID', '00');
+    url.searchParams.set('PerMode', perMode);
+    url.searchParams.set('Scope', 'S');
+    url.searchParams.set('Season', season);
+    url.searchParams.set('SeasonType', seasonType);
+    url.searchParams.set('StatCategory', 'PTS');
+
+    const response = await this.fetchWithRetry(url, 3);
+    return (await response.json()) as PlayerDashboardResponse;
+  }
+
   private async fetchWithRetry(url: URL, retries: number) {
     let attempt = 0;
     while (true) {
