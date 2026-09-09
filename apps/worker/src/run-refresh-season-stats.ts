@@ -123,9 +123,9 @@ async function backfillFromLeagueLeaders(
       console.error(`leagueleaders fetch failed for ${seasonType}:`, err);
       continue;
     }
-    const resultSet = response.resultSets[0];
-    if (!resultSet) {
-      console.error(`no result set for ${seasonType}`);
+    const resultSet = response.resultSet;
+    if (!resultSet || !Array.isArray(resultSet.headers) || !Array.isArray(resultSet.rowSet)) {
+      console.error(`no usable result set for ${seasonType}`);
       continue;
     }
 
