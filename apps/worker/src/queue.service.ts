@@ -53,6 +53,17 @@ export class QueueService {
     );
   }
 
+  /** Pending (waiting/active/delayed) + finished counts for the career queue. */
+  async crawlPlayerCareerJobCounts() {
+    return this.crawlPlayerCareerQueue.getJobCounts(
+      'waiting',
+      'active',
+      'delayed',
+      'completed',
+      'failed',
+    );
+  }
+
   async enqueueSyncSchedule(jobId = 'syncSchedule', data: { mode?: 'today' | 'all' } = {}) {
     await this.syncScheduleQueue.add('syncSchedule', data, {
       jobId,

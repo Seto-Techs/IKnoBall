@@ -195,23 +195,8 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       }
 
       const season = row.GROUP_VALUE;
-      if (season === currentSeason) {
-        await this.database.db
-          .insert(playerSeasonStats)
-          .values({ playerId, season, statsTimeframe, ...totals })
-          .onConflictDoUpdate({
-            target: [
-              playerSeasonStats.playerId,
-              playerSeasonStats.season,
-              playerSeasonStats.statsTimeframe,
-            ],
-            set: totals,
-          });
-        continue;
-      }
-
       const [existing] = await this.database.db
-        .select({ id: playerSeasonStats.id })
+        .select({ gp: playerSeasonStats.gp })
         .from(playerSeasonStats)
         .where(
           and(
@@ -220,13 +205,48 @@ export class PlayerSeasonProcessor implements OnModuleInit {
             eq(playerSeasonStats.statsTimeframe, statsTimeframe),
           ),
         );
-      if (existing) {
+
+      if (!existing) {
+        await this.database.db
+          .insert(playerSeasonStats)
+          .values({ playerId, season, statsTimeframe, ...totals });
         continue;
       }
 
-      await this.database.db
-        .insert(playerSeasonStats)
-        .values({ playerId, season, statsTimeframe, ...totals });
+      // updatedAt is a plain defaultNow() column, so it must be set explicitly
+      // on updates — otherwise refreshed rows still look stale to monitoring.
+      if (season === currentSeason) {
+        // live snapshot: always refresh
+        await this.database.db
+          .update(playerSeasonStats)
+          .set({ ...totals, updatedAt: new Date() })
+          .where(
+            and(
+              eq(playerSeasonStats.playerId, playerId),
+              eq(playerSeasonStats.season, season),
+              eq(playerSeasonStats.statsTimeframe, statsTimeframe),
+            ),
+          );
+        continue;
+      }
+
+      // completed seasons: per-season stats only accumulate, so refresh only
+      // when the crawled snapshot has more games than the stored row. This
+      // heals rows written mid-season by earlier syncs (e.g. a whole table
+      // synced once mid-season froze every current-season row at partial GP)
+      // without churning finished rows on every crawl.
+      if ((totals.gp ?? 0) > (existing.gp ?? 0)) {
+        await this.database.db
+          .update(playerSeasonStats)
+          .set({ ...totals, updatedAt: new Date() })
+          .where(
+            and(
+              eq(playerSeasonStats.playerId, playerId),
+              eq(playerSeasonStats.season, season),
+              eq(playerSeasonStats.statsTimeframe, statsTimeframe),
+            ),
+          );
+      }
     }
   }
 
