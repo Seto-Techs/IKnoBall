@@ -120,6 +120,17 @@ export class PlayerSyncService {
     }
 
     await this.database.db.update(players).set(data).where(eq(players.externalId, externalId));
+
+    // Active players need their career dashboard re-crawled on every sync: the
+    // ByYear dashboard is a live snapshot, and the processor only upserts rows
+    // for the current season. Without this, a player's current-season row stays
+    // frozen at whatever partial state it had when the player was first synced
+    // (the stale Harden gp=44 bug). The default `career-<id>` jobId dedupes
+    // against any pending crawl, and completed jobs are removed, so repeated
+    // syncs don't pile up duplicate work.
+    if (player.TO_YEAR === currentSeason.split('-')[0]) {
+      await this.queueService.enqueuePlayerCareer(externalId);
+    }
   }
 
   private toFloat(value: number | null) {

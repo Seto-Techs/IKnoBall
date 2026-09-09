@@ -53,6 +53,27 @@ export class QueueService {
     );
   }
 
+  /** Remove all waiting/delayed jobs from the career queue (stop retry storms). */
+  async drainPlayerCareerQueue() {
+    await this.crawlPlayerCareerQueue.drain();
+  }
+
+  /** Remove ALL jobs (including failed/completed) from the career queue. */
+  async obliteratePlayerCareerQueue() {
+    await this.crawlPlayerCareerQueue.obliterate();
+  }
+
+  /** Pending (waiting/active/delayed) + finished counts for the career queue. */
+  async crawlPlayerCareerJobCounts() {
+    return this.crawlPlayerCareerQueue.getJobCounts(
+      'waiting',
+      'active',
+      'delayed',
+      'completed',
+      'failed',
+    );
+  }
+
   async enqueueSyncSchedule(jobId = 'syncSchedule', data: { mode?: 'today' | 'all' } = {}) {
     await this.syncScheduleQueue.add('syncSchedule', data, {
       jobId,

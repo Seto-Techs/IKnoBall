@@ -7,7 +7,7 @@ import { PlayerIndexClient } from '../player-index.client';
 import { DatabaseService } from '../database.service';
 import { QueueService, QUEUE_NAMES } from '../queue.service';
 
-type PlayerDashboardRow = {
+export type PlayerDashboardRow = {
   GROUP_SET: string;
   GROUP_VALUE: string;
   TEAM_ID: number | null;
@@ -74,6 +74,108 @@ type PlayerDashboardRow = {
   TD3_RANK: number | null;
   WNBA_FANTASY_PTS_RANK: number | null;
 };
+
+/** Column values for one player_season_stats row, derived from a totals snapshot. */
+export type SeasonTotals = {
+  gp: number;
+  wins?: number | null;
+  losses?: number | null;
+  fgPct?: number | null;
+  fg3Pct?: number | null;
+  ftPct?: number | null;
+  ptsTotal?: number | null;
+  rebTotal?: number | null;
+  astTotal?: number | null;
+  stlTotal?: number | null;
+  blkTotal?: number | null;
+  ptsPerGame?: number | null;
+  rebPerGame?: number | null;
+  astPerGame?: number | null;
+  stlPerGame?: number | null;
+  blkPerGame?: number | null;
+};
+
+/** Map a ByYear dashboard row to storable totals; null when nothing to store. */
+export function toSeasonTotals(row: PlayerDashboardRow): SeasonTotals | null {
+  const gp = row.GP ?? null;
+  if (!gp || gp <= 0) {
+    return null;
+  }
+  const ptsTotal = row.PTS ?? null;
+  const rebTotal = row.REB ?? null;
+  const astTotal = row.AST ?? null;
+  const stlTotal = row.STL ?? null;
+  const blkTotal = row.BLK ?? null;
+  if ([ptsTotal, rebTotal, astTotal, stlTotal, blkTotal].every((v) => v === null)) {
+    return null;
+  }
+
+  return {
+    gp,
+    wins: row.W ?? null,
+    losses: row.L ?? null,
+    fgPct: row.FG_PCT ?? null,
+    fg3Pct: row.FG3_PCT ?? null,
+    ftPct: row.FT_PCT ?? null,
+    ptsTotal,
+    rebTotal,
+    astTotal,
+    stlTotal,
+    blkTotal,
+    ptsPerGame: ptsTotal !== null ? ptsTotal / gp : null,
+    rebPerGame: rebTotal !== null ? rebTotal / gp : null,
+    astPerGame: astTotal !== null ? astTotal / gp : null,
+    stlPerGame: stlTotal !== null ? stlTotal / gp : null,
+    blkPerGame: blkTotal !== null ? blkTotal / gp : null,
+  };
+}
+
+export type UpsertSeasonTotalsOutcome = 'inserted' | 'updated' | 'skipped';
+
+/**
+ * Write one player_season_stats row from a totals snapshot. Missing keys in
+ * `totals` (e.g. wins/losses when the source is the leagueleaders API) are
+ * left untouched on update.
+ *
+ * - No existing row -> insert.
+ * - `alwaysRefresh` (the live current season) -> always overwrite.
+ * - Otherwise (completed seasons) -> update only when the snapshot advanced,
+ *   i.e. has more GP than the stored row. Per-season stats only accumulate,
+ *   so this heals rows written mid-season without churning finished rows.
+ */
+export async function upsertSeasonTotals(
+  db: DatabaseService['db'],
+  params: { playerId: string; season: string; statsTimeframe: string },
+  totals: SeasonTotals,
+  opts: { alwaysRefresh?: boolean } = {},
+): Promise<UpsertSeasonTotalsOutcome> {
+  const key = and(
+    eq(playerSeasonStats.playerId, params.playerId),
+    eq(playerSeasonStats.season, params.season),
+    eq(playerSeasonStats.statsTimeframe, params.statsTimeframe),
+  );
+  const [existing] = await db
+    .select({ gp: playerSeasonStats.gp })
+    .from(playerSeasonStats)
+    .where(key);
+
+  if (!existing) {
+    await db.insert(playerSeasonStats).values({ ...params, ...totals });
+    return 'inserted';
+  }
+
+  if (!opts.alwaysRefresh && (totals.gp ?? 0) <= (existing.gp ?? 0)) {
+    return 'skipped';
+  }
+
+  // updatedAt is a plain defaultNow() column, so it must be set explicitly
+  // on updates — otherwise refreshed rows still look stale to monitoring.
+  await db
+    .update(playerSeasonStats)
+    .set({ ...totals, updatedAt: new Date() })
+    .where(key);
+  return 'updated';
+}
 
 @Injectable()
 export class PlayerSeasonProcessor implements OnModuleInit {
@@ -185,48 +287,21 @@ export class PlayerSeasonProcessor implements OnModuleInit {
   ) {
     const currentSeason = this.currentSeason;
     for (const row of rows) {
-      if (!row.GROUP_VALUE || this.isEmptyStats(row.PTS, row.REB, row.AST, row.STL, row.BLK)) {
+      if (!row.GROUP_VALUE) {
         continue;
       }
 
-      const totals = this.toTotals(row);
+      const totals = toSeasonTotals(row);
       if (!totals) {
         continue;
       }
 
-      const season = row.GROUP_VALUE;
-      if (season === currentSeason) {
-        await this.database.db
-          .insert(playerSeasonStats)
-          .values({ playerId, season, statsTimeframe, ...totals })
-          .onConflictDoUpdate({
-            target: [
-              playerSeasonStats.playerId,
-              playerSeasonStats.season,
-              playerSeasonStats.statsTimeframe,
-            ],
-            set: totals,
-          });
-        continue;
-      }
-
-      const [existing] = await this.database.db
-        .select({ id: playerSeasonStats.id })
-        .from(playerSeasonStats)
-        .where(
-          and(
-            eq(playerSeasonStats.playerId, playerId),
-            eq(playerSeasonStats.season, season),
-            eq(playerSeasonStats.statsTimeframe, statsTimeframe),
-          ),
-        );
-      if (existing) {
-        continue;
-      }
-
-      await this.database.db
-        .insert(playerSeasonStats)
-        .values({ playerId, season, statsTimeframe, ...totals });
+      await upsertSeasonTotals(
+        this.database.db,
+        { playerId, season: row.GROUP_VALUE, statsTimeframe },
+        totals,
+        { alwaysRefresh: row.GROUP_VALUE === currentSeason },
+      );
     }
   }
 
@@ -238,10 +313,6 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       });
       return mapped as PlayerDashboardRow;
     });
-  }
-
-  private isEmptyStats(...values: (number | null)[]) {
-    return values.every((v) => v === null);
   }
 
   private isRetryable(error: unknown) {
@@ -263,39 +334,5 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       );
     }
     return false;
-  }
-
-  private toTotals(row: PlayerDashboardRow) {
-    const gp = row.GP ?? null;
-    if (!gp || gp <= 0) {
-      return null;
-    }
-    const ptsTotal = row.PTS ?? null;
-    const rebTotal = row.REB ?? null;
-    const astTotal = row.AST ?? null;
-    const stlTotal = row.STL ?? null;
-    const blkTotal = row.BLK ?? null;
-    if (this.isEmptyStats(ptsTotal, rebTotal, astTotal, stlTotal, blkTotal)) {
-      return null;
-    }
-
-    return {
-      gp,
-      wins: row.W ?? null,
-      losses: row.L ?? null,
-      fgPct: row.FG_PCT ?? null,
-      fg3Pct: row.FG3_PCT ?? null,
-      ftPct: row.FT_PCT ?? null,
-      ptsTotal,
-      rebTotal,
-      astTotal,
-      stlTotal,
-      blkTotal,
-      ptsPerGame: ptsTotal !== null ? ptsTotal / gp : null,
-      rebPerGame: rebTotal !== null ? rebTotal / gp : null,
-      astPerGame: astTotal !== null ? astTotal / gp : null,
-      stlPerGame: stlTotal !== null ? stlTotal / gp : null,
-      blkPerGame: blkTotal !== null ? blkTotal / gp : null,
-    };
   }
 }
