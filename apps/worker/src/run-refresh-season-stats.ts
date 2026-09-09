@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { Module } from '@nestjs/common';
-import { and, eq, lt } from 'drizzle-orm';
+import { and, count, eq, gte, lt } from 'drizzle-orm';
 import { playerSeasonStats, players } from '@iknoball/database';
 import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
@@ -33,10 +33,19 @@ import { PlayerSeasonProcessor } from './processors/player-season.processor';
  *   bun src/run-refresh-season-stats.ts [season] [staleDays]
  *   bun src/run-refresh-season-stats.ts            # previous season, 1 day
  *   bun src/run-refresh-season-stats.ts 2025-26 1
+ *
+ * Live progress: polls the DB every 5s and prints "synced X of Y players" as
+ * rows are refreshed.
  */
 
 @Module({
-  providers: [DatabaseService, RedisService, PlayerIndexClient, QueueService, PlayerSeasonProcessor],
+  providers: [
+    DatabaseService,
+    RedisService,
+    PlayerIndexClient,
+    QueueService,
+    PlayerSeasonProcessor,
+  ],
 })
 class RefreshSeasonStatsModule {}
 
@@ -95,15 +104,39 @@ async function run() {
   }
   console.log(`enqueued ${externalIds.length} career crawls (stagger ${staggerMs}ms)`);
 
-  // drain: wait until nothing is waiting/active/delayed, then report
+  // progress = rows actually refreshed in the DB (immune to which worker
+  // consumed the job). Small clock-skew margin so DB-server timestamps count.
+  const startedBefore = new Date(Date.now() - 60_000);
+  const refreshed = () =>
+    database.db
+      .select({ done: count() })
+      .from(playerSeasonStats)
+      .where(
+        and(
+          eq(playerSeasonStats.season, season),
+          eq(playerSeasonStats.statsTimeframe, 'ByYear-regular'),
+          gte(playerSeasonStats.updatedAt, startedBefore),
+        ),
+      );
+
+  let lastDone = -1;
   for (;;) {
     await sleep(5000);
+    const [{ done }] = await refreshed();
+    if (done !== lastDone) {
+      const pct = Math.floor((done / externalIds.length) * 100);
+      console.log(`synced ${done} of ${externalIds.length} players (${pct}%)`);
+      lastDone = done;
+    }
+    if (done >= externalIds.length) {
+      console.log('done: all targeted rows refreshed');
+      break;
+    }
     const counts = await queue.crawlPlayerCareerJobCounts();
-    const pending = counts.waiting + counts.active + counts.delayed;
-    if (pending === 0) {
+    if (counts.waiting + counts.active + counts.delayed === 0) {
       console.log(
-        `drained: completed=${counts.completed} failed=${counts.failed} ` +
-          `(this run also completed ${counts.completed} if no deployed worker is sharing the queue)`,
+        `queue drained but ${externalIds.length - done} players were not refreshed — ` +
+          'crawls failed after retries (check failed jobs / worker logs). Re-run to retry.',
       );
       break;
     }
