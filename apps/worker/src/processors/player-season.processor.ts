@@ -6,6 +6,7 @@ import { RedisService } from '../redis.service';
 import { PlayerIndexClient } from '../player-index.client';
 import { DatabaseService } from '../database.service';
 import { QueueService, QUEUE_NAMES } from '../queue.service';
+import { resolveCurrentSeason } from '../season';
 
 export type PlayerDashboardRow = {
   GROUP_SET: string;
@@ -130,6 +131,32 @@ export function toSeasonTotals(row: PlayerDashboardRow): SeasonTotals | null {
   };
 }
 
+/**
+ * Collapse dashboard rows to one totals snapshot per season.
+ *
+ * NBA's ByYear dashboard returns a combined `TEAM_ABBREVIATION='TOT'` row plus
+ * one row per team for players who were traded mid-season, all sharing the same
+ * GROUP_VALUE. Writing every row in order lets the last per-team split clobber
+ * the season total whenever the row is refreshed unconditionally (the current
+ * season), so prefer the TOT row when present and otherwise keep the last row
+ * seen for that season.
+ */
+export function collapseDashboardRowsBySeason(
+  rows: PlayerDashboardRow[],
+): { season: string; totals: SeasonTotals }[] {
+  const bySeason = new Map<string, { totals: SeasonTotals; isTot: boolean }>();
+  for (const row of rows) {
+    if (!row.GROUP_VALUE) continue;
+    const totals = toSeasonTotals(row);
+    if (!totals) continue;
+    const isTot = row.TEAM_ABBREVIATION === 'TOT';
+    const previous = bySeason.get(row.GROUP_VALUE);
+    if (previous?.isTot && !isTot) continue;
+    bySeason.set(row.GROUP_VALUE, { totals, isTot });
+  }
+  return Array.from(bySeason, ([season, { totals }]) => ({ season, totals }));
+}
+
 export type UpsertSeasonTotalsOutcome = 'inserted' | 'updated' | 'skipped';
 
 /**
@@ -180,7 +207,7 @@ export async function upsertSeasonTotals(
 @Injectable()
 export class PlayerSeasonProcessor implements OnModuleInit {
   private readonly logger = new Logger(PlayerSeasonProcessor.name);
-  private readonly currentSeason = process.env.NBA_CURRENT_SEASON || '';
+  private readonly currentSeason = resolveCurrentSeason();
   private readonly maxRetryAttempts = 5;
   private readonly retryDelayMs = 60000;
 
@@ -210,9 +237,6 @@ export class PlayerSeasonProcessor implements OnModuleInit {
   }
 
   private async crawlPlayerCareer(playerExternalId: string, attempt: number) {
-    if (!this.currentSeason) {
-      throw new Error('NBA_CURRENT_SEASON is required');
-    }
     const startedAt = Date.now();
     this.logger.log(`crawlPlayerCareer start player=${playerExternalId}`);
     const [player] = await this.database.db
@@ -286,22 +310,10 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     statsTimeframe: string,
   ) {
     const currentSeason = this.currentSeason;
-    for (const row of rows) {
-      if (!row.GROUP_VALUE) {
-        continue;
-      }
-
-      const totals = toSeasonTotals(row);
-      if (!totals) {
-        continue;
-      }
-
-      await upsertSeasonTotals(
-        this.database.db,
-        { playerId, season: row.GROUP_VALUE, statsTimeframe },
-        totals,
-        { alwaysRefresh: row.GROUP_VALUE === currentSeason },
-      );
+    for (const { season, totals } of collapseDashboardRowsBySeason(rows)) {
+      await upsertSeasonTotals(this.database.db, { playerId, season, statsTimeframe }, totals, {
+        alwaysRefresh: season === currentSeason,
+      });
     }
   }
 

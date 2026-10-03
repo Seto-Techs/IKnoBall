@@ -52,12 +52,19 @@ export class PlayerIndexClient {
     };
   }
 
+  /**
+   * One request returns every player on a roster for the season, which is what
+   * drives team/jersey updates. It is retried like the dashboard endpoints: a
+   * single transient abort used to fail the whole roster sync (the playerindex
+   * call was the only one without a retry), leaving every team stale until the
+   * next cron run.
+   */
   async fetchPlayerIndex(season: string): Promise<PlayerIndexResponse> {
     const url = new URL(`${this.baseUrl}/playerindex`);
     url.searchParams.set('LeagueID', '00');
     url.searchParams.set('Season', season);
 
-    const response = await this.fetchWithTimeout(url);
+    const response = await this.fetchWithRetry(url, 3);
     return (await response.json()) as PlayerIndexResponse;
   }
 

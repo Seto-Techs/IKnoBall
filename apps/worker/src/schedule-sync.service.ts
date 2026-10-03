@@ -7,6 +7,7 @@ import { NbaScheduleClient, NbaScheduleResponse } from './nba-schedule.client';
 import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 import { QueueService } from './queue.service';
+import { resolveCurrentSeason } from './season';
 
 type ScheduleGameInput =
   NbaScheduleResponse['leagueSchedule']['gameDates'][number]['games'][number];
@@ -31,11 +32,8 @@ export class ScheduleSyncService {
   }
 
   async syncScheduleForToday() {
-    const season = process.env.NBA_CURRENT_SEASON || '';
+    const season = resolveCurrentSeason();
     const leagueId = process.env.NBA_LEAGUE_ID || '00';
-    if (!season) {
-      throw new Error('NBA_CURRENT_SEASON is required');
-    }
 
     const today = this.getTodayDateString();
     const startedAt = Date.now();
@@ -95,11 +93,8 @@ export class ScheduleSyncService {
   }
 
   async syncScheduleAll() {
-    const season = process.env.NBA_CURRENT_SEASON || '';
+    const season = resolveCurrentSeason();
     const leagueId = process.env.NBA_LEAGUE_ID || '00';
-    if (!season) {
-      throw new Error('NBA_CURRENT_SEASON is required');
-    }
 
     const startedAt = Date.now();
     this.logger.log(`syncScheduleAll start season=${season} league=${leagueId}`);
@@ -158,11 +153,8 @@ export class ScheduleSyncService {
   }
 
   async syncScheduleAllForce() {
-    const season = process.env.NBA_CURRENT_SEASON || '';
+    const season = resolveCurrentSeason();
     const leagueId = process.env.NBA_LEAGUE_ID || '00';
-    if (!season) {
-      throw new Error('NBA_CURRENT_SEASON is required');
-    }
 
     const startedAt = Date.now();
     this.logger.log(`syncScheduleAllForce start season=${season} league=${leagueId}`);

@@ -8,11 +8,8 @@ import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
 import { QueueService } from './queue.service';
 import { PlayerIndexClient } from './player-index.client';
-import {
-  PlayerSeasonProcessor,
-  SeasonTotals,
-  upsertSeasonTotals,
-} from './processors/player-season.processor';
+import { SeasonTotals, upsertSeasonTotals } from './processors/player-season.processor';
+import { resolveCurrentSeason } from './season';
 
 /**
  * Backfill / repair tool for stale `player_season_stats` rows.
@@ -37,6 +34,12 @@ import {
  * All modes are safe to re-run: finished-season rows only update when the new
  * snapshot has more GP than stored.
  *
+ * The script only enqueues and polls; it must never consume the career queue
+ * itself, or it would apply its own NBA_CURRENT_SEASON to the crawl writes
+ * (e.g. treating a finished season as live and letting per-team rows overwrite
+ * season totals). Do not register PlayerSeasonProcessor here — its
+ * onModuleInit starts a queue Worker and keeps the process alive.
+ *
  * Usage (from apps/worker):
  *   bun src/run-refresh-season-stats.ts [season] [staleDays] [mode]
  *   bun src/run-refresh-season-stats.ts 2025-26 1 leagueleaders
@@ -45,13 +48,7 @@ import {
  */
 
 @Module({
-  providers: [
-    DatabaseService,
-    RedisService,
-    PlayerIndexClient,
-    QueueService,
-    PlayerSeasonProcessor,
-  ],
+  providers: [DatabaseService, RedisService, PlayerIndexClient, QueueService],
 })
 class RefreshSeasonStatsModule {}
 
@@ -249,7 +246,7 @@ async function run() {
   const args = process.argv.slice(2);
   const mode = (args.find((a) => ['leagueleaders', 'crawl', 'purge'].includes(a)) ||
     'leagueleaders') as 'leagueleaders' | 'crawl' | 'purge';
-  const currentSeason = process.env.NBA_CURRENT_SEASON || '';
+  const currentSeason = resolveCurrentSeason();
 
   if (mode === 'purge') {
     const app = await NestFactory.createApplicationContext(RefreshSeasonStatsModule, {
