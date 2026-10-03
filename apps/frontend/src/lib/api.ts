@@ -113,6 +113,50 @@ export interface TeamWithLeaders {
   } | null;
 }
 
+export interface SearchGameHit {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeTricode: string | null;
+  awayTricode: string | null;
+  gameDateTime: string;
+  status: string;
+  arenaName: string | null;
+  arenaCity: string | null;
+  arenaState: string | null;
+  gameDate: string;
+}
+
+export interface SearchTeamHit {
+  abbreviation: string;
+  teamName: string;
+  fullName: string;
+  city: string;
+  conference: string;
+  division: string;
+  logoUrl: string | null;
+  primaryColor: string | null;
+  nextGame: SearchGameHit | null;
+}
+
+export interface SearchPlayerHit {
+  id: string;
+  name: string;
+  position: string | null;
+  headshotUrl: string;
+  teamAbbr: string | null;
+  teamName: string | null;
+  teamColor: string | null;
+  nextGame: SearchGameHit | null;
+}
+
+export interface SearchResults {
+  query: string;
+  teams: SearchTeamHit[];
+  players: SearchPlayerHit[];
+  games: SearchGameHit[];
+}
+
 /* ── API fetch helpers (Vite proxy in dev, VITE_API_URL + /api in prod) ── */
 
 const API = import.meta.env.DEV ? '/api' : `${import.meta.env.VITE_API_URL ?? ''}/api`;
@@ -260,7 +304,44 @@ export function useTeams(options?: { enabled?: boolean }) {
   });
 }
 
+/**
+ * Global search. `query` should already be debounced by the caller; the request
+ * only fires at 2+ characters so the header stays free until the user types.
+ */
+export function useSearch(query: string) {
+  return useQuery({
+    queryKey: ['search', query],
+    queryFn: async (): Promise<SearchResults> => {
+      const res = await fetchJson<{ data: SearchResults }>(
+        `/search?q=${encodeURIComponent(query)}`,
+      );
+      return res.data;
+    },
+    enabled: query.trim().length >= 2,
+    staleTime: 1000 * 60,
+    // Keep the previous results on screen while the next query is in flight.
+    placeholderData: (previous) => previous,
+  });
+}
+
 /* ── Mutations ── */
+
+/**
+ * The API reports failures with a human-readable `message` (e.g. why a weighted
+ * pick was refused), so surface that instead of a bare status code.
+ */
+async function errorMessage(res: Response): Promise<string> {
+  try {
+    const body: unknown = await res.json();
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message?: unknown }).message;
+      if (typeof message === 'string' && message.trim()) return message;
+    }
+  } catch {
+    // Not JSON; fall through to the status line.
+  }
+  return `${res.status} ${res.statusText}`;
+}
 
 async function mutateJson<T>(method: string, path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
