@@ -44,10 +44,11 @@ export const Route = createRootRoute({
   component: () => {
     const { pathname } = useLocation();
     const isOnboarding = pathname.startsWith('/onboarding');
-    const isDashboard = pathname.startsWith('/dashboard');
-    const hideHeader =
+    // These routes render the dashboard header and own their own page width and
+    // padding, so the shell must not wrap them in a max-width container.
+    const isAppShell =
       isOnboarding ||
-      isDashboard ||
+      pathname.startsWith('/dashboard') ||
       pathname.startsWith('/predict') ||
       pathname.startsWith('/profile') ||
       pathname.startsWith('/game');
@@ -60,10 +61,10 @@ export const Route = createRootRoute({
           transition: 'background-color 0.5s ease',
         }}
       >
-        {!hideHeader && <Header />}
+        {!isAppShell && <Header />}
         <main
           className={
-            isOnboarding ? 'px-8 py-4' : isDashboard ? 'w-full' : 'mx-auto max-w-6xl px-4 py-6'
+            isOnboarding ? 'px-8 py-4' : isAppShell ? 'w-full' : 'mx-auto max-w-6xl px-4 py-6'
           }
         >
           <Outlet />

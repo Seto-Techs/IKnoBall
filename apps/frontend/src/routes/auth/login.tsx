@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useSignIn, AuthError, useDiscordSignIn } from '../../lib/use-auth';
+import { useSignIn, AuthError, useDiscordSignIn, useSession } from '../../lib/use-auth';
 import { useState, useEffect } from 'react';
 import { FaDiscord } from 'react-icons/fa';
 
@@ -16,6 +16,17 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [discordError, setDiscordError] = useState<string | null>(null);
+  const { data: session, isPending: sessionLoading } = useSession();
+
+  useEffect(() => {
+    if (sessionLoading) return;
+    if (session?.user) {
+      navigate({
+        to: session.user.favoriteTeam ? '/dashboard' : '/onboarding',
+        search: session.user.favoriteTeam ? {} : undefined,
+      } as never);
+    }
+  }, [session, sessionLoading, navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
