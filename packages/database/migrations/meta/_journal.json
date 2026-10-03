@@ -36,6 +36,13 @@
       "when": 1791022640519,
       "tag": "0004_awesome_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791051423044,
+      "tag": "0005_team_metadata_and_favorite_team",
+      "breakpoints": true
     }
   ]
 }
