@@ -70,32 +70,6 @@ function GameBlock({
       } ${bg ? `ring-1 ring-inset ${ring}` : ''}`}
       style={bg ? { backgroundColor: bg } : undefined}
     >
-      {bg && (
-        <>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.11]"
-            style={{
-              background: `radial-gradient(420px circle at 70% 0%, ${isBright ? '#000' : '#fff'} 0%, transparent 58%)`,
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] bg-gradient-to-t from-black to-transparent"
-            style={{ opacity: isBright ? 0.06 : 0.16 }}
-          />
-          <span
-            aria-hidden="true"
-            className={`pointer-events-none absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 select-none font-heading text-[34px] font-black leading-none tracking-tighter ${isBright ? 'text-brand-ink/[0.06]' : 'text-white/[0.07]'}`}
-          >
-            {abbr}
-          </span>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
-          />
-        </>
-      )}
       {isPreseason && (
         <span className="absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-stone-900 shadow ring-1 ring-amber-300">
           Preseason
@@ -111,7 +85,7 @@ function GameBlock({
           src={opp.logoUrl}
           alt=""
           aria-hidden="true"
-          className={`relative z-10 h-[60%] aspect-square w-auto object-contain drop-shadow-[0_3px_4px_rgba(0,0,0,0.35)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 ${isFinal ? 'opacity-70 saturate-[0.7]' : ''}`}
+          className={`relative z-10 h-[60%] aspect-square w-auto object-contain transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 ${isFinal ? 'opacity-70 saturate-[0.7]' : ''}`}
         />
       ) : (
         <span
@@ -127,7 +101,7 @@ function GameBlock({
       </span>
       {isFinal && isWin !== null && hasScore && (
         <span
-          className={`relative z-10 -mb-1 rounded-full px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white shadow ring-1 ${isWin ? 'bg-emerald-500 ring-white/20' : 'bg-stone-700 ring-white/15'}`}
+          className={`relative z-10 -mb-1 rounded-full px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white ring-1 ${isWin ? 'bg-emerald-500 ring-white/20' : 'bg-stone-700 ring-white/15'}`}
         >
           {isWin ? `W ${favScore}-${oppScore}` : `L ${favScore}-${oppScore}`}
         </span>
