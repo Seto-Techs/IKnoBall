@@ -25,6 +25,7 @@
     "@aws-sdk/s3-request-presigner": "^3.750.0",
     "@better-auth/drizzle-adapter": "^1.6.25",
     "@iknoball/database": "workspace:*",
+    "@iknoball/predictions": "workspace:*",
     "@iknoball/schema": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",
