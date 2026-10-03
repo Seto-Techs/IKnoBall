@@ -1,0 +1,11 @@
+# BB worktree: copy untracked env files from source checkout to new worktrees
+# (runs after git worktree add, before .bb-env-setup.sh)
+
+.env
+.env.*
+!.env.example
+apps/backend/.env
+apps/backend/.env.*
+!.env.example
+apps/frontend/.env
+apps/frontend/.env.*
