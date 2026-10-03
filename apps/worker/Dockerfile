@@ -11,12 +11,15 @@ COPY apps/backend/package.json apps/backend/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/schema/package.json packages/schema/package.json
+COPY packages/predictions/package.json packages/predictions/package.json
 
 COPY apps/worker apps/worker
 COPY packages/database packages/database
+COPY packages/predictions packages/predictions
 
 RUN bun install --frozen-lockfile --ignore-scripts
 RUN bun run --filter '@iknoball/database' build
+RUN bun run --filter '@iknoball/predictions' build
 
 WORKDIR /app/apps/worker
 RUN bun run build
