@@ -60,13 +60,17 @@ export class PlayerSyncService {
     }
 
     const players = this.mapRows(resultSet.headers, resultSet.rowSet);
+    let inserted = 0;
+    let teamChanges = 0;
     for (const player of players) {
-      await this.upsertPlayer(player, season);
+      const outcome = await this.upsertPlayer(player, season);
+      if (outcome === 'inserted') inserted += 1;
+      else if (outcome === 'team-changed') teamChanges += 1;
     }
 
     const spanSeconds = ((Date.now() - startedAt) / 1000).toFixed(2);
     this.logger.log(
-      `syncPlayers done season=${season} count=${players.length} span=${spanSeconds}s`,
+      `syncPlayers done season=${season} count=${players.length} inserted=${inserted} teamChanges=${teamChanges} span=${spanSeconds}s`,
     );
   }
 
@@ -80,10 +84,13 @@ export class PlayerSyncService {
     });
   }
 
-  private async upsertPlayer(player: PlayerIndexRow, currentSeason: string) {
+  private async upsertPlayer(
+    player: PlayerIndexRow,
+    currentSeason: string,
+  ): Promise<'inserted' | 'team-changed' | 'unchanged'> {
     const externalId = String(player.PERSON_ID);
     const [existing] = await this.database.db
-      .select({ id: players.id })
+      .select({ id: players.id, teamId: players.teamId, teamAbbr: players.teamAbbr })
       .from(players)
       .where(eq(players.externalId, externalId));
 
@@ -116,7 +123,7 @@ export class PlayerSyncService {
     if (!existing) {
       await this.database.db.insert(players).values(data);
       await this.queueService.enqueuePlayerCareer(String(player.PERSON_ID));
-      return;
+      return 'inserted';
     }
 
     await this.database.db.update(players).set(data).where(eq(players.externalId, externalId));
@@ -131,6 +138,10 @@ export class PlayerSyncService {
     if (player.TO_YEAR === currentSeason.split('-')[0]) {
       await this.queueService.enqueuePlayerCareer(externalId);
     }
+
+    const teamChanged =
+      existing.teamId !== data.teamId || (existing.teamAbbr ?? null) !== (data.teamAbbr ?? null);
+    return teamChanged ? 'team-changed' : 'unchanged';
   }
 
   private toFloat(value: number | null) {
