@@ -1,18 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
+exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
-var better_auth_schema_js_1 = require("./better-auth.schema.js");
-Object.defineProperty(exports, "account", { enumerable: true, get: function () { return better_auth_schema_js_1.account; } });
-Object.defineProperty(exports, "session", { enumerable: true, get: function () { return better_auth_schema_js_1.session; } });
-Object.defineProperty(exports, "user", { enumerable: true, get: function () { return better_auth_schema_js_1.user; } });
-Object.defineProperty(exports, "verification", { enumerable: true, get: function () { return better_auth_schema_js_1.verification; } });
+const better_auth_schema_js_1 = require("./better-auth.schema.js");
+var better_auth_schema_js_2 = require("./better-auth.schema.js");
+Object.defineProperty(exports, "account", { enumerable: true, get: function () { return better_auth_schema_js_2.account; } });
+Object.defineProperty(exports, "session", { enumerable: true, get: function () { return better_auth_schema_js_2.session; } });
+Object.defineProperty(exports, "user", { enumerable: true, get: function () { return better_auth_schema_js_2.user; } });
+Object.defineProperty(exports, "verification", { enumerable: true, get: function () { return better_auth_schema_js_2.verification; } });
 const pg_core_1 = require("drizzle-orm/pg-core");
 const id = () => (0, pg_core_1.text)('id').primaryKey().$defaultFn(node_crypto_1.randomUUID);
 const createdAt = () => (0, pg_core_1.timestamp)('createdAt', { precision: 3 }).notNull().defaultNow();
 const updatedAt = () => (0, pg_core_1.timestamp)('updatedAt', { precision: 3 }).notNull().defaultNow();
 exports.scheduleTeamSide = (0, pg_core_1.pgEnum)('ScheduleTeamSide', ['home', 'away']);
 exports.categoryType = (0, pg_core_1.pgEnum)('CategoryType', ['income', 'expense']);
+exports.predictionMode = (0, pg_core_1.pgEnum)('PredictionMode', ['flat', 'weighted']);
+exports.predictionStatus = (0, pg_core_1.pgEnum)('PredictionStatus', ['pending', 'settled', 'voided']);
 exports.activityLogs = (0, pg_core_1.pgTable)('activity_logs', {
     id: (0, pg_core_1.text)('activity_log_id').primaryKey().$defaultFn(node_crypto_1.randomUUID),
     userId: (0, pg_core_1.text)('user_id'),
@@ -305,4 +308,57 @@ exports.scheduleBoxscorePlayers = (0, pg_core_1.pgTable)('schedule_boxscore_play
     (0, pg_core_1.index)('schedule_boxscore_players_scheduleGameId_idx').on(table.scheduleGameId),
     (0, pg_core_1.index)('schedule_boxscore_players_playerId_idx').on(table.playerId),
     (0, pg_core_1.index)('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId),
+]);
+/**
+ * Append-only odds capture, one row per game/book/capture.
+ *
+ * The NBA CDN odds file only exposes current state, so every fetch is persisted
+ * here to provide the audit trail needed to justify a locked payout.
+ */
+exports.gameOddsSnapshots = (0, pg_core_1.pgTable)('game_odds_snapshots', {
+    id: id(),
+    gameId: (0, pg_core_1.text)('gameId').notNull(),
+    bookName: (0, pg_core_1.text)('bookName').notNull(),
+    bookCountry: (0, pg_core_1.text)('bookCountry').notNull(),
+    homeDecimal: (0, pg_core_1.doublePrecision)('homeDecimal').notNull(),
+    awayDecimal: (0, pg_core_1.doublePrecision)('awayDecimal').notNull(),
+    homeOpeningDecimal: (0, pg_core_1.doublePrecision)('homeOpeningDecimal'),
+    awayOpeningDecimal: (0, pg_core_1.doublePrecision)('awayOpeningDecimal'),
+    capturedAt: (0, pg_core_1.timestamp)('capturedAt', { precision: 3 }).notNull().defaultNow(),
+}, (table) => [
+    (0, pg_core_1.unique)('game_odds_snapshots_gameId_book_capturedAt_key').on(table.gameId, table.bookName, table.bookCountry, table.capturedAt),
+    (0, pg_core_1.index)('game_odds_snapshots_gameId_capturedAt_idx').on(table.gameId, table.capturedAt),
+]);
+/**
+ * A user's pick on a game, one row per mode.
+ *
+ * `gameId` is intentionally not a foreign key: the schedule sync hard-deletes
+ * non-final games that drop out of a day's feed, and a constraint here would
+ * either block that delete or cascade the pick away. Keeping it as plain text
+ * lets the pick survive as a voided record.
+ *
+ * `lockedDecimal` is the de-vigged price captured at submit. Settlement reads
+ * only this column, never live odds.
+ */
+exports.predictionPicks = (0, pg_core_1.pgTable)('prediction_picks', {
+    id: id(),
+    userId: (0, pg_core_1.text)('userId')
+        .notNull()
+        .references(() => better_auth_schema_js_1.user.id, { onDelete: 'cascade' }),
+    gameId: (0, pg_core_1.text)('gameId').notNull(),
+    mode: (0, exports.predictionMode)('mode').notNull(),
+    side: (0, exports.scheduleTeamSide)('side').notNull(),
+    lockedDecimal: (0, pg_core_1.doublePrecision)('lockedDecimal'),
+    lockedBook: (0, pg_core_1.text)('lockedBook'),
+    lockedAt: (0, pg_core_1.timestamp)('lockedAt', { precision: 3 }),
+    points: (0, pg_core_1.integer)('points'),
+    status: (0, exports.predictionStatus)('status').notNull().default('pending'),
+    settledAt: (0, pg_core_1.timestamp)('settledAt', { precision: 3 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('prediction_picks_userId_gameId_mode_key').on(table.userId, table.gameId, table.mode),
+    (0, pg_core_1.index)('prediction_picks_userId_settledAt_idx').on(table.userId, table.settledAt),
+    (0, pg_core_1.index)('prediction_picks_gameId_idx').on(table.gameId),
+    (0, pg_core_1.index)('prediction_picks_status_idx').on(table.status),
 ]);

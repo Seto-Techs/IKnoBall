@@ -22,6 +22,8 @@ const updatedAt = () => timestamp('updatedAt', { precision: 3 }).notNull().defau
 
 export const scheduleTeamSide = pgEnum('ScheduleTeamSide', ['home', 'away']);
 export const categoryType = pgEnum('CategoryType', ['income', 'expense']);
+export const predictionMode = pgEnum('PredictionMode', ['flat', 'weighted']);
+export const predictionStatus = pgEnum('PredictionStatus', ['pending', 'settled', 'voided']);
 
 export const activityLogs = pgTable(
   'activity_logs',
@@ -363,5 +365,73 @@ export const scheduleBoxscorePlayers = pgTable(
     index('schedule_boxscore_players_scheduleGameId_idx').on(table.scheduleGameId),
     index('schedule_boxscore_players_playerId_idx').on(table.playerId),
     index('schedule_boxscore_players_playerExternalId_idx').on(table.playerExternalId),
+  ],
+);
+
+/**
+ * Append-only odds capture, one row per game/book/capture.
+ *
+ * The NBA CDN odds file only exposes current state, so every fetch is persisted
+ * here to provide the audit trail needed to justify a locked payout.
+ */
+export const gameOddsSnapshots = pgTable(
+  'game_odds_snapshots',
+  {
+    id: id(),
+    gameId: text('gameId').notNull(),
+    bookName: text('bookName').notNull(),
+    bookCountry: text('bookCountry').notNull(),
+    homeDecimal: doublePrecision('homeDecimal').notNull(),
+    awayDecimal: doublePrecision('awayDecimal').notNull(),
+    homeOpeningDecimal: doublePrecision('homeOpeningDecimal'),
+    awayOpeningDecimal: doublePrecision('awayOpeningDecimal'),
+    capturedAt: timestamp('capturedAt', { precision: 3 }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique('game_odds_snapshots_gameId_book_capturedAt_key').on(
+      table.gameId,
+      table.bookName,
+      table.bookCountry,
+      table.capturedAt,
+    ),
+    index('game_odds_snapshots_gameId_capturedAt_idx').on(table.gameId, table.capturedAt),
+  ],
+);
+
+/**
+ * A user's pick on a game, one row per mode.
+ *
+ * `gameId` is intentionally not a foreign key: the schedule sync hard-deletes
+ * non-final games that drop out of a day's feed, and a constraint here would
+ * either block that delete or cascade the pick away. Keeping it as plain text
+ * lets the pick survive as a voided record.
+ *
+ * `lockedDecimal` is the de-vigged price captured at submit. Settlement reads
+ * only this column, never live odds.
+ */
+export const predictionPicks = pgTable(
+  'prediction_picks',
+  {
+    id: id(),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    gameId: text('gameId').notNull(),
+    mode: predictionMode('mode').notNull(),
+    side: scheduleTeamSide('side').notNull(),
+    lockedDecimal: doublePrecision('lockedDecimal'),
+    lockedBook: text('lockedBook'),
+    lockedAt: timestamp('lockedAt', { precision: 3 }),
+    points: integer('points'),
+    status: predictionStatus('status').notNull().default('pending'),
+    settledAt: timestamp('settledAt', { precision: 3 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('prediction_picks_userId_gameId_mode_key').on(table.userId, table.gameId, table.mode),
+    index('prediction_picks_userId_settledAt_idx').on(table.userId, table.settledAt),
+    index('prediction_picks_gameId_idx').on(table.gameId),
+    index('prediction_picks_status_idx').on(table.status),
   ],
 );

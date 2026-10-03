@@ -29,6 +29,13 @@
       "when": 1788194513106,
       "tag": "0003_vengeful_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791022640519,
+      "tag": "0004_awesome_red_wolf",
+      "breakpoints": true
     }
   ]
 }
