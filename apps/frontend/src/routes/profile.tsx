@@ -1,29 +1,38 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { CalendarClock, Target, Trophy, TrendingUp, UserRound, Zap } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
 import { EmptyState, Panel } from '../components/dashboard/shared';
 import { StatCard } from '../components/dashboard/StatCard';
-import { loadPredictions, type SavedPrediction } from '../components/predict/PredictionPanel';
-import { useLeagueGamesRange, useTeamRecord, useTeams, useTopPlayers, type Game } from '../lib/api';
-import { buildTeamLookup, getGameStatus, resolveGameTeams } from '../lib/game-utils';
-import { useSession, useSignOut } from '../lib/use-auth';
 import {
-  mockAccuracy,
-  mockUserPoints,
-  mockUserPredictions,
-  mockUserRank,
-  mockUserRankNumber,
-} from '../lib/mock-data';
+  useLeaderboard,
+  useMyPicks,
+  useTeamRecord,
+  useTeams,
+  useTopPlayers,
+  type PredictionPickWithGame,
+} from '../lib/api';
+import { buildTeamLookup, canonicalAbbr } from '../lib/game-utils';
+import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/profile')({
   component: ProfilePage,
 });
 
-function shiftDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+/** 1 -> "1st", 12 -> "12th", 23 -> "23rd". */
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return 'th';
+  switch (n % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
 }
 
 function ProfilePage() {
@@ -40,14 +49,13 @@ function ProfilePage() {
   const { data: record } = useTeamRecord(favTeam ?? undefined);
   const { data: players } = useTopPlayers(favTeam ?? undefined);
 
-  const from = useMemo(() => shiftDate(-200), []);
-  const to = useMemo(() => shiftDate(200), []);
-  const { data: games } = useLeagueGamesRange(from, to, !!user);
+  const { data: myPicks } = useMyPicks();
+  // Must run before the early returns below, or the hook count changes between
+  // renders and React throws "Rendered more hooks than during the previous render".
+  const lookup = useMemo(() => buildTeamLookup(teams), [teams]);
 
-  const [predictions, setPredictions] = useState<Record<string, SavedPrediction>>({});
-  useEffect(() => {
-    if (typeof window !== 'undefined') setPredictions(loadPredictions());
-  }, []);
+  const flatBoard = useLeaderboard('flat');
+  const weightedBoard = useLeaderboard('weighted');
 
   useEffect(() => {
     if (sessionLoading || sessionFetching) return;
@@ -62,15 +70,38 @@ function ProfilePage() {
     signOut.mutate(undefined, { onSuccess: () => navigate({ to: '/' }) });
   };
 
-  const lookup = useMemo(() => buildTeamLookup(teams), [teams]);
-  const predictedGames = (games ?? []).filter((g) => predictions[g.id]);
-  const sortedHistory = [...predictedGames].sort((a, b) => {
-    const sa = getGameStatus(a) === 'scheduled' ? 0 : 1;
-    const sb = getGameStatus(b) === 'scheduled' ? 0 : 1;
+  // The picks endpoint already carries the game, so history does not depend on
+  // fetching a schedule window. Open picks sort first, then by tip-off; each
+  // mode is its own row.
+  const historyEntries = [...(myPicks ?? [])].sort((a, b) => {
+    const sa = a.gameStatus === 1 ? 0 : 1;
+    const sb = b.gameStatus === 1 ? 0 : 1;
     if (sa !== sb) return sa - sb;
-    return new Date(a.gameDateTime).getTime() - new Date(b.gameDateTime).getTime();
+    return new Date(a.gameDateTime ?? 0).getTime() - new Date(b.gameDateTime ?? 0).getTime();
   });
-  const upcomingPicks = sortedHistory.filter((g) => getGameStatus(g) === 'scheduled');
+  const upcomingPicks = historyEntries.filter((pick) => pick.gameStatus === 1);
+
+  // Stats span both modes: a settled pick is a correct call when it scored.
+  const settledEntries = historyEntries.filter((pick) => pick.status === 'settled');
+  const correctCount = settledEntries.filter((pick) => (pick.points ?? 0) > 0).length;
+  const wrongCount = settledEntries.length - correctCount;
+  const totalPoints = historyEntries.reduce((sum, pick) => sum + (pick.points ?? 0), 0);
+  const accuracy = settledEntries.length
+    ? `${Math.round((correctCount / settledEntries.length) * 100)}%`
+    : '—';
+
+  // Two boards exist, so rank against whichever one places the user highest and
+  // name it, rather than showing "—" for someone ranked only in the other mode.
+  const myFlatRow = flatBoard.data?.find((row) => row.userId === user.id) ?? null;
+  const myWeightedRow = weightedBoard.data?.find((row) => row.userId === user.id) ?? null;
+  const bestRow =
+    [...[myFlatRow, myWeightedRow]]
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((a, b) => a.rank - b.rank)[0] ?? null;
+  const rankLabel = bestRow ? `${bestRow.rank}${ordinal(bestRow.rank)}` : '—';
+  const rankCaption = bestRow
+    ? `${bestRow === myFlatRow ? 'Flat' : 'Weighted'} leaderboard`
+    : 'No settled picks';
 
   const initials = (user.name ?? '?')
     .split(/\s+/)
@@ -144,50 +175,49 @@ function ProfilePage() {
                 <StatCard
                   icon={<Trophy className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
                   label="Rank"
-                  value={mockUserRank}
-                  caption={`#${mockUserRankNumber} leaderboard`}
+                  value={rankLabel}
+                  caption={rankCaption}
                 />
                 <StatCard
                   icon={<Target className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
                   label="Accuracy"
-                  value={mockAccuracy}
-                  caption="This week"
+                  value={accuracy}
+                  caption="Settled picks"
                 />
                 <StatCard
                   icon={<TrendingUp className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
                   label="Predictions"
-                  value={`${mockUserPredictions.correct}W ${mockUserPredictions.wrong}L`}
+                  value={`${correctCount}W ${wrongCount}L`}
                   caption="Correct / Wrong"
                 />
                 <StatCard
                   icon={<Zap className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
                   label="Points"
-                  value={mockUserPoints}
-                  caption="Season total"
+                  value={String(totalPoints)}
+                  caption="All modes"
                 />
               </div>
 
               <Panel title="My Predictions" className="overflow-hidden" contentClassName="!p-0">
                 <div className="flex items-center justify-end border-b border-brand-line px-5 py-2">
                   <span className="rounded-full bg-stone-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-stone-500">
-                    {upcomingPicks.length} open · {sortedHistory.length} total
+                    {upcomingPicks.length} open · {historyEntries.length} total
                   </span>
                 </div>
                 <div className="divide-y divide-brand-line">
-                  {sortedHistory.length === 0 && (
+                  {historyEntries.length === 0 && (
                     <EmptyState message="No predictions yet — make your first pick from the Predictions page." />
                   )}
-                  {sortedHistory.map((g) => (
+                  {historyEntries.map((pick) => (
                     <HistoryRow
-                      key={g.id}
-                      game={g}
-                      pred={predictions[g.id]}
+                      key={`${pick.gameId}-${pick.mode}`}
+                      pick={pick}
                       lookup={lookup}
                       accentColor={accentColor}
                     />
                   ))}
                 </div>
-                {sortedHistory.length > 0 && (
+                {historyEntries.length > 0 && (
                   <div className="border-t border-brand-line px-5 py-3 text-center">
                     <Link
                       to="/predict"
@@ -266,31 +296,30 @@ function ProfilePage() {
 }
 
 function HistoryRow({
-  game,
-  pred,
+  pick,
   lookup,
   accentColor,
 }: {
-  game: Game;
-  pred: SavedPrediction;
+  pick: PredictionPickWithGame;
   lookup: ReturnType<typeof buildTeamLookup>;
   accentColor: string;
 }) {
-  const { away, home } = useMemo(() => resolveGameTeams(game, lookup), [game, lookup]);
-  const status = getGameStatus(game);
-  const awayAbbr =
-    away?.abbreviation ?? game.awayTricode ?? game.awayTeam.slice(0, 3).toUpperCase();
-  const homeAbbr =
-    home?.abbreviation ?? game.homeTricode ?? game.homeTeam.slice(0, 3).toUpperCase();
-  const picked = pred.pick === 'away' ? awayAbbr : homeAbbr;
+  const awayAbbr = pick.awayTricode ?? (pick.awayTeam ?? '?').slice(0, 3).toUpperCase();
+  const homeAbbr = pick.homeTricode ?? (pick.homeTeam ?? '?').slice(0, 3).toUpperCase();
+  const away = lookup.byKey.get(canonicalAbbr(awayAbbr)) ?? null;
+  const home = lookup.byKey.get(canonicalAbbr(homeAbbr)) ?? null;
+  const picked = pick.side === 'away' ? awayAbbr : homeAbbr;
+  const modeLabel = pick.mode === 'flat' ? 'Flat' : 'Weighted';
 
+  // Status comes from the server, which is authoritative: it knows about voided
+  // games and about picks settled after the line moved.
   let resultLabel: string;
-  if (status === 'scheduled') {
+  if (pick.status === 'voided') {
+    resultLabel = 'Void';
+  } else if (pick.status === 'settled') {
+    resultLabel = (pick.points ?? 0) > 0 ? '✓ Correct' : '✗ Missed';
+  } else if (pick.gameStatus === 1) {
     resultLabel = 'Open';
-  } else if (game.awayScore != null && game.homeScore != null) {
-    const awayWon = game.awayScore > game.homeScore;
-    const correct = (pred.pick === 'away') === awayWon;
-    resultLabel = correct ? '✓ Correct' : '✗ Missed';
   } else {
     resultLabel = 'Pending';
   }
@@ -298,7 +327,7 @@ function HistoryRow({
   return (
     <Link
       to="/game/$gameId"
-      params={{ gameId: game.id }}
+      params={{ gameId: pick.gameId }}
       className="flex items-center gap-3 px-5 py-3 transition hover:bg-stone-50"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -312,7 +341,7 @@ function HistoryRow({
         ) : null}
         <span className="text-sm font-bold text-brand-ink">{homeAbbr}</span>
         <span className="ml-2 hidden truncate text-xs text-stone-500 sm:inline">
-          {new Date(game.gameDateTime).toLocaleDateString('en-US', {
+          {new Date(pick.gameDateTime ?? 0).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
           })}
@@ -320,6 +349,12 @@ function HistoryRow({
       </div>
       <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-stone-600">
         {picked}
+      </span>
+      <span className="hidden rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-stone-500 sm:inline">
+        {modeLabel}
+      </span>
+      <span className="w-10 shrink-0 text-right text-sm font-black tabular-nums text-brand-ink">
+        {pick.points ?? '—'}
       </span>
       <span
         className={`w-24 shrink-0 rounded-full px-2.5 py-1 text-center text-[11px] font-black uppercase tracking-widest ${

@@ -19,6 +19,7 @@
         "@aws-sdk/s3-request-presigner": "^3.750.0",
         "@better-auth/drizzle-adapter": "^1.6.25",
         "@iknoball/database": "workspace:*",
+        "@iknoball/predictions": "workspace:*",
         "@iknoball/schema": "workspace:*",
         "@nestjs/common": "^11.0.1",
         "@nestjs/config": "^4.0.3",
@@ -101,6 +102,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@iknoball/database": "workspace:*",
+        "@iknoball/predictions": "workspace:*",
         "@nestjs/common": "^11.0.1",
         "@nestjs/core": "^11.0.1",
         "@nestjs/schedule": "^5.0.0",
@@ -117,6 +119,7 @@
         "@types/pg": "^8.15.6",
         "ts-node": "^10.9.2",
         "typescript": "^5.7.3",
+        "vitest": "^4.1.10",
       },
     },
     "packages/database": {
@@ -128,6 +131,13 @@
       "devDependencies": {
         "@types/pg": "^8.15.6",
         "drizzle-kit": "^0.31.10",
+        "typescript": "^5.7.3",
+      },
+    },
+    "packages/predictions": {
+      "name": "@iknoball/predictions",
+      "devDependencies": {
+        "@types/node": "^24.0.0",
         "typescript": "^5.7.3",
       },
     },
@@ -311,6 +321,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
     "@iknoball/database": ["@iknoball/database@workspace:packages/database"],
+
+    "@iknoball/predictions": ["@iknoball/predictions@workspace:packages/predictions"],
 
     "@iknoball/schema": ["@iknoball/schema@workspace:packages/schema"],
 

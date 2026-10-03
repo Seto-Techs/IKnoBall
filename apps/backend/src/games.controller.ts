@@ -1,12 +1,22 @@
-import { BadRequestException, Controller, Get, HttpStatus, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, HttpStatus, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
-import { teams, scheduleGames } from '@iknoball/database';
-import { and, gte, lt, asc, desc, eq, inArray, notInArray } from 'drizzle-orm';
+import { teams, scheduleDays, scheduleGames } from '@iknoball/database';
+import { and, gte, lt, lte, asc, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 
 const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
+
+/** '2026-27' -> '2025-26'. Returns the input unchanged if it is not YYYY-YY. */
+function previousSeason(season: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(season);
+  if (!m) return season;
+  const start = parseInt(m[1], 10) - 1;
+  return `${start}-${String(start + 1)
+    .slice(-2)
+    .padStart(2, '0')}`;
+}
 
 function teamName(tricode: string | null, byAbbr: Map<string, string>): string {
   const abbr = ABBR_MAP[tricode ?? ''] ?? tricode ?? '';
@@ -69,6 +79,60 @@ class GameResponse {
     description: 'Playoff series text, e.g. "GSW leads 2-1"',
   })
   seriesText!: string | null;
+}
+
+class SeriesTeam {
+  @ApiProperty({ example: 'ATL' })
+  tricode!: string;
+
+  @ApiProperty({ example: 'Atlanta Hawks' })
+  team!: string;
+
+  @ApiProperty({ example: 2 })
+  wins!: number;
+
+  @ApiProperty({ example: 0 })
+  losses!: number;
+}
+
+class SeriesMeeting {
+  @ApiProperty({ example: '0022500623' })
+  id!: string;
+
+  @ApiProperty({ example: '2026-01-21' })
+  gameDate!: string;
+
+  @ApiProperty({ example: 'MEM', nullable: true })
+  homeTricode!: string | null;
+
+  @ApiProperty({ example: 'ATL', nullable: true })
+  awayTricode!: string | null;
+
+  @ApiProperty({ example: 'Memphis Grizzlies' })
+  homeTeam!: string;
+
+  @ApiProperty({ example: 'Atlanta Hawks' })
+  awayTeam!: string;
+
+  @ApiProperty({ example: 122, nullable: true })
+  homeScore!: number | null;
+
+  @ApiProperty({ example: 124, nullable: true })
+  awayScore!: number | null;
+}
+
+class HeadToHeadResponse {
+  @ApiProperty({ example: '2025-26', description: 'The prior season this series is from' })
+  season!: string;
+
+  @ApiProperty({ type: SeriesTeam, description: "Current game's home team" })
+  home!: SeriesTeam;
+
+  @ApiProperty({ type: SeriesTeam, description: "Current game's away team" })
+  away!: SeriesTeam;
+
+  @ApiProperty({ type: [SeriesMeeting] })
+  meetings!: SeriesMeeting[];
 }
 
 @ApiTags('Games')
@@ -377,8 +441,11 @@ export class GamesController {
       .from(scheduleGames)
       .where(
         and(
-          gte(scheduleGames.gameDateTimeUTC, start),
-          lt(scheduleGames.gameDateTimeUTC, endExclusive),
+          // Match on the schedule's own calendar date, not the UTC timestamp.
+          // A game tipping 8:00 PM ET on the last day is 00:00 UTC the next day,
+          // so a UTC-timestamp window drops it from its own date.
+          gte(scheduleGames.gameDate, from),
+          lte(scheduleGames.gameDate, to),
           notInArray(scheduleGames.gameLabel, ['All-Star', 'All-Star Championship']),
         ),
       )
@@ -394,5 +461,140 @@ export class GamesController {
       'Games in range fetched.',
       rows.map((g) => this.toResponse(g, nameByAbbr)),
     );
+  }
+
+  @Get(':id/head-to-head')
+  @ApiOperation({
+    summary: 'Regular-season series between the two teams, from the season before the game',
+  })
+  @ApiDataResponse(HeadToHeadResponse, HttpStatus.OK, 'Head to head.', 'Head to head.')
+  async getHeadToHead(@Param('id') id: string): Promise<ApiResponse<HeadToHeadResponse>> {
+    const gameRows = await this.db.db
+      .select({
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        seasonYear: scheduleDays.seasonYear,
+      })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(eq(scheduleGames.gameId, id))
+      .limit(1);
+
+    if (gameRows.length === 0) {
+      return response<HeadToHeadResponse>(true, 'Game not found.', null);
+    }
+
+    const { homeTricode, awayTricode, seasonYear } = gameRows[0];
+    const season = previousSeason(seasonYear);
+
+    // Regular season only: gameLabel '' excludes preseason and All-Star, and
+    // seriesText '' excludes the play-in/playoffs.
+    const rows = await this.db.db
+      .select({
+        id: scheduleGames.gameId,
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+        gameDate: scheduleGames.gameDate,
+        gameDateTime: scheduleGames.gameDateTimeUTC,
+      })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(
+        and(
+          eq(scheduleDays.seasonYear, season),
+          eq(scheduleGames.gameStatus, 3),
+          eq(scheduleGames.gameLabel, ''),
+          eq(scheduleGames.seriesText, ''),
+          or(
+            and(
+              eq(scheduleGames.homeTeamTricode, homeTricode ?? ''),
+              eq(scheduleGames.awayTeamTricode, awayTricode ?? ''),
+            ),
+            and(
+              eq(scheduleGames.homeTeamTricode, awayTricode ?? ''),
+              eq(scheduleGames.awayTeamTricode, homeTricode ?? ''),
+            ),
+          ),
+        ),
+      )
+      .orderBy(asc(scheduleGames.gameDateTimeUTC));
+
+    let homeWins = 0;
+    let awayWins = 0;
+    for (const g of rows) {
+      if (g.homeScore == null || g.awayScore == null) continue;
+      // The current game's home team is not necessarily the home side in the series.
+      const homeSideIsCurrentHome = g.homeTricode === homeTricode;
+      const currentHomeScore = homeSideIsCurrentHome ? g.homeScore : g.awayScore;
+      const currentAwayScore = homeSideIsCurrentHome ? g.awayScore : g.homeScore;
+      if (currentHomeScore > currentAwayScore) homeWins += 1;
+      else awayWins += 1;
+    }
+
+    const nameByAbbr = await this.mapNames(rows);
+    const canonical = (t: string | null) => (t ? (ABBR_MAP[t] ?? t) : '');
+
+    return response(true, 'Head to head fetched.', {
+      season,
+      home: {
+        tricode: canonical(homeTricode),
+        team: teamName(homeTricode, nameByAbbr),
+        wins: homeWins,
+        losses: awayWins,
+      },
+      away: {
+        tricode: canonical(awayTricode),
+        team: teamName(awayTricode, nameByAbbr),
+        wins: awayWins,
+        losses: homeWins,
+      },
+      meetings: rows.map((g) => ({
+        id: g.id,
+        gameDate: g.gameDate,
+        homeTricode: g.homeTricode ? canonical(g.homeTricode) : null,
+        awayTricode: g.awayTricode ? canonical(g.awayTricode) : null,
+        homeTeam: teamName(g.homeTricode, nameByAbbr),
+        awayTeam: teamName(g.awayTricode, nameByAbbr),
+        homeScore: g.homeScore,
+        awayScore: g.awayScore,
+      })),
+    });
+  }
+
+  // NOTE: keep this last — the static routes above (next/previous/today/range)
+  // must be registered before the ':id' wildcard or they would be captured by it.
+  @Get(':id')
+  @ApiOperation({ summary: 'A single game by its NBA game id' })
+  @ApiDataResponse(GameResponse, HttpStatus.OK, 'Game detail.', 'Game detail.')
+  async getById(@Param('id') id: string): Promise<ApiResponse<GameResponse>> {
+    const rows = await this.db.db
+      .select({
+        id: scheduleGames.gameId,
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+        homeScore: scheduleGames.homeTeamScore,
+        awayScore: scheduleGames.awayTeamScore,
+        gameDateTime: scheduleGames.gameDateTimeUTC,
+        status: scheduleGames.gameStatusText,
+        arenaName: scheduleGames.arenaName,
+        arenaCity: scheduleGames.arenaCity,
+        arenaState: scheduleGames.arenaState,
+        gameDate: scheduleGames.gameDate,
+        gameLabel: scheduleGames.gameLabel,
+        gameSubLabel: scheduleGames.gameSubLabel,
+        seriesText: scheduleGames.seriesText,
+      })
+      .from(scheduleGames)
+      .where(eq(scheduleGames.gameId, id))
+      .limit(1);
+
+    if (rows.length === 0) {
+      return response<GameResponse>(true, 'Game not found.', null);
+    }
+
+    const nameByAbbr = await this.mapNames(rows);
+    return response(true, 'Game fetched.', this.toResponse(rows[0], nameByAbbr));
   }
 }

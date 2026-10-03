@@ -280,6 +280,60 @@ export function useLeagueGamesPrevious(enabled = true) {
   });
 }
 
+export function useGame(gameId?: string) {
+  return useQuery({
+    queryKey: ['game', gameId],
+    queryFn: async (): Promise<Game | null> => {
+      const res = await fetchJson<{ data: Game | null }>(
+        `/games/${encodeURIComponent(gameId ?? '')}`,
+      );
+      return res.data;
+    },
+    enabled: !!gameId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export interface SeriesTeam {
+  tricode: string;
+  team: string;
+  wins: number;
+  losses: number;
+}
+
+export interface SeriesMeeting {
+  id: string;
+  gameDate: string;
+  homeTricode: string | null;
+  awayTricode: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+}
+
+export interface HeadToHead {
+  season: string;
+  home: SeriesTeam;
+  away: SeriesTeam;
+  meetings: SeriesMeeting[];
+}
+
+/** Regular-season series between the game's two teams in the prior season. */
+export function useHeadToHead(gameId?: string) {
+  return useQuery({
+    queryKey: ['game-head-to-head', gameId],
+    queryFn: async (): Promise<HeadToHead | null> => {
+      const res = await fetchJson<{ data: HeadToHead | null }>(
+        `/games/${encodeURIComponent(gameId ?? '')}/head-to-head`,
+      );
+      return res.data;
+    },
+    enabled: !!gameId,
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
 export function useLeagueLeaders(season?: string) {
   return useQuery({
     queryKey: ['league-leaders', season ?? 'current'],
@@ -350,7 +404,13 @@ async function mutateJson<T>(method: string, path: string, body: unknown): Promi
     credentials: 'include',
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return res.json();
+}
+
+async function deleteJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API}${path}`, { method: 'DELETE', credentials: 'include' });
+  if (!res.ok) throw new Error(await errorMessage(res));
   return res.json();
 }
 
@@ -367,5 +427,137 @@ export function useSaveTeam() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['session'] });
     },
+  });
+}
+
+/* ── Predictions ── */
+
+export type PredictionMode = 'flat' | 'weighted';
+export type PickSide = 'home' | 'away';
+export type PickStatus = 'pending' | 'settled' | 'voided';
+
+export interface PredictionPick {
+  gameId: string;
+  mode: PredictionMode;
+  side: PickSide;
+  /** Fair (de-vigged) decimal price locked at submit. Null for flat picks, and for a weighted pick awaiting its price. */
+  lockedDecimal: number | null;
+  lockedBook: string | null;
+  lockedAt: string | null;
+  /** Null until the game is settled. */
+  points: number | null;
+  status: PickStatus;
+  settledAt: string | null;
+  /**
+   * Weighted pick with no price yet. Its payout comes from the opening line once
+   * one appears, so it is not a failure state.
+   */
+  pendingPrice: boolean;
+}
+
+export interface PredictionPickWithGame extends PredictionPick {
+  homeTeam: string | null;
+  awayTeam: string | null;
+  homeTricode: string | null;
+  awayTricode: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  gameDateTime: string | null;
+  /** 1 scheduled, 2 live, 3 final. Null when the schedule row was removed. */
+  gameStatus: number | null;
+}
+
+export interface LeaderboardRow {
+  rank: number;
+  userId: string;
+  name: string;
+  points: number;
+  picks: number;
+  correct: number;
+}
+
+export interface OddsSidePreview {
+  /** Fair (de-vigged) decimal price. */
+  decimal: number;
+  flat: number;
+  weighted: number;
+}
+
+export interface OddsPreview {
+  gameId: string;
+  available: boolean;
+  book: string | null;
+  capturedAt: string | null;
+  /** True when the newest price is too old for the backend to lock. */
+  stale: boolean;
+  home: OddsSidePreview | null;
+  away: OddsSidePreview | null;
+}
+
+/** Every pick the signed-in user holds, across both modes. */
+export function useMyPicks() {
+  return useQuery({
+    queryKey: ['predictions', 'me'],
+    queryFn: async (): Promise<PredictionPickWithGame[]> => {
+      const res = await fetchJson<{ data: PredictionPickWithGame[] }>('/predictions/me');
+      return res.data;
+    },
+    staleTime: 1000 * 30,
+  });
+}
+
+/** Places both modes at once; the server locks flat and weighted together. */
+export function usePlacePick() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { gameId: string; side: PickSide }) => {
+      const res = await mutateJson<{ data: PredictionPick[] }>('POST', '/predictions', input);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['predictions'] });
+      qc.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+  });
+}
+
+/** Removes every mode for a game. */
+export function useRemovePick() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (gameId: string) =>
+      deleteJson<unknown>(`/predictions/${encodeURIComponent(gameId)}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['predictions'] });
+      qc.invalidateQueries({ queryKey: ['leaderboard'] });
+    },
+  });
+}
+
+export function useLeaderboard(mode: PredictionMode) {
+  return useQuery({
+    queryKey: ['leaderboard', mode],
+    queryFn: async (): Promise<LeaderboardRow[]> => {
+      const res = await fetchJson<{ data: LeaderboardRow[] }>(
+        `/predictions/leaderboard?mode=${encodeURIComponent(mode)}`,
+      );
+      return res.data;
+    },
+    staleTime: 1000 * 60,
+  });
+}
+
+/** Current price and what each side would pay, for the pick UI. */
+export function useOddsPreview(gameId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['odds-preview', gameId],
+    queryFn: async (): Promise<OddsPreview> => {
+      const res = await fetchJson<{ data: OddsPreview }>(
+        `/predictions/odds/${encodeURIComponent(gameId ?? '')}`,
+      );
+      return res.data;
+    },
+    enabled: enabled && !!gameId,
+    staleTime: 1000 * 30,
   });
 }

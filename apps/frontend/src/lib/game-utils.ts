@@ -103,6 +103,17 @@ export function formatGameDate(value: string, pattern: string): string {
   return format(date, pattern);
 }
 
+/**
+ * Formats a date-only string (YYYY-MM-DD). `new Date('2026-01-21')` parses as UTC
+ * midnight, which renders as the previous day in negative-offset timezones, so
+ * build the date from its parts instead.
+ */
+export function formatDateOnly(value: string, pattern: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return formatGameDate(value, pattern);
+  return format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), pattern);
+}
+
 /** Relative luminance of a hex color (#RRGGBB) — used to pick readable text. */
 export function hexLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -116,4 +127,43 @@ export function sortGamesChronologically(games: Game[]): Game[] {
   return [...games].sort(
     (a, b) => new Date(a.gameDateTime).getTime() - new Date(b.gameDateTime).getTime(),
   );
+}
+
+/*
+ * NBA schedule days are US/Eastern, not UTC and not the viewer's zone. A game
+ * tipping 7:00 PM ET belongs to that ET date for everyone, so every date key on
+ * a game-facing page is derived in ET. Deriving them from `toISOString()` puts a
+ * UTC+7 viewer on the previous day before 07:00 local.
+ */
+
+const ET_TIME_ZONE = 'America/New_York';
+
+/** The US/Eastern calendar date of `date`, as `YYYY-MM-DD`. */
+export function etDateKey(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ET_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+/**
+ * `days` after the ET date of `from`, as `YYYY-MM-DD`. Anchored at 12:00 UTC so
+ * adding days can never roll across a DST boundary.
+ */
+export function shiftEtDate(days: number, from: Date = new Date()): string {
+  const anchor = new Date(`${etDateKey(from)}T12:00:00.000Z`);
+  anchor.setUTCDate(anchor.getUTCDate() + days);
+  return anchor.toISOString().slice(0, 10);
+}
+
+/** The ET date key a game is listed under, preferring the schedule's own date. */
+export function gameDateKey(game: Game): string | null {
+  if (game.gameDate) return game.gameDate.slice(0, 10);
+  if (!game.gameDateTime) return null;
+  return etDateKey(new Date(game.gameDateTime));
 }

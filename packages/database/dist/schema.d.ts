@@ -1,6 +1,8 @@
 export { account, session, user, verification } from './better-auth.schema.js';
 export declare const scheduleTeamSide: import("drizzle-orm/pg-core").PgEnum<["home", "away"]>;
 export declare const categoryType: import("drizzle-orm/pg-core").PgEnum<["income", "expense"]>;
+export declare const predictionMode: import("drizzle-orm/pg-core").PgEnum<["flat", "weighted"]>;
+export declare const predictionStatus: import("drizzle-orm/pg-core").PgEnum<["pending", "settled", "voided"]>;
 export declare const activityLogs: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "activity_logs";
     schema: undefined;
@@ -4361,6 +4363,411 @@ export declare const scheduleBoxscorePlayers: import("drizzle-orm/pg-core").PgTa
             driverParam: string | number;
             notNull: true;
             hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * Append-only odds capture, one row per game/book/capture.
+ *
+ * The NBA CDN odds file only exposes current state, so every fetch is persisted
+ * here to provide the audit trail needed to justify a locked payout.
+ */
+export declare const gameOddsSnapshots: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "game_odds_snapshots";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "game_odds_snapshots";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        gameId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "gameId";
+            tableName: "game_odds_snapshots";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        bookName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "bookName";
+            tableName: "game_odds_snapshots";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        bookCountry: import("drizzle-orm/pg-core").PgColumn<{
+            name: "bookCountry";
+            tableName: "game_odds_snapshots";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        homeDecimal: import("drizzle-orm/pg-core").PgColumn<{
+            name: "homeDecimal";
+            tableName: "game_odds_snapshots";
+            dataType: "number";
+            columnType: "PgDoublePrecision";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        awayDecimal: import("drizzle-orm/pg-core").PgColumn<{
+            name: "awayDecimal";
+            tableName: "game_odds_snapshots";
+            dataType: "number";
+            columnType: "PgDoublePrecision";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        homeOpeningDecimal: import("drizzle-orm/pg-core").PgColumn<{
+            name: "homeOpeningDecimal";
+            tableName: "game_odds_snapshots";
+            dataType: "number";
+            columnType: "PgDoublePrecision";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        awayOpeningDecimal: import("drizzle-orm/pg-core").PgColumn<{
+            name: "awayOpeningDecimal";
+            tableName: "game_odds_snapshots";
+            dataType: "number";
+            columnType: "PgDoublePrecision";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        capturedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "capturedAt";
+            tableName: "game_odds_snapshots";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * A user's pick on a game, one row per mode.
+ *
+ * `gameId` is intentionally not a foreign key: the schedule sync hard-deletes
+ * non-final games that drop out of a day's feed, and a constraint here would
+ * either block that delete or cascade the pick away. Keeping it as plain text
+ * lets the pick survive as a voided record.
+ *
+ * `lockedDecimal` is the de-vigged price captured at submit. Settlement reads
+ * only this column, never live odds.
+ */
+export declare const predictionPicks: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "prediction_picks";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "userId";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        gameId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "gameId";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        mode: import("drizzle-orm/pg-core").PgColumn<{
+            name: "mode";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "flat" | "weighted";
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["flat", "weighted"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        side: import("drizzle-orm/pg-core").PgColumn<{
+            name: "side";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "home" | "away";
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["home", "away"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lockedDecimal: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lockedDecimal";
+            tableName: "prediction_picks";
+            dataType: "number";
+            columnType: "PgDoublePrecision";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lockedBook: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lockedBook";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lockedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lockedAt";
+            tableName: "prediction_picks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        points: import("drizzle-orm/pg-core").PgColumn<{
+            name: "points";
+            tableName: "prediction_picks";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        status: import("drizzle-orm/pg-core").PgColumn<{
+            name: "status";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "pending" | "settled" | "voided";
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["pending", "settled", "voided"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        settledAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "settledAt";
+            tableName: "prediction_picks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "createdAt";
+            tableName: "prediction_picks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updatedAt";
+            tableName: "prediction_picks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;

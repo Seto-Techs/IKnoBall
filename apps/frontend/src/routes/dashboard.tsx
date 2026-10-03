@@ -18,6 +18,7 @@ import { SevenDayStrip } from '../components/dashboard/SevenDayStrip';
 import { LeagueLeadersPanel } from '../components/dashboard/LeagueLeadersPanel';
 import { PreviousGameDayCard } from '../components/dashboard/PreviousGameDayCard';
 import {
+  useLeaderboard,
   useTeamRecord,
   useUpcomingGames,
   useTopPlayers,
@@ -28,17 +29,7 @@ import {
   useLeagueGamesPrevious,
   useLeagueLeaders,
 } from '../lib/api';
-import {
-  mockAccuracy,
-  mockLeaderboard,
-  mockUserPoints,
-  mockUserPointsWeighted,
-  mockUserPredictions,
-  mockUserRank,
-  mockUserRankNumber,
-  mockUserRankWeightedNumber,
-  mockWeightedLeaderboard,
-} from '../lib/mock-data';
+import { picksOf, usePredictions } from '../components/predict/predictions';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/dashboard')({
@@ -85,6 +76,12 @@ function DashboardPage() {
   const { data: previousGames, isLoading: previousGamesLoading } = useLeagueGamesPrevious(!!user);
   const { data: leagueLeaders, isLoading: leagueLeadersLoading } = useLeagueLeaders();
 
+  // Standings for both scoring modes, plus the user's own picks for the stat
+  // cards. Declared before any early return so the hook order is stable.
+  const predictions = usePredictions();
+  const flatBoard = useLeaderboard('flat');
+  const weightedBoard = useLeaderboard('weighted');
+
   const heroMeta = useMemo(() => {
     const now = new Date();
     if (leagueGames && leagueGames.length > 0) {
@@ -126,6 +123,30 @@ function DashboardPage() {
 
   const chooseTeam = () => navigate({ to: '/onboarding' });
 
+  // Stats span both modes: a settled pick counts as correct when it scored.
+  const myPicks = Object.values(predictions).flatMap((game) => picksOf(game));
+  const settledPicks = myPicks.filter((pick) => pick.status === 'settled');
+  const correctPicks = settledPicks.filter((pick) => (pick.points ?? 0) > 0).length;
+  const wrongPicks = settledPicks.length - correctPicks;
+  const accuracyLabel = settledPicks.length
+    ? `${Math.round((correctPicks / settledPicks.length) * 100)}%`
+    : '—';
+
+  const toEntries = (rows: typeof flatBoard.data) =>
+    (rows ?? []).map((row) => ({ rank: row.rank, name: row.name, points: row.points }));
+
+  const myFlat = flatBoard.data?.find((row) => row.userId === user.id) ?? null;
+  const myWeighted = weightedBoard.data?.find((row) => row.userId === user.id) ?? null;
+
+  // There are two boards, so a single rank card would read "—" for someone who
+  // has only settled picks in the other mode. Show the better of the two and
+  // name the board it came from.
+  const bestRank =
+    [...[myFlat, myWeighted]]
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((a, b) => a.rank - b.rank)[0] ?? null;
+  const bestRankMode = bestRank ? (bestRank === myFlat ? 'Flat' : 'Weighted') : null;
+
   const setTab = (next: 'team' | 'league') => {
     navigate({
       to: '/dashboard',
@@ -156,13 +177,13 @@ function DashboardPage() {
             <StatCard
               icon={<Trophy className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
               label="Leaderboard"
-              value={mockUserRank}
-              caption="Your Rank"
+              value={bestRank ? `#${bestRank.rank}` : '—'}
+              caption={bestRankMode ? `${bestRankMode} board` : 'No settled picks'}
             />
             <StatCard
               icon={<TrendingUp className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
               label="Predictions"
-              value={`${mockUserPredictions.correct}W ${mockUserPredictions.wrong}L`}
+              value={`${correctPicks}W ${wrongPicks}L`}
               caption="Correct / Wrong"
             />
             <StatCard
@@ -174,8 +195,8 @@ function DashboardPage() {
             <StatCard
               icon={<Target className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
               label="Accuracy"
-              value={mockAccuracy}
-              caption="This Week"
+              value={accuracyLabel}
+              caption="Settled Picks"
             />
           </div>
 
@@ -250,18 +271,18 @@ function DashboardPage() {
         <aside className="hidden h-fit flex-col gap-6 self-start xl:sticky xl:top-6 xl:flex xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto xl:overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d6d3d1_transparent]">
           <LeaderboardPanel
             title="Leaderboard"
-            entries={mockLeaderboard}
-            userRank={mockUserRankNumber}
-            userPoints={mockUserPoints}
+            entries={toEntries(flatBoard.data)}
+            userRank={myFlat?.rank ?? 0}
+            userPoints={myFlat?.points ?? 0}
             userName={user.name}
             userColor={team.primaryColor}
           />
           <LeaderboardPanel
             title="Weighted"
             weighted
-            entries={mockWeightedLeaderboard}
-            userRank={mockUserRankWeightedNumber}
-            userPoints={mockUserPointsWeighted}
+            entries={toEntries(weightedBoard.data)}
+            userRank={myWeighted?.rank ?? 0}
+            userPoints={myWeighted?.points ?? 0}
             userName={user.name}
             userColor={team.primaryColor}
           />

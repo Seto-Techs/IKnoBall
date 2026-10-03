@@ -2,12 +2,12 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo } from 'react';
 import { Activity, MapPin } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
-import { LoadingSpinner, Panel } from '../components/dashboard/shared';
+import { LoadingSpinner } from '../components/dashboard/shared';
+import { AtAGlance } from '../components/gameDetail/AtAGlance';
 import { MatchupHero } from '../components/gameDetail/MatchupHero';
 import { TeamCard } from '../components/gameDetail/TeamCard';
 import { PredictionPanel } from '../components/predict/PredictionPanel';
 import { useTeamRecord, useTeams, useTopPlayers } from '../lib/api';
-import { useStandings } from '../lib/api';
 import { buildTeamLookup, resolveGameTeams } from '../lib/game-utils';
 import { useGameById } from '../lib/use-game';
 import { useSession, useSignOut } from '../lib/use-auth';
@@ -15,31 +15,6 @@ import { useSession, useSignOut } from '../lib/use-auth';
 export const Route = createFileRoute('/game/$gameId')({
   component: GameDetailPage,
 });
-
-function MatchupLine({
-  season,
-  away,
-  home,
-}: {
-  season: string | undefined;
-  away: string;
-  home: string;
-}) {
-  if (!season) return null;
-  return (
-    <Panel title={`At a Glance — ${season}`}>
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
-        <span className="font-heading text-lg font-black uppercase tracking-wide text-brand-ink">
-          {away}
-        </span>
-        <span className="font-heading text-2xl font-black italic text-stone-300">VS</span>
-        <span className="font-heading text-lg font-black uppercase tracking-wide text-brand-ink">
-          {home}
-        </span>
-      </div>
-    </Panel>
-  );
-}
 
 function GameDetailPage() {
   const navigate = useNavigate();
@@ -50,7 +25,6 @@ function GameDetailPage() {
 
   const { game, isLoading } = useGameById(gameId);
   const { data: teams } = useTeams({ enabled: !!user });
-  const { data: standings } = useStandings();
 
   const lookup = useMemo(() => buildTeamLookup(teams), [teams]);
   const { away, home } = useMemo(
@@ -116,11 +90,7 @@ function GameDetailPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
               {/* Left: matchup detail */}
               <div className="flex min-w-0 flex-col gap-6">
-                <MatchupLine
-                  season={standings?.season}
-                  away={away?.abbreviation ?? game.awayTeam.slice(0, 3).toUpperCase()}
-                  home={home?.abbreviation ?? game.homeTeam.slice(0, 3).toUpperCase()}
-                />
+                <AtAGlance gameId={gameId} />
 
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   {away ? (

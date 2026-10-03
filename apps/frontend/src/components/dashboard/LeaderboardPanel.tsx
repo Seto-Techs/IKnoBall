@@ -1,7 +1,13 @@
 import { GiCrown, GiMedal, GiTrophyCup, GiWeightScale } from 'react-icons/gi';
-import type { LeaderboardEntry } from '../../lib/mock-data';
 import { Panel } from './shared';
 import { darken, isLightColor } from '../../lib/color';
+
+/** Display shape for one leaderboard row. */
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  points: number;
+}
 
 /* Leaderboard shows top 50, viewport shows 10 rows at a time (scroll to see rest). */
 const LEADERBOARD_SIZE = 50;
