@@ -49,42 +49,12 @@ export function RecentForm({
                 }
                 className={`group/cell relative isolate flex flex-1 flex-col items-center gap-2 overflow-hidden px-3 py-5 text-center transition-[filter,transform] duration-300 will-change-transform hover:brightness-[1.03] cal-cell-in ${!bg ? 'bg-white hover:bg-stone-50' : `ring-1 ring-inset ${pillRing}`}`}
               >
-                {/* subtle radial mesh for depth */}
-                {bg && (
-                  <>
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 opacity-[0.11]"
-                      style={{
-                        background: `radial-gradient(420px circle at 70% 0%, ${isBright ? '#000' : '#fff'} 0%, transparent 58%)`,
-                      }}
-                    />
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] opacity-[0.13] bg-gradient-to-t from-black to-transparent"
-                      style={{ opacity: isBright ? 0.06 : 0.16 }}
-                    />
-                    {/* watermark abbr */}
-                    <span
-                      aria-hidden="true"
-                      className={`pointer-events-none absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 select-none font-heading text-[52px] font-black leading-none tracking-tighter ${isBright ? 'text-brand-ink/[0.06]' : 'text-white/[0.07]'}`}
-                    >
-                      {opp?.abbreviation ?? game.opponentAbbr}
-                    </span>
-                    {/* inner highlight */}
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 rounded-none shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
-                    />
-                  </>
-                )}
-
                 <span
                   className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold tracking-wide ring-1 transition-transform duration-300 group-hover/cell:scale-105 ${
                     won
-                      ? 'bg-emerald-500 text-white ring-emerald-600/20 shadow-[0_2px_10px_rgba(16,185,129,0.35)]'
-                      : 'bg-red-500 text-white ring-red-600/20 shadow-[0_2px_10px_rgba(239,68,68,0.30)]'
-                  } ${bg ? 'shadow-[0_2px_10px_rgba(0,0,0,0.22)]' : ''}`}
+                      ? 'bg-emerald-500 text-white ring-emerald-600/20'
+                      : 'bg-red-500 text-white ring-red-600/20'
+                  }`}
                 >
                   {won ? 'W' : 'L'}
                 </span>
@@ -93,7 +63,7 @@ export function RecentForm({
                     src={opp.logoUrl}
                     alt=""
                     aria-hidden="true"
-                    className="relative z-10 h-12 w-12 object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover/cell:scale-[1.06] group-hover/cell:drop-shadow-[0_6px_14px_rgba(0,0,0,0.4)]"
+                    className="relative z-10 h-12 w-12 object-contain transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover/cell:scale-[1.06]"
                   />
                 ) : (
                   <span

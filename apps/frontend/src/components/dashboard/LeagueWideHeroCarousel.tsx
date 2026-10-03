@@ -4,6 +4,7 @@ import { MapPin } from 'lucide-react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { useTopPlayers } from '../../lib/api';
 import { canonicalAbbr, formatTimeET, getGameStatus, getSeasonBadge } from '../../lib/game-utils';
+import { MatchupBackdrop } from './MatchupBackdrop';
 
 function getTeamByTricode(
   tricode: string | null | undefined,
@@ -252,55 +253,7 @@ function HeroSlide({
       className={`relative flex min-w-full shrink-0 flex-col sm:h-[400px] sm:flex-row ${muted}`}
       style={{ minHeight: showTopPlayer ? 400 : 280 }}
     >
-      <div className="absolute inset-0 flex overflow-hidden" aria-hidden="true">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: awayColor,
-            clipPath: 'polygon(0 0, 61% 0, 41% 100%, 0 100%)',
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundColor: homeColor,
-            clipPath: 'polygon(61% 0, 100% 0, 100% 100%, 41% 100%)',
-          }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(255,255,255,0.04) 42%, rgba(0,0,0,0.18) 100%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.10]"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 60% at 22% 18%, rgba(255,255,255,0.22), transparent 60%), radial-gradient(ellipse 72% 52% at 86% 84%, rgba(0,0,0,0.18), transparent 60%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.2]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle, rgba(255,255,255,0.96) 1.05px, transparent 1.35px)',
-            backgroundSize: '11px 11px',
-            clipPath: 'polygon(0 0, 61% 0, 41% 100%, 0 100%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-[0.2]"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle, rgba(255,255,255,0.96) 1.05px, transparent 1.35px)',
-            backgroundSize: '11px 11px',
-            clipPath: 'polygon(61% 0, 100% 0, 100% 100%, 41% 100%)',
-          }}
-        />
-        <div className="absolute inset-0 opacity-[0.04] mix-blend-overlay" />
-      </div>
+      <MatchupBackdrop awayColor={awayColor} homeColor={homeColor} />
 
       <div className="relative flex flex-1 items-stretch justify-between px-4 sm:px-6">
         {renderTeamOrPlayer('away', away, awayFullName, awayAbbr, awayLogo, awayTop, awayLoading)}
