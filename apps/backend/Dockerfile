@@ -11,14 +11,17 @@ COPY apps/backend/package.json apps/backend/package.json
 COPY apps/worker/package.json apps/worker/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/schema/package.json packages/schema/package.json
+COPY packages/predictions/package.json packages/predictions/package.json
 
 COPY apps/backend apps/backend
 COPY packages/database packages/database
 COPY packages/schema packages/schema
+COPY packages/predictions packages/predictions
 
 RUN bun install --frozen-lockfile --ignore-scripts
 RUN bunx turbo run build --filter '@iknoball/database'
 RUN bunx turbo run build --filter '@iknoball/schema'
+RUN bunx turbo run build --filter '@iknoball/predictions'
 RUN bunx turbo run build --filter 'backend'
 
 FROM oven/bun:1.3.14-slim AS runner
