@@ -236,6 +236,60 @@ export function useLeagueGamesPrevious(enabled = true) {
   });
 }
 
+export function useGame(gameId?: string) {
+  return useQuery({
+    queryKey: ['game', gameId],
+    queryFn: async (): Promise<Game | null> => {
+      const res = await fetchJson<{ data: Game | null }>(
+        `/games/${encodeURIComponent(gameId ?? '')}`,
+      );
+      return res.data;
+    },
+    enabled: !!gameId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export interface SeriesTeam {
+  tricode: string;
+  team: string;
+  wins: number;
+  losses: number;
+}
+
+export interface SeriesMeeting {
+  id: string;
+  gameDate: string;
+  homeTricode: string | null;
+  awayTricode: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+}
+
+export interface HeadToHead {
+  season: string;
+  home: SeriesTeam;
+  away: SeriesTeam;
+  meetings: SeriesMeeting[];
+}
+
+/** Regular-season series between the game's two teams in the prior season. */
+export function useHeadToHead(gameId?: string) {
+  return useQuery({
+    queryKey: ['game-head-to-head', gameId],
+    queryFn: async (): Promise<HeadToHead | null> => {
+      const res = await fetchJson<{ data: HeadToHead | null }>(
+        `/games/${encodeURIComponent(gameId ?? '')}/head-to-head`,
+      );
+      return res.data;
+    },
+    enabled: !!gameId,
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
 export function useLeagueLeaders(season?: string) {
   return useQuery({
     queryKey: ['league-leaders', season ?? 'current'],

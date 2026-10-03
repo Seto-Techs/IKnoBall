@@ -103,6 +103,17 @@ export function formatGameDate(value: string, pattern: string): string {
   return format(date, pattern);
 }
 
+/**
+ * Formats a date-only string (YYYY-MM-DD). `new Date('2026-01-21')` parses as UTC
+ * midnight, which renders as the previous day in negative-offset timezones, so
+ * build the date from its parts instead.
+ */
+export function formatDateOnly(value: string, pattern: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return formatGameDate(value, pattern);
+  return format(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), pattern);
+}
+
 /** Relative luminance of a hex color (#RRGGBB) — used to pick readable text. */
 export function hexLuminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
