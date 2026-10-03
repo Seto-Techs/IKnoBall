@@ -3,6 +3,7 @@ import { Worker } from 'bullmq';
 import { RedisService } from '../redis.service';
 import { PlayerSyncService } from '../player-sync.service';
 import { QUEUE_NAMES } from '../queue.service';
+import { resolveCurrentSeason } from '../season';
 
 @Injectable()
 export class PlayerSyncProcessor implements OnModuleInit {
@@ -18,11 +19,7 @@ export class PlayerSyncProcessor implements OnModuleInit {
     new Worker(
       QUEUE_NAMES.syncPlayers,
       async () => {
-        const season = process.env.NBA_CURRENT_SEASON || '';
-        if (!season) {
-          throw new Error('NBA_CURRENT_SEASON is required');
-        }
-        await this.playerSyncService.syncPlayers(season);
+        await this.playerSyncService.syncPlayers(resolveCurrentSeason());
       },
       { connection },
     ).on('failed', (job, error) => {

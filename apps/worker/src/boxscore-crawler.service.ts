@@ -20,6 +20,7 @@ import {
 } from './nba-cdn-boxscore.client';
 import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
+import { resolveCurrentSeason } from './season';
 
 type BoxScorePlayerStats = {
   minutes: string;
@@ -58,10 +59,7 @@ export class BoxscoreCrawlerService {
   ) {}
 
   async crawlSeasonBoxscores() {
-    const season = process.env.NBA_CURRENT_SEASON || '';
-    if (!season) {
-      throw new Error('NBA_CURRENT_SEASON is required');
-    }
+    const season = resolveCurrentSeason();
 
     const games = await this.database.db
       .select({ id: scheduleGames.id, gameId: scheduleGames.gameId })
