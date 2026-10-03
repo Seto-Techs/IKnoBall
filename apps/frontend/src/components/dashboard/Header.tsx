@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Bell, LogOut, User, UserRound } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, User, UserRound } from 'lucide-react';
+import { hexLuminance } from './shared';
+import { GlobalSearchField, GlobalSearchTrigger } from './GlobalSearch';
 
 export type NavKey = 'dashboard' | 'predict' | 'profile' | 'game' | undefined;
 
@@ -9,9 +11,22 @@ const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: 'predict', label: 'Predictions' },
 ];
 
+// Game detail lives in the Predictions section, so it keeps that tab lit.
+function resolveNavKey(active?: NavKey): NavKey {
+  return active === 'game' ? 'predict' : active;
+}
+
 function navClass(on: boolean): string {
-  return `rounded-full px-4 py-1.5 text-sm font-bold uppercase tracking-widest transition-colors ${
-    on ? 'bg-brand-navyDark text-white' : 'text-stone-500 hover:bg-stone-100 hover:text-brand-ink'
+  return `rounded-sm px-1 py-2 text-sm font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 ${
+    on
+      ? 'text-brand-navyDark underline decoration-2 underline-offset-[10px]'
+      : 'text-stone-500 hover:text-brand-ink'
+  }`;
+}
+
+function mobileNavClass(on: boolean): string {
+  return `flex min-h-[44px] flex-1 items-center justify-center px-1 py-3 text-sm font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 ${
+    on ? 'text-brand-navyDark underline decoration-[3px] underline-offset-[10px]' : 'text-stone-500'
   }`;
 }
 
@@ -28,6 +43,7 @@ export function DashboardHeader({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -37,7 +53,10 @@ export function DashboardHeader({
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -48,27 +67,35 @@ export function DashboardHeader({
   }, [menuOpen]);
 
   const activeColor = accentColor ?? '#1C4188';
+  const activeNav = resolveNavKey(active);
+  const onProfile = active === 'profile';
+  // White text fails on bright team colors (gold is ~1.7:1), so flip to ink.
+  const avatarTextClass = hexLuminance(activeColor) > 0.45 ? 'text-brand-ink' : 'text-white';
+  // Opening search dismisses the account menu; the menu's own outside-click
+  // listener handles the reverse, so the two never stack.
+  const closeAccountMenu = useCallback(() => setMenuOpen(false), []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-brand-line bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-4 px-6 py-3">
-        <div className="flex items-center gap-8">
+        {/* Left: wordmark + primary nav. */}
+        <div className="flex shrink-0 items-center gap-8">
           <Link
             to="/dashboard"
             search={{ tab: 'team' }}
-            className="font-heading text-2xl font-semibold uppercase tracking-wide text-brand-red"
+            className="rounded-md font-heading text-2xl font-semibold uppercase tracking-wide text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
           >
             IKnoBall
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-1 sm:flex">
+          <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
             {NAV_ITEMS.map((item) =>
               item.key === 'predict' ? (
                 <Link
                   key={item.key}
                   to="/predict"
-                  className={navClass(active === item.key)}
-                  aria-current={active === item.key ? 'page' : undefined}
+                  className={navClass(activeNav === item.key)}
+                  aria-current={activeNav === item.key ? 'page' : undefined}
                 >
                   {item.label}
                 </Link>
@@ -77,8 +104,8 @@ export function DashboardHeader({
                   key={item.key}
                   to="/dashboard"
                   search={{ tab: 'team' }}
-                  className={navClass(active === item.key)}
-                  aria-current={active === item.key ? 'page' : undefined}
+                  className={navClass(activeNav === item.key)}
+                  aria-current={activeNav === item.key ? 'page' : undefined}
                 >
                   {item.label}
                 </Link>
@@ -87,7 +114,13 @@ export function DashboardHeader({
           </nav>
         </div>
 
-        <div className="flex items-center justify-end gap-1.5">
+        {/* Middle: global search. Inline on lg+; below lg the trigger opens a sheet. */}
+        <div className="hidden min-w-0 flex-1 justify-center px-4 lg:flex">
+          <GlobalSearchField onActivate={closeAccountMenu} />
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-2">
+          <GlobalSearchTrigger onActivate={closeAccountMenu} />
           <button
             type="button"
             aria-label="Notifications"
@@ -97,25 +130,35 @@ export function DashboardHeader({
           </button>
           <div ref={menuRef} className="relative">
             <button
+              ref={triggerRef}
               type="button"
               aria-label={userName ? `Account: ${userName}` : 'Account'}
-              aria-haspopup="menu"
               aria-expanded={menuOpen}
+              aria-controls="account-menu"
               onClick={() => setMenuOpen((open) => !open)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
-              style={{ backgroundColor: activeColor }}
+              className={`flex items-center gap-1.5 rounded-full p-0.5 pr-1.5 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 ${
+                onProfile ? 'ring-2 ring-brand-navy ring-offset-2' : ''
+              }`}
             >
-              {userName ? (
-                userName.charAt(0).toUpperCase()
-              ) : (
-                <User className="h-4 w-4" aria-hidden="true" />
-              )}
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${avatarTextClass}`}
+                style={{ backgroundColor: activeColor }}
+              >
+                {userName ? (
+                  userName.charAt(0).toUpperCase()
+                ) : (
+                  <User className="h-4 w-4" aria-hidden="true" />
+                )}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 text-stone-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
             </button>
 
             {menuOpen && (
               <div
-                role="menu"
-                aria-label="Account menu"
+                id="account-menu"
                 className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-lg border border-brand-line bg-white shadow-lg"
               >
                 <div className="border-b border-brand-line px-4 py-3">
@@ -125,7 +168,6 @@ export function DashboardHeader({
                 </div>
                 <Link
                   to="/profile"
-                  role="menuitem"
                   onClick={() => setMenuOpen(false)}
                   className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-base font-medium text-brand-ink transition-colors hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-navy"
                 >
@@ -134,7 +176,6 @@ export function DashboardHeader({
                 </Link>
                 <button
                   type="button"
-                  role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
                     onSignOut();
@@ -153,19 +194,15 @@ export function DashboardHeader({
       {/* Mobile nav */}
       <nav
         aria-label="Primary mobile"
-        className="flex items-center gap-1 border-t border-brand-line px-4 py-2 sm:hidden"
+        className="flex items-stretch border-t border-brand-line px-6 sm:hidden"
       >
         {NAV_ITEMS.map((item) =>
           item.key === 'predict' ? (
             <Link
               key={item.key}
               to="/predict"
-              className="flex-1 rounded-lg px-3 py-2 text-center text-sm font-bold uppercase tracking-widest"
-              style={{
-                backgroundColor: active === item.key ? '#0A2250' : undefined,
-                color: active === item.key ? '#fff' : '#78716c',
-              }}
-              aria-current={active === item.key ? 'page' : undefined}
+              className={mobileNavClass(activeNav === item.key)}
+              aria-current={activeNav === item.key ? 'page' : undefined}
             >
               {item.label}
             </Link>
@@ -174,12 +211,8 @@ export function DashboardHeader({
               key={item.key}
               to="/dashboard"
               search={{ tab: 'team' }}
-              className="flex-1 rounded-lg px-3 py-2 text-center text-sm font-bold uppercase tracking-widest"
-              style={{
-                backgroundColor: active === item.key ? '#0A2250' : undefined,
-                color: active === item.key ? '#fff' : '#78716c',
-              }}
-              aria-current={active === item.key ? 'page' : undefined}
+              className={mobileNavClass(activeNav === item.key)}
+              aria-current={activeNav === item.key ? 'page' : undefined}
             >
               {item.label}
             </Link>
