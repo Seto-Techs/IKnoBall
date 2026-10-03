@@ -1,134 +1,90 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react';
+import { CalendarDays, RefreshCw, Sparkles } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
-import { EmptyState, LoadingSpinner, Panel } from '../components/dashboard/shared';
-import { loadPredictions, type SavedPrediction } from '../components/predict/PredictionPanel';
-import { useLeagueGamesRange, useTeams, type Game, type TeamWithLeaders } from '../lib/api';
+import { Panel } from '../components/dashboard/shared';
+import { GameCard, type TeamRecord } from '../components/predict/GameCard';
+import { hasPick, usePredictions } from '../components/predict/predictions';
+import { WeekRail } from '../components/predict/WeekRail';
 import {
-  buildTeamLookup,
-  formatTimeET,
-  getGameStatus,
-  getSeasonBadge,
-  resolveGameTeams,
-  sortGamesChronologically,
-} from '../lib/game-utils';
+  buildSlateDays,
+  defaultSlateDayKey,
+  formatSlateDayLabel,
+  SLATE_DAY_COUNT,
+  slateStats,
+  type SlateDay,
+  type SlateStats,
+} from '../components/predict/slate';
+import { useLeagueGamesNext, useLeagueGamesRange, useStandings, useTeams } from '../lib/api';
+import { shiftEtDate } from '../lib/game-utils';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/predict')({
   component: PredictPage,
 });
 
-function shiftDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+type PickFilter = 'all' | 'unpicked' | 'picked';
 
-function GameRow({
-  game,
-  teams,
-  saved,
-  accentColor,
-}: {
-  game: Game;
-  teams: TeamWithLeaders[] | null | undefined;
-  saved: SavedPrediction | undefined;
-  accentColor: string;
-}) {
-  const lookup = useMemo(() => buildTeamLookup(teams), [teams]);
-  const { away, home } = useMemo(() => resolveGameTeams(game, lookup), [game, lookup]);
-  const status = getGameStatus(game);
-  const badge = getSeasonBadge(game);
-  const locked = status !== 'scheduled';
+const FILTERS: { key: PickFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'unpicked', label: 'Unpicked' },
+  { key: 'picked', label: 'Picked' },
+];
 
-  const awayAbbr =
-    away?.abbreviation ?? game.awayTricode ?? game.awayTeam.slice(0, 3).toUpperCase();
-  const homeAbbr =
-    home?.abbreviation ?? game.homeTricode ?? game.homeTeam.slice(0, 3).toUpperCase();
-  const awayName = away?.teamName ?? game.awayTeam;
-  const homeName = home?.teamName ?? game.homeTeam;
+function StatStrip({ stats }: { stats: SlateStats }) {
+  const cells = [
+    { label: 'Games', value: String(stats.total), caption: 'Next 7 days' },
+    { label: 'Picks made', value: `${stats.picked} of ${stats.total}`, caption: 'Locked in' },
+    { label: 'Remaining', value: String(stats.remaining), caption: 'Still to pick' },
+    {
+      label: 'Correct',
+      value: stats.resolved > 0 ? `${stats.correct} of ${stats.resolved}` : '—',
+      caption: 'Resolved picks',
+    },
+  ];
 
   return (
-    <Link
-      to="/game/$gameId"
-      params={{ gameId: game.id }}
-      className="group flex items-center gap-4 rounded-xl border border-brand-line bg-white px-4 py-4 shadow-sm transition hover:border-brand-navy/30 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-    >
-      {/* status column */}
-      <div className="flex w-24 shrink-0 flex-col items-center gap-1">
-        {status === 'live' ? (
-          <span className="rounded-full bg-brand-red px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white animate-pulse">
-            ● Live
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-brand-line bg-brand-line shadow-sm sm:grid-cols-4">
+      {cells.map((cell) => (
+        <div key={cell.label} className="flex flex-col gap-1 bg-white px-5 py-4">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-stone-500">
+            {cell.label}
           </span>
-        ) : status === 'final' ? (
-          <span className="rounded-full bg-stone-800 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-            Final
+          <span className="font-heading text-2xl font-black leading-none tabular-nums text-brand-ink">
+            {cell.value}
           </span>
-        ) : (
-          <span className="rounded-full bg-brand-navyDark px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white">
-            {formatTimeET(game.gameDateTime)} ET
-          </span>
-        )}
-        {badge.variant !== 'regular' && (
-          <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-stone-900">
-            {badge.label}
-          </span>
-        )}
-      </div>
-
-      {/* matchup */}
-      <div className="flex min-w-0 flex-1 items-center justify-center gap-3">
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          {away?.logoUrl && (
-            <img src={away.logoUrl} alt="" className="h-9 w-9 object-contain" loading="lazy" />
-          )}
-          <span className="max-w-full truncate text-sm font-bold text-brand-ink">{awayName}</span>
-          {status !== 'scheduled' && (
-            <span className="text-xs font-black tabular-nums text-stone-500">
-              {game.awayScore ?? '—'}
-            </span>
-          )}
+          <span className="text-[11px] text-stone-400">{cell.caption}</span>
         </div>
+      ))}
+    </div>
+  );
+}
 
-        <span className="shrink-0 font-heading text-sm font-black italic text-stone-400">@</span>
-
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          {home?.logoUrl && (
-            <img src={home.logoUrl} alt="" className="h-9 w-9 object-contain" loading="lazy" />
-          )}
-          <span className="max-w-full truncate text-sm font-bold text-brand-ink">{homeName}</span>
-          {status !== 'scheduled' && (
-            <span className="text-xs font-black tabular-nums text-stone-500">
-              {game.homeScore ?? '—'}
-            </span>
-          )}
+function SlateSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" role="status">
+      <span className="sr-only">Loading games</span>
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-brand-line bg-brand-line sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-[92px] animate-pulse bg-white" />
+        ))}
+      </div>
+      <div className="overflow-hidden rounded-xl border border-brand-line bg-white">
+        <div className="grid grid-cols-7 divide-x divide-brand-line">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="h-[92px] animate-pulse bg-white" />
+          ))}
         </div>
       </div>
-
-      {/* pick status */}
-      <div className="flex w-40 shrink-0 flex-col items-end gap-1.5">
-        {saved ? (
-          <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-emerald-700 ring-1 ring-emerald-500/30">
-            ✓ You: {saved.pick === 'away' ? awayAbbr : homeAbbr} · {saved.confidence}%
-          </span>
-        ) : locked ? (
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-stone-400">
-            Locked
-          </span>
-        ) : (
-          <span className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-brand-navy">
-            <Sparkles className="h-3 w-3" aria-hidden="true" /> Predict now
-          </span>
-        )}
-        <span
-          className="flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[11px] font-black uppercase tracking-widest text-white transition group-hover:brightness-110"
-          style={{ backgroundColor: accentColor }}
-        >
-          Details <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-        </span>
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[220px] animate-pulse rounded-xl border border-brand-line bg-white"
+          />
+        ))}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -137,22 +93,29 @@ function PredictPage() {
   const { data: session, isPending: sessionLoading, isFetching: sessionFetching } = useSession();
   const signOut = useSignOut();
   const user = session?.user;
-  const accentColor = '#1C4188';
 
-  const from = useMemo(() => shiftDate(0), []);
-  const to = useMemo(() => shiftDate(20), []);
-  const { data: games, isLoading } = useLeagueGamesRange(from, to, !!user);
+  // Today through today+6 in US/Eastern, which is how the schedule dates its days.
+  const from = useMemo(() => shiftEtDate(0), []);
+  const to = useMemo(() => shiftEtDate(SLATE_DAY_COUNT - 1), []);
+  const { data: games, isLoading, isError, refetch } = useLeagueGamesRange(from, to, !!user);
   const { data: teams } = useTeams({ enabled: !!user });
+  const { data: standings } = useStandings();
+  const { data: nextGames } = useLeagueGamesNext(!!user);
 
-  const [predictions, setPredictions] = useState<Record<string, SavedPrediction>>({});
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setPredictions(loadPredictions());
+  const predictions = usePredictions();
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [filter, setFilter] = useState<PickFilter>('all');
 
-    const onStorage = () => setPredictions(loadPredictions());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  const days = useMemo(() => buildSlateDays(games, predictions), [games, predictions]);
+  const stats = useMemo(() => slateStats(days, predictions), [days, predictions]);
+
+  const records = useMemo(() => {
+    const map = new Map<string, TeamRecord>();
+    for (const row of [...(standings?.West ?? []), ...(standings?.East ?? [])]) {
+      map.set(row.teamAbbr, { wins: row.wins, losses: row.losses });
+    }
+    return map;
+  }, [standings]);
 
   useEffect(() => {
     if (sessionLoading || sessionFetching) return;
@@ -167,100 +130,149 @@ function PredictPage() {
     signOut.mutate(undefined, { onSuccess: () => navigate({ to: '/' }) });
   };
 
-  const sorted = sortGamesChronologically(games ?? []);
-  const grouped: Map<string, Game[]> = new Map();
-  for (const g of sorted) {
-    const key =
-      g.gameDate ??
-      (g.gameDateTime ? new Date(g.gameDateTime).toISOString().slice(0, 10) : 'Unknown');
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(g);
-  }
-  const upcomingCount = sorted.filter((g) => getGameStatus(g) === 'scheduled').length;
+  const headerAccentColor =
+    teams?.find((t) => t.abbreviation === user.favoriteTeam)?.primaryColor ?? '#1C4188';
+
+  const activeKey = selectedKey ?? defaultSlateDayKey(days);
+  const activeDay: SlateDay | undefined = days.find((d) => d.key === activeKey) ?? days[0];
+  const weekIsEmpty = days.every((d) => d.games.length === 0);
+  const nextGameDate = nextGames?.[0]?.gameDate ?? null;
+
+  const visibleGames = (activeDay?.games ?? []).filter((game) => {
+    if (filter === 'unpicked') return !hasPick(predictions[game.id]);
+    if (filter === 'picked') return hasPick(predictions[game.id]);
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-stone-200">
-      <DashboardHeader userName={user.name} onSignOut={handleSignOut} active="predict" />
+      <DashboardHeader
+        userName={user.name}
+        accentColor={headerAccentColor}
+        onSignOut={handleSignOut}
+        active="predict"
+      />
 
-      <div className="mx-auto max-w-[1100px] px-4 py-6 sm:px-6">
-        {/* Heading */}
-        <div className="mb-6 flex flex-col gap-1">
+      <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+        <div className="mb-5 flex flex-col gap-1">
           <h1 className="flex items-center gap-2 font-heading text-4xl font-black uppercase tracking-wide text-brand-ink">
             <CalendarDays className="h-8 w-8 text-brand-navy" aria-hidden="true" />
             Predictions
           </h1>
           <p className="text-sm text-stone-500">
-            Pick the winner of each game before tip-off. Open a game for the full breakdown and make
-            an informed call — points are awarded for correct picks.
+            The next seven days of games. Open a game to lock in your pick and see the full
+            breakdown.
           </p>
         </div>
 
-        {/* Summary strip */}
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-brand-line bg-white px-5 py-3 shadow-sm">
-          <span className="rounded-full bg-brand-navyDark px-3 py-1 text-[11px] font-black uppercase tracking-widest text-white">
-            {upcomingCount} upcoming
-          </span>
-          <span className="rounded-full bg-stone-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-stone-600">
-            {Object.values(predictions).length} picks made
-          </span>
-          <span className="ml-auto hidden text-xs font-medium uppercase tracking-widest text-stone-400 sm:inline">
-            Tap any game for the educated-decision breakdown
-          </span>
-        </div>
-
-        {/* Game list grouped by date */}
-        {isLoading && <LoadingSpinner />}
-
-        {!isLoading && grouped.size === 0 && (
-          <div className="rounded-xl border border-dashed border-brand-line bg-white">
-            <EmptyState message="No games in this window." />
+        {isError ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-brand-line bg-white px-6 py-12 text-center">
+            <p className="font-heading text-xl font-black uppercase tracking-wide text-brand-ink">
+              Could not load the schedule
+            </p>
+            <p className="max-w-[46ch] text-sm text-stone-500">
+              The games for this window did not come back. Retry, or check back in a moment.
+            </p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="mt-1 flex items-center gap-2 rounded-full bg-brand-navyDark px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+            >
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
+            </button>
           </div>
-        )}
+        ) : isLoading ? (
+          <SlateSkeleton />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <StatStrip stats={stats} />
 
-        {!isLoading && grouped.size > 0 && (
-          <div className="space-y-6">
-            {Array.from(grouped.entries()).map(([key, dayGames]) => {
-              const label = key === 'Unknown' ? 'TBD' : formatDayLabel(key);
-              const isToday = key === new Date().toISOString().slice(0, 10);
-              return (
-                <Panel key={key} title={label} className="overflow-hidden" contentClassName="!p-0">
-                  <div className="flex items-center gap-2 border-b border-brand-line px-5 py-2">
-                    {isToday && (
+            {weekIsEmpty ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-brand-line bg-white px-6 py-12 text-center">
+                <CalendarDays className="h-8 w-8 text-stone-300" aria-hidden="true" />
+                <p className="font-heading text-xl font-black uppercase tracking-wide text-brand-ink">
+                  No games in the next seven days
+                </p>
+                <p className="max-w-[46ch] text-sm text-stone-500">
+                  {nextGameDate
+                    ? `The schedule resumes on ${formatSlateDayLabel(nextGameDate)}. Picks open once tip-off times are set.`
+                    : 'Check back once the next slate is published.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <WeekRail days={days} activeKey={activeKey} onSelect={setSelectedKey} />
+
+                <Panel
+                  title={activeDay?.label ?? ''}
+                  className="overflow-hidden"
+                  contentClassName="!p-0"
+                >
+                  <div className="flex flex-wrap items-center gap-2 border-b border-brand-line px-5 py-2">
+                    {activeDay?.isToday && (
                       <span className="rounded-full bg-brand-red px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
                         Today
                       </span>
                     )}
-                    <span className="ml-auto text-xs font-semibold uppercase tracking-widest text-stone-400">
-                      {dayGames.length} {dayGames.length === 1 ? 'game' : 'games'}
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-stone-500">
+                      {activeDay?.games.length ?? 0}{' '}
+                      {(activeDay?.games.length ?? 0) === 1 ? 'game' : 'games'}
                     </span>
+                    {(activeDay?.open ?? 0) > 0 && (
+                      <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-brand-navy">
+                        <Sparkles className="h-3 w-3" aria-hidden="true" />
+                        Open a game to make your pick
+                      </span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1 rounded-lg border border-brand-line bg-stone-50 p-0.5">
+                      {FILTERS.map((option) => (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setFilter(option.key)}
+                          aria-pressed={filter === option.key}
+                          className={`rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                            filter === option.key
+                              ? 'bg-white text-brand-ink shadow-sm'
+                              : 'text-stone-500 hover:text-brand-ink'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2.5 p-3">
-                    {dayGames.map((g) => (
-                      <GameRow
-                        key={g.id}
-                        game={g}
-                        teams={teams}
-                        saved={predictions[g.id]}
-                        accentColor={accentColor}
-                      />
-                    ))}
+
+                  <div id="slate-day-panel" className="p-3">
+                    {visibleGames.length === 0 ? (
+                      <p className="px-2 py-8 text-center text-sm text-stone-500">
+                        {(activeDay?.games.length ?? 0) === 0
+                          ? 'No games on this day.'
+                          : filter === 'unpicked'
+                            ? 'Every game on this day already has a pick.'
+                            : 'No picks on this day yet.'}
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {visibleGames.map((game) => (
+                          <GameCard
+                            key={game.id}
+                            game={game}
+                            teams={teams}
+                            picks={predictions[game.id]}
+                            records={records}
+                            accentColor="#1C4188"
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </Panel>
-              );
-            })}
+              </>
+            )}
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function formatDayLabel(isoDate: string): string {
-  const d = new Date(`${isoDate}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return isoDate;
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 }
