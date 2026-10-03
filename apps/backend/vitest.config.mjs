@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: {
+      '@iknoball/predictions': fileURLToPath(
+        new URL('../../packages/predictions/src', import.meta.url),
+      ),
       '@iknoball/schema': fileURLToPath(new URL('../../packages/schema/src', import.meta.url)),
     },
   },
