@@ -1,0 +1,38 @@
+# Long-running development services for IKnoBall, started with:
+#   amp orb services ensure
+#
+# Postgres and Redis are not declared here: they come from Amp project
+# environment variables (DATABASE_URL, REDIS_*) and run remotely.
+#
+# The backend resolves its public origin from the incoming request, so it does
+# not need the portal URL in its environment. See the `baseURL` config in
+# apps/backend/src/infrastructure/better-auth/auth.config.ts.
+#
+# Discord's redirect URI must be registered exactly as
+#   <frontend public URL>/auth/callback/discord
+# Portal hostnames change per thread, so set the PORTAL_HOSTNAME project env var
+# to a stable managed hostname and claim it with:
+#   amp orb portal 5173 --hostname "$PORTAL_HOSTNAME" --take-over
+services:
+  frontend:
+    # The repo's `dev` script also runs a route-tree codegen watcher through
+    # `concurrently "bun run router:watch"`, but that nested `bun run` cannot
+    # resolve node_modules/.bin under an orb's non-interactive login shell, so
+    # the watcher dies with `nodemon: command not found`. Vite is what serves the
+    # app, so run it directly. After adding or renaming a route file, regenerate
+    # the tree by hand with `bun run router:gen` (the file is committed).
+    command: bun run vite --port "$PORT" --strictPort
+    cwd: apps/frontend
+    port: 5173
+    health: /
+    portal:
+      url: /
+      title: IKnoBall
+      description: >-
+        Sign in with the seeded dev account, or continue with Discord.
+
+  backend:
+    command: bun run dev
+    cwd: apps/backend
+    port: 3000
+    health: /api

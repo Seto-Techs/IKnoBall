@@ -21,8 +21,22 @@ export function createAuth(email: EmailService) {
         }
       : undefined;
 
+  // Orb portals serve the app from a per-thread subdomain of onamp.dev, and the
+  // hostname changes whenever the orb changes. Resolving the public origin from
+  // the incoming request keeps OAuth redirect URIs and origin checks on whichever
+  // hostname is actually serving, instead of a pinned URL that goes stale.
+  const allowedHosts = [
+    ...(process.env.AMP_ORB ? ['*.onamp.dev'] : []),
+    'localhost:5173',
+    'localhost:3000',
+  ];
+
   return betterAuth({
-    baseURL: process.env.BETTER_AUTH_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
+    baseURL: {
+      allowedHosts,
+      protocol: 'auto',
+      fallback: process.env.BETTER_AUTH_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
+    },
     database: drizzleAdapter(database.db, { provider: 'pg', schema: betterAuthSchema }),
     user: {
       additionalFields: {

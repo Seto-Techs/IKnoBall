@@ -67,3 +67,29 @@ Both filter to `@iknoball/database`. Keep schema changes in `packages/database` 
 - Run commands from the repo root so turbo can resolve the workspace graph.
 - Don't add a second lockfile or a Node-only toolchain; bun is the runtime.
 - Environment files (`.env`) exist per app (`apps/backend/.env`, `apps/frontend/.env`). Don't commit them.
+
+## Running in Amp orbs
+
+`.agents/setup` prepares a fresh orb (dependencies, built `@iknoball/*` packages, a local `.env`, migrations) and `.amp/services.yaml` declares the dev servers. Both are committed, so a new orb needs only:
+
+```bash
+amp orb services ensure
+```
+
+Postgres and Redis are **not** run locally in an orb. `DATABASE_URL`, `REDIS_*`, and the rest come from project-scoped env vars and secrets, which override `.env`; only orb-local values (`NODE_ENV`, `BETTER_AUTH_SECRET`) belong in the generated `.env`.
+
+Things worth knowing when working in an orb:
+
+- **The portal hostname changes with every orb.** Better Auth derives its public origin from the incoming request, so auth works on whatever hostname serves the app. But a Discord redirect URI must be registered exactly, so set the `PORTAL_HOSTNAME` project env var to a stable managed hostname and claim it in each new orb:
+
+  ```bash
+  amp orb portal 5173 --hostname "$PORTAL_HOSTNAME" --take-over
+  ```
+
+  `.agents/resume` attempts this automatically on activation and wake. The hostname stays registered when the thread is archived; `--take-over` moves it to the new orb.
+
+- **Discord sign-in needs `prompt: "consent"`.** Better Auth's Discord provider hard-codes `prompt=none`, which Discord rejects for a user who has not authorized the app before. `apps/backend/src/infrastructure/better-auth/auth.config.ts` does not set `prompt` yet.
+
+- **The route-tree codegen watcher does not run in orbs.** The `dev` script's nested `bun run router:watch` cannot resolve `node_modules/.bin` under a non-interactive login shell, so the frontend service runs `bun run vite` directly. Run `bun run router:gen` by hand after adding or renaming a route file.
+
+- **Team logos from `cdn.nba.com` may not load in the orb's browser.** The host resolves to IPv6 first and orbs have no IPv6 egress. This is an orb networking limit, not an app bug.

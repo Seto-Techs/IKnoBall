@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Re-claim the stable portal hostname after an orb wakes or a new orb starts.
+#
+# Portal hostnames are per-thread by default, so the Discord redirect URI would
+# change with every orb. PORTAL_HOSTNAME (a project env var) holds the stable
+# managed hostname instead, and `--take-over` moves it from the previous orb.
+# Without that variable this is a no-op.
+
+cd "$(dirname "$0")/.."
+
+hostname="${PORTAL_HOSTNAME:-}"
+
+# Portals only exist in orbs, and the hostname is optional configuration.
+if [ -z "$hostname" ] || [ -z "${AMP_ORB:-}" ]; then
+  exit 0
+fi
+
+# Must match the frontend service's port in .amp/services.yaml.
+amp orb portal 5173 --hostname "$hostname" --take-over >/dev/null 2>&1 || true
