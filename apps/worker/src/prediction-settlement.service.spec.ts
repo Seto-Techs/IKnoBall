@@ -184,7 +184,7 @@ describe('settlePending — nothing to do', () => {
   });
 });
 
-describe('settlePending — unreadable final results stay pending', () => {
+describe('settlePending — unreadable final results', () => {
   it('leaves a final game with no scores pending rather than guessing', async () => {
     const { service, transactions } = makeService([
       [pick({ gameStatus: 3, homeScore: null, awayScore: null })],
@@ -197,6 +197,71 @@ describe('settlePending — unreadable final results stay pending', () => {
   it('leaves a tied final score pending', async () => {
     const { service } = makeService([[pick({ gameStatus: 3, homeScore: 100, awayScore: 100 })]]);
     await expect(service.settlePending()).resolves.toMatchObject({ pending: 1, settled: 0 });
+  });
+
+  it('waits while the score could still be corrected', async () => {
+    // Just inside the window: the boxscore crawler may still heal this.
+    const { service } = makeService([
+      [
+        pick({
+          gameStatus: 3,
+          homeScore: 0,
+          awayScore: 0,
+          gameDateTimeUTC: new Date(Date.now() - 47 * HOUR),
+        }),
+      ],
+    ]);
+    await expect(service.settlePending()).resolves.toMatchObject({ pending: 1, voided: 0 });
+  });
+
+  it('voids a final game whose score never arrived, past the threshold', async () => {
+    const { service, updates } = makeService([
+      [
+        pick({
+          gameStatus: 3,
+          homeScore: null,
+          awayScore: null,
+          gameDateTimeUTC: new Date(Date.now() - 72 * HOUR),
+        }),
+      ],
+    ]);
+    const result = await service.settlePending();
+    expect(result).toMatchObject({ voided: 1, settled: 0, pending: 0 });
+    expect(updates[0]).toMatchObject({ status: 'voided', points: null });
+  });
+
+  it('voids a final game still stuck on the 0-0 placeholder, past the threshold', async () => {
+    // The regression this guards: a final game whose row keeps the schedule
+    // feed's 0-0 placeholder for an unplayed game. scorePick() reads it as a tie
+    // and returns null, so before this the pick stayed pending forever.
+    const { service, updates } = makeService([
+      [
+        pick({
+          gameStatus: 3,
+          homeScore: 0,
+          awayScore: 0,
+          gameDateTimeUTC: new Date(Date.now() - 72 * HOUR),
+        }),
+      ],
+    ]);
+    const result = await service.settlePending();
+    expect(result).toMatchObject({ voided: 1, settled: 0, pending: 0 });
+    expect(updates[0]).toMatchObject({ status: 'voided', points: null });
+  });
+
+  it('still settles a readable final game however old it is', async () => {
+    const { service, updates } = makeService([
+      [
+        pick({
+          gameStatus: 3,
+          homeScore: 110,
+          awayScore: 100,
+          gameDateTimeUTC: new Date(Date.now() - 400 * HOUR),
+        }),
+      ],
+    ]);
+    await expect(service.settlePending()).resolves.toMatchObject({ settled: 1, voided: 0 });
+    expect(updates[0]?.status).toBe('settled');
   });
 });
 
