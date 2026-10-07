@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchNbaOdds, type OddsBook, type OddsGame } from '@iknoball/predictions';
+import { fetchNbaOdds, type OddsGame } from '@iknoball/predictions';
 import { OddsService } from './odds.service';
 import type { DatabaseService } from './infrastructure/database/database.service';
 import type { RedisService } from './infrastructure/redis/redis.service';
-import type { PinnacleOddsService } from './pinnacle-odds.service';
 
 vi.mock('@iknoball/predictions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@iknoball/predictions')>();
@@ -82,32 +81,14 @@ function createDb(responses: Row[][]) {
   return { db: chain, inserted };
 }
 
-/** Pinnacle stub. Defaults to "no price", which exercises the CDN fallback. */
-function pinnacleStub(book: OddsBook | null | Error = null) {
-  const stub = {
-    calls: 0,
-    async findBook() {
-      stub.calls += 1;
-      if (book instanceof Error) throw book;
-      return book;
-    },
-  };
-  return stub;
-}
-
-function makeService(
-  dbResponses: Row[][],
-  redisOptions: { failGet?: boolean } = {},
-  pinnacle = pinnacleStub(),
-) {
+function makeService(dbResponses: Row[][], redisOptions: { failGet?: boolean } = {}) {
   const db = createDb(dbResponses);
   const redis = createRedis(redisOptions);
   const service = new OddsService(
     { db: db.db } as unknown as DatabaseService,
     redis.service as unknown as RedisService,
-    pinnacle as unknown as PinnacleOddsService,
   );
-  return { service, ...db, redis, sets: redis.sets, pinnacle };
+  return { service, ...db, redis, sets: redis.sets };
 }
 
 const GAME = '0012600009';
@@ -148,89 +129,6 @@ const mockFetch = vi.mocked(fetchNbaOdds);
 
 beforeEach(() => {
   mockFetch.mockReset();
-});
-
-describe('getGameOdds — source order', () => {
-  const pinnacleBook: OddsBook = {
-    bookId: 'pinnacle',
-    bookName: 'Pinnacle',
-    countryCode: 'CW',
-    home: 1.63,
-    away: 2.3,
-    homeOpening: null,
-    awayOpening: null,
-  };
-
-  it('serves Pinnacle without touching the CDN when Pinnacle prices the game', async () => {
-    const pinnacle = pinnacleStub(pinnacleBook);
-    const { service } = makeService([[gameRow]], {}, pinnacle);
-
-    const odds = await service.getGameOdds(GAME);
-
-    expect(odds).toMatchObject({
-      bookName: 'Pinnacle',
-      bookCountry: 'CW',
-      homeDecimal: 1.63,
-      awayDecimal: 2.3,
-      source: 'live',
-    });
-    expect(pinnacle.calls).toBe(1);
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  it('records a Pinnacle snapshot with null openings, since that feed has no opening line', async () => {
-    const { service, inserted } = makeService([[gameRow]], {}, pinnacleStub(pinnacleBook));
-
-    await service.getGameOdds(GAME);
-
-    expect(inserted).toHaveLength(1);
-    expect(inserted[0]).toMatchObject({
-      gameId: GAME,
-      bookName: 'Pinnacle',
-      homeDecimal: 1.63,
-      awayDecimal: 2.3,
-      homeOpeningDecimal: null,
-      awayOpeningDecimal: null,
-    });
-  });
-
-  it('caches the Pinnacle price under the game key', async () => {
-    const { service, sets } = makeService([[gameRow]], {}, pinnacleStub(pinnacleBook));
-
-    await service.getGameOdds(GAME);
-
-    const entry = sets.find((call) => call.key === `odds:game:${GAME}`);
-    expect(entry).toBeDefined();
-    expect(JSON.parse(entry!.value)).toMatchObject({ state: 'odds', bookName: 'Pinnacle' });
-  });
-
-  it('falls back to the CDN when Pinnacle has no price for the game', async () => {
-    mockFetch.mockResolvedValue([feedGame()]);
-    const { service } = makeService([[gameRow]], {}, pinnacleStub(null));
-
-    const odds = await service.getGameOdds(GAME);
-
-    expect(odds).toMatchObject({ bookName: 'FanDuel', source: 'live' });
-    expect(mockFetch).toHaveBeenCalled();
-  });
-
-  it('falls back to the CDN when Pinnacle is unreachable', async () => {
-    mockFetch.mockResolvedValue([feedGame()]);
-    const { service } = makeService([[gameRow]], {}, pinnacleStub(new Error('ENOTFOUND')));
-
-    const odds = await service.getGameOdds(GAME);
-
-    expect(odds).toMatchObject({ bookName: 'FanDuel', source: 'live' });
-  });
-
-  it('falls through to the stored snapshot when both sources have nothing', async () => {
-    mockFetch.mockResolvedValue([]);
-    const { service } = makeService([[gameRow], [], [storedRow()]], {}, pinnacleStub(null));
-
-    const odds = await service.getGameOdds(GAME);
-
-    expect(odds).toMatchObject({ bookName: 'FanDuel', source: 'stored' });
-  });
 });
 
 describe('getGameOdds — cache', () => {
