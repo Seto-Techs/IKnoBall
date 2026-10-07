@@ -11,7 +11,6 @@ import { GamesController } from './games.controller';
 import { PredictionsController } from './predictions.controller';
 import { PredictionsService } from './predictions.service';
 import { OddsService } from './odds.service';
-import { PinnacleOddsService } from './pinnacle-odds.service';
 import { LeadersController } from './leaders.controller';
 import { SearchController } from './search.controller';
 import { DatabaseModule } from './infrastructure/database/database.module';
@@ -61,7 +60,6 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
     AppService,
     PredictionsService,
     OddsService,
-    PinnacleOddsService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },

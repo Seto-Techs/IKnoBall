@@ -4,7 +4,7 @@ import { and, desc, eq, gte, isNull, lte } from 'drizzle-orm';
 import { gameOddsSnapshots, predictionPicks, scheduleGames } from '@iknoball/database';
 import { fairDecimal } from '@iknoball/predictions';
 import { DatabaseService } from './database.service';
-import { FallbackOddsProvider } from './fallback-odds.provider';
+import { NbaCdnOddsClient } from './nba-odds.client';
 import type { OddsGame, OddsProvider } from '@iknoball/predictions';
 
 export interface OddsSyncResult {
@@ -21,10 +21,14 @@ export interface OddsSyncResult {
 /**
  * Persists moneyline odds so a pick's price can be locked and later audited.
  *
- * Pinnacle is the primary source and the NBA CDN is the fallback (see
- * `FallbackOddsProvider`). Neither feed exposes history, so every fetch is
- * stored. A game that cannot be matched to the schedule is dropped rather than
- * guessed at.
+ * The NBA CDN is the only source. Pinnacle used to be asked first, but its
+ * guest API returns 403 from this deployment's egress and the endpoint does not
+ * validate `X-API-Key`, so the block is network-level rather than a credential
+ * problem — see `docs/prediction-scoring.md`. The CDN is also the only feed that
+ * carries an opening line, so the deferred-price path is unaffected.
+ *
+ * The feed exposes no history, so every fetch is stored. A game that cannot be
+ * matched to the schedule is dropped rather than guessed at.
  */
 @Injectable()
 export class OddsSyncService {
@@ -39,7 +43,7 @@ export class OddsSyncService {
   private inFlight = false;
 
   constructor(
-    @Inject(FallbackOddsProvider) private readonly oddsProvider: OddsProvider,
+    @Inject(NbaCdnOddsClient) private readonly oddsProvider: OddsProvider,
     private readonly database: DatabaseService,
   ) {}
 

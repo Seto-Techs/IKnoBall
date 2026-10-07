@@ -119,15 +119,48 @@ Odds reach the app through two paths that share one parser and one set of reques
 
 ### Source priority and fallback
 
+> **2026-10-07 — Pinnacle removed; the CDN is now the only source.**
+>
+> Pinnacle's guest API returns **403 on every request** from the deployment's
+> egress (`guest.api.arcadia.pinnacle.com/0.1/leagues/{id}/markets/straight`),
+> while the same code and headers return 200 from other networks. The block is
+> **network-level, not a credential problem**: the endpoint does not validate
+> `X-API-Key` at all — requests with a valid key, a garbage key, and no key all
+> return 200 from an unblocked IP.
+>
+> So the Pinnacle source was removed rather than reconfigured. Deleted:
+> `pinnacle-feed.ts` (shared), `apps/worker/src/pinnacle-odds.client.ts`,
+> `apps/worker/src/fallback-odds.provider.ts`,
+> `apps/backend/src/pinnacle-odds.service.ts`, and their specs. Recoverable from
+> git history if the egress is ever fixed. The sections below that describe
+> Pinnacle are kept as the record of why the source order was chosen, and no
+> longer describe the running code.
+>
+> The CDN is the only feed carrying an opening line, so the deferred-price path
+> (see _Locking without a price_) is unaffected. The one real loss is coverage:
+> on 2026-10-03 the CDN priced **one** of twelve preseason games where Pinnacle
+> priced three, so more games now sit at "no odds yet".
+
 A weighted payout needs a price. The price comes from the first source that answers:
 
-1. **Pinnacle** — the primary source. Implemented in `@iknoball/predictions/pinnacle-feed.ts`, with `apps/worker/src/pinnacle-odds.client.ts` and `apps/backend/src/pinnacle-odds.service.ts` behind the shared `OddsProvider` seam, so adding another vendor is a parser-level change rather than a call-site change. It is a single sharp two-way line with far better coverage than the CDN, and it answers in ~40 ms with no rate limiting. It carries **no opening line**.
-2. **NBA CDN** (`cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json`) — the fallback, used for games Pinnacle has not opened. Free and key-less, several books per game, and the **only** source carrying an opening line.
+1. **Pinnacle** — _removed 2026-10-07, see the note above._ It was the primary
+   source: a single sharp two-way line with better coverage than the CDN,
+   answering in ~40 ms with no rate limiting. It carried **no opening line**.
+2. **NBA CDN** (`cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json`) —
+   now the only source. Free and key-less, several books per game, and the
+   **only** source carrying an opening line.
 3. **No price** — the pick still locks. See _Locking without a price_.
 
-Pinnacle leads because the CDN is genuinely sparse: on 2026-10-03 the slate had 12 preseason games, the CDN had priced **one**, and Pinnacle priced **three**. Leading with the CDN meant eleven games sat at "no odds yet" while a priced line existed.
+Pinnacle originally led because the CDN is genuinely sparse: on 2026-10-03 the
+slate had 12 preseason games, the CDN had priced **one**, and Pinnacle priced
+**three**. Leading with the CDN meant eleven games sat at "no odds yet" while a
+priced line existed.
 
-Both sources fail soft. Either being down leaves the other answering, and a game neither has posted is normal rather than an error — preseason and far-out games routinely have no line at all. Everything downstream is written to tolerate an empty result.
+Both sources failed soft. Either being down left the other answering, and a game
+neither has posted is normal rather than an error — preseason and far-out games
+routinely have no line at all. Everything downstream is written to tolerate an
+empty result, which is what let the CDN carry the sync alone after Pinnacle was
+removed.
 
 ### Odds source research
 
