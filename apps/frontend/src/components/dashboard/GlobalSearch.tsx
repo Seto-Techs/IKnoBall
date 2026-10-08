@@ -538,7 +538,7 @@ export function GlobalSearchField({ onActivate }: { onActivate?: () => void }) {
           {isFetching ? (
             <Loader2 className="h-4 w-4 animate-spin text-stone-400" aria-hidden="true" />
           ) : query.length === 0 ? (
-            <kbd className="rounded border border-brand-line px-1.5 py-0.5 text-[10px] font-semibold text-stone-400">
+            <kbd className="rounded border border-brand-line px-1.5 py-0.5 text-[11px] font-semibold text-stone-500">
               /
             </kbd>
           ) : null}
