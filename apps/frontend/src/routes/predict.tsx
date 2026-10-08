@@ -203,11 +203,7 @@ function PredictPage() {
               <>
                 <WeekRail days={days} activeKey={activeKey} onSelect={setSelectedKey} />
 
-                <Panel
-                  title={activeDay?.label ?? ''}
-                  className="overflow-hidden"
-                  contentClassName="!p-0"
-                >
+                <Panel title={activeDay?.label ?? ''} clip contentClassName="!p-0">
                   <div className="flex flex-wrap items-center gap-2 border-b border-brand-line px-5 py-2">
                     {activeDay?.isToday && (
                       <span className="rounded-full bg-brand-red px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">

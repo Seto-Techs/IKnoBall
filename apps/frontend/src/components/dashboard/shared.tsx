@@ -12,18 +12,26 @@ export function Panel({
   children,
   className,
   contentClassName,
+  clip = false,
 }: {
   title: string;
   icon?: ReactNode;
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  /** Clip children to the rounded corners. */
+  clip?: boolean;
 }) {
   return (
     <section
-      className={`flex flex-col rounded-lg border border-brand-line bg-white ${className ?? ''}`}
+      // `overflow-hidden` makes this section the title's scroll container, and a
+      // sticky title offsets against its own scroll container — so the header
+      // height must not apply here, or the title slides down over the content.
+      className={`flex flex-col rounded-lg border border-brand-line bg-white ${
+        clip ? 'overflow-hidden [--sticky-offset:0px]' : ''
+      } ${className ?? ''}`}
     >
-      <h2 className="sticky top-0 z-10 flex items-center gap-2 border-b border-brand-line bg-white px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
+      <h2 className="sticky top-[var(--sticky-offset)] z-10 flex items-center gap-2 border-b border-brand-line bg-white px-5 py-3 font-heading text-2xl font-semibold uppercase tracking-wide text-brand-ink">
         {icon}
         {title}
       </h2>

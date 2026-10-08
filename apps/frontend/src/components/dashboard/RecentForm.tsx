@@ -18,12 +18,14 @@ export function RecentForm({
   const hasAnyColor = lastGames.some((g) => Boolean(teamByAbbr[g.opponentAbbr]?.primaryColor));
 
   return (
-    <Panel title="Recent Form" className="overflow-hidden" contentClassName="!p-0">
+    <Panel title="Recent Form" clip contentClassName="!p-0">
       {loading ? (
         <LoadingSpinner />
       ) : lastGames.length > 0 ? (
         <div
-          className={`flex overflow-hidden ${hasAnyColor ? 'divide-x divide-white/10' : 'divide-x divide-brand-line'} max-md:flex-col max-md:divide-x-0 max-md:divide-y`}
+          className={`flex flex-col divide-y divide-brand-line overflow-hidden md:flex-row md:divide-x md:divide-y-0 ${
+            hasAnyColor ? 'md:divide-white/10' : ''
+          }`}
         >
           {lastGames.map((game, i) => {
             const opp = teamByAbbr[game.opponentAbbr];
@@ -47,10 +49,10 @@ export function RecentForm({
                     ? { backgroundColor: bg, animationDelay: `${i * 70}ms` }
                     : ({ animationDelay: `${i * 70}ms` } as React.CSSProperties)
                 }
-                className={`group/cell relative isolate flex flex-1 flex-col items-center gap-2 overflow-hidden px-3 py-5 text-center transition-[filter,transform] duration-300 will-change-transform hover:brightness-[1.03] cal-cell-in ${!bg ? 'bg-white hover:bg-stone-50' : `ring-1 ring-inset ${pillRing}`}`}
+                className={`group/cell relative isolate flex flex-1 items-center gap-3 overflow-hidden px-4 py-3 text-left transition-[filter,transform] duration-300 will-change-transform hover:brightness-[1.03] cal-cell-in md:flex-col md:items-center md:gap-2 md:px-3 md:py-5 md:text-center ${!bg ? 'bg-white hover:bg-stone-50' : `ring-1 ring-inset ${pillRing}`}`}
               >
                 <span
-                  className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold tracking-wide ring-1 transition-transform duration-300 group-hover/cell:scale-105 ${
+                  className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold tracking-wide ring-1 transition-transform duration-300 group-hover/cell:scale-105 md:h-7 md:w-7 md:text-[11px] ${
                     won
                       ? 'bg-emerald-500 text-white ring-emerald-600/20'
                       : 'bg-red-500 text-white ring-red-600/20'
@@ -63,11 +65,11 @@ export function RecentForm({
                     src={opp.logoUrl}
                     alt=""
                     aria-hidden="true"
-                    className="relative z-10 h-12 w-12 object-contain transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover/cell:scale-[1.06]"
+                    className="relative z-10 h-8 w-8 object-contain transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover/cell:scale-[1.06] md:h-12 md:w-12"
                   />
                 ) : (
                   <span
-                    className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full text-lg font-black ${isBright ? 'bg-brand-ink/10 text-brand-ink' : 'bg-white/15 text-white'}`}
+                    className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-black md:h-12 md:w-12 md:text-lg ${isBright ? 'bg-brand-ink/10 text-brand-ink' : 'bg-white/15 text-white'}`}
                   >
                     {(opp?.abbreviation ?? game.opponentAbbr).slice(0, 2)}
                   </span>

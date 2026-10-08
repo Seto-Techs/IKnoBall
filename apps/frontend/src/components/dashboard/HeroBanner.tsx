@@ -56,28 +56,33 @@ export function HeroBanner({
       />
 
       <div className="relative z-10">
-        {/* ── Row 1: Team identity — horizontal ── */}
-        <div className="flex items-center justify-center gap-8 px-8 pt-7 pb-5">
+        {/* ── Row 1: Team identity ──
+            Stacked below md. Two text-7xl words plus the crest need ~800px, and
+            the xl rail layout leaves the centre column only ~600px, so the
+            sizes step back down at xl. */}
+        <div className="flex flex-col items-center justify-center gap-1 px-4 pt-6 pb-5 text-center md:flex-row md:flex-wrap md:gap-x-6 md:gap-y-2 md:px-8 md:pt-7">
           <p
-            className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}
+            className={`font-heading text-3xl font-semibold uppercase tracking-wide md:text-4xl lg:text-5xl xl:text-4xl 2xl:text-5xl ${tx}`}
           >
             {topLine}
           </p>
           <img
             src={team.logoUrl}
             alt={`${team.fullName} logo`}
-            className="h-auto max-h-32 w-auto max-w-32 shrink object-contain"
+            className="order-first h-16 w-16 object-contain md:order-none md:h-auto md:max-h-24 md:w-auto md:max-w-24 lg:max-h-28 lg:max-w-28 2xl:max-h-32 2xl:max-w-32"
           />
           <h1
-            className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}
+            className={`font-heading text-3xl font-semibold uppercase tracking-wide md:text-4xl lg:text-5xl xl:text-4xl 2xl:text-5xl ${tx}`}
           >
             {bottomLine}
           </h1>
         </div>
 
         {/* ── Row 2: Stats | Last 5 | Upcoming | CTA ── */}
-        <div className={`flex items-center justify-between gap-6 border-t px-8 py-4 ${rule}`}>
-          <div className="flex items-center gap-5">
+        <div
+          className={`flex flex-col gap-3 border-t px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between md:gap-6 lg:px-8 ${rule}`}
+        >
+          <div className="flex items-center gap-4 sm:gap-5">
             <>
               <span className={`text-sm font-semibold ${txMuted}`}>
                 {team.conference === 'East' ? 'Eastern' : 'Western'} · {team.division}
@@ -94,7 +99,7 @@ export function HeroBanner({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-6">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6">
             <div className="flex items-center gap-3">
               {opponent?.logoUrl && (
                 <img

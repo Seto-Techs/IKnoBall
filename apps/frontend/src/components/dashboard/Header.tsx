@@ -44,6 +44,25 @@ export function DashboardHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Sticky content in the document scrollport (dashboard rails, panel titles)
+  // offsets by the nav's height so it lands below the nav instead of pinned
+  // behind it. The nav grows on narrow screens where its nav row wraps, so
+  // publish the measured height rather than a hardcoded one.
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--header-h');
+    };
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -76,7 +95,10 @@ export function DashboardHeader({
   const closeAccountMenu = useCallback(() => setMenuOpen(false), []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-line bg-white/90 backdrop-blur-md">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-40 border-b border-brand-line bg-white/90 backdrop-blur-md"
+    >
       <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-4 px-6 py-3">
         {/* Left: wordmark + primary nav. */}
         <div className="flex shrink-0 items-center gap-8">

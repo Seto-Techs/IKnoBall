@@ -39,6 +39,41 @@ function opponentOf(game: Game, team: TeamWithLeaders, teams?: TeamWithLeaders[]
   return { isHome, oppName, opp };
 }
 
+/** Everything both the calendar cell and the mobile agenda row need about a game. */
+function describeGame(game: Game, team: TeamWithLeaders, teams?: TeamWithLeaders[] | null) {
+  const { isHome, oppName, opp } = opponentOf(game, team, teams);
+  const abbr = opp?.abbreviation ?? oppName.slice(0, 3).toUpperCase();
+  const isPreseason = (game.gameLabel ?? '') === 'Preseason';
+  const isPlayoffs = !!(game.seriesText ?? '').trim();
+  const isFinal = (game.status ?? '').toLowerCase().includes('final');
+  const hasScore = game.homeScore != null && game.awayScore != null;
+  const favScore = isHome ? game.homeScore : game.awayScore;
+  const oppScore = isHome ? game.awayScore : game.homeScore;
+  const isWin = isFinal && hasScore ? (favScore ?? 0) > (oppScore ?? 0) : null;
+  return {
+    isHome,
+    oppName,
+    opp,
+    abbr,
+    isPreseason,
+    isPlayoffs,
+    isFinal,
+    hasScore,
+    favScore,
+    oppScore,
+    isWin,
+  };
+}
+
+/** Tip-off, rendered in Eastern so the label matches the value.
+ *  `gameDateTime` is a UTC instant; formatting it in the viewer's local zone
+ *  and calling the result "ET" is wrong outside US Eastern. */
+function tipoffLabel(game: Game): string {
+  const d = new Date(game.gameDateTime);
+  if (Number.isNaN(d.getTime())) return game.status ?? '';
+  return `${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })} ET`;
+}
+
 function GameBlock({
   game,
   team,
@@ -48,20 +83,23 @@ function GameBlock({
   team: TeamWithLeaders;
   teams?: TeamWithLeaders[] | null;
 }) {
-  const { isHome, oppName, opp } = opponentOf(game, team, teams);
+  const {
+    isHome,
+    opp,
+    abbr,
+    isPreseason,
+    isPlayoffs,
+    isFinal,
+    hasScore,
+    favScore,
+    oppScore,
+    isWin,
+  } = describeGame(game, team, teams);
   const bg = opp?.primaryColor;
   const isBright = bg ? hexLuminance(bg) > 0.45 : false;
   const pillTx = isBright ? 'text-brand-ink' : 'text-white';
   const pillBg = isBright ? 'bg-brand-ink/15' : 'bg-white/25';
   const ring = isBright ? 'ring-brand-ink/10' : 'ring-white/25';
-  const abbr = opp?.abbreviation ?? oppName.slice(0, 3).toUpperCase();
-  const isPreseason = (game.gameLabel ?? '') === 'Preseason';
-  const isPlayoffs = !!(game.seriesText ?? '').trim();
-  const isFinal = (game.status ?? '').toLowerCase().includes('final');
-  const hasScore = game.homeScore != null && game.awayScore != null;
-  const favScore = isHome ? game.homeScore : game.awayScore;
-  const oppScore = isHome ? game.awayScore : game.homeScore;
-  const isWin = isFinal && hasScore ? (favScore ?? 0) > (oppScore ?? 0) : null;
 
   return (
     <div
@@ -71,12 +109,12 @@ function GameBlock({
       style={bg ? { backgroundColor: bg } : undefined}
     >
       {isPreseason && (
-        <span className="absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-stone-900 shadow ring-1 ring-amber-300">
+        <span className="absolute right-1 top-1 z-20 hidden rounded-full bg-amber-400 px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-stone-900 shadow ring-1 ring-amber-300 md:block">
           Preseason
         </span>
       )}
       {isPlayoffs && !isPreseason && (
-        <span className="absolute left-1/2 top-1 z-20 -translate-x-1/2 rounded-full bg-brand-red px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-white shadow ring-1 ring-white/20">
+        <span className="absolute right-1 top-1 z-20 hidden rounded-full bg-brand-red px-1.5 py-[1px] text-[7px] font-black uppercase tracking-[0.12em] text-white shadow ring-1 ring-white/20 md:block">
           Playoffs
         </span>
       )}
@@ -107,6 +145,96 @@ function GameBlock({
         </span>
       )}
     </div>
+  );
+}
+
+/** Mobile stand-in for a calendar cell: the grid needs ~1000px to show a logo,
+ *  a date and a home/away pill, so narrow screens get a dated list instead. */
+function AgendaRow({
+  game,
+  team,
+  teams,
+  onSelect,
+}: {
+  game: Game;
+  team: TeamWithLeaders;
+  teams?: TeamWithLeaders[] | null;
+  onSelect: (game: Game) => void;
+}) {
+  const {
+    isHome,
+    oppName,
+    opp,
+    abbr,
+    isPreseason,
+    isPlayoffs,
+    isFinal,
+    hasScore,
+    favScore,
+    oppScore,
+    isWin,
+  } = describeGame(game, team, teams);
+  const d = new Date(game.gameDateTime);
+  const dateLabel = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(game)}
+        aria-label={`${oppName} on ${dateLabel} — ${game.status || 'Scheduled'}`}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-inset"
+      >
+        <span className="flex w-10 shrink-0 flex-col items-center rounded-md border border-brand-line py-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+            {d.toLocaleDateString('en-US', { weekday: 'short' })}
+          </span>
+          <span className="font-heading text-lg font-bold leading-none text-brand-ink">
+            {d.getDate()}
+          </span>
+        </span>
+        {opp?.logoUrl ? (
+          <img
+            src={opp.logoUrl}
+            alt=""
+            aria-hidden="true"
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+        ) : (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[11px] font-bold text-stone-600">
+            {abbr}
+          </span>
+        )}
+        <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+          <span className="w-full truncate text-sm font-semibold text-brand-ink">
+            <span className="mr-1 text-stone-400">{isHome ? 'vs' : '@'}</span>
+            {opp?.teamName ?? oppName}
+          </span>
+          {(isPreseason || isPlayoffs) && (
+            <span
+              className={`rounded-full px-1.5 py-[1px] text-[9px] font-black uppercase tracking-[0.12em] ${
+                isPreseason ? 'bg-amber-400 text-stone-900' : 'bg-brand-red text-white'
+              }`}
+            >
+              {isPreseason ? 'Preseason' : 'Playoffs'}
+            </span>
+          )}
+        </span>
+        {isFinal && hasScore ? (
+          <span
+            className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-white ${
+              isWin ? 'bg-emerald-500' : 'bg-stone-700'
+            }`}
+          >
+            {isWin ? 'W' : 'L'} {favScore}-{oppScore}
+          </span>
+        ) : (
+          <span className="shrink-0 text-xs font-semibold tabular-nums text-stone-600">
+            {tipoffLabel(game)}
+          </span>
+        )}
+      </button>
+    </li>
   );
 }
 
@@ -148,6 +276,10 @@ export function MonthlyCalendar({
     else byDay.set(key, [g]);
   }
 
+  const agenda = [...(games ?? [])].sort(
+    (a, b) => new Date(a.gameDateTime).getTime() - new Date(b.gameDateTime).getTime(),
+  );
+
   const firstDay = new Date(month.year, month.month, 1);
   const daysInMonth = new Date(month.year, month.month + 1, 0).getDate();
   const lead = firstDay.getDay();
@@ -185,49 +317,114 @@ export function MonthlyCalendar({
         <LoadingSpinner />
       ) : (
         <>
-          <div className="grid grid-cols-7 bg-brand-navyDark">
-            {WEEKDAY_HEADERS.map((label) => (
-              <div
-                key={label}
-                className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white/80"
-              >
-                {label}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 border-t border-l border-brand-line">
-            {Array.from({ length: totalCells }, (_, i) => {
-              const d = new Date(month.year, month.month, i - lead + 1);
-              const delay = { animationDelay: `${Math.min(i * 8, 240)}ms` };
-              if (d.getMonth() !== month.month) {
-                return (
-                  <div
-                    key={i}
-                    style={{ ...delay, backgroundColor: team.primaryColor }}
-                    className="cal-cell-in aspect-[3/2] border-b border-r border-brand-line"
-                  />
-                );
-              }
-              const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-              const dayGames = byDay.get(key) ?? [];
-              const isToday =
-                d.getFullYear() === today.getFullYear() &&
-                d.getMonth() === today.getMonth() &&
-                d.getDate() === today.getDate();
-              const cellBg =
-                dayGames.length === 1
-                  ? opponentOf(dayGames[0], team, teams).opp?.primaryColor
-                  : null;
-              const cellTx = cellBg
-                ? hexLuminance(cellBg) > 0.45
-                  ? 'text-brand-ink'
-                  : 'text-white'
-                : 'text-stone-400';
-              const hasGame = dayGames.length > 0;
-              const isSingle = dayGames.length === 1;
-              const singleGame = isSingle ? dayGames[0] : null;
-              const dateLabel = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-              if (!hasGame) {
+          <ul className="divide-y divide-brand-line md:hidden">
+            {agenda.length > 0 ? (
+              agenda.map((g) => (
+                <AgendaRow
+                  key={g.id}
+                  game={g}
+                  team={team}
+                  teams={teams}
+                  onSelect={setSelectedGame}
+                />
+              ))
+            ) : (
+              <li className="px-4 py-8 text-center text-sm text-stone-500">No games this month.</li>
+            )}
+          </ul>
+
+          <div className="hidden md:block">
+            <div className="grid grid-cols-7 bg-brand-navyDark">
+              {WEEKDAY_HEADERS.map((label) => (
+                <div
+                  key={label}
+                  className="px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-white/80"
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 border-t border-l border-brand-line">
+              {Array.from({ length: totalCells }, (_, i) => {
+                const d = new Date(month.year, month.month, i - lead + 1);
+                const delay = { animationDelay: `${Math.min(i * 8, 240)}ms` };
+                if (d.getMonth() !== month.month) {
+                  return (
+                    <div
+                      key={i}
+                      style={{ ...delay, backgroundColor: team.primaryColor }}
+                      className="cal-cell-in aspect-[3/2] border-b border-r border-brand-line"
+                    />
+                  );
+                }
+                const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+                const dayGames = byDay.get(key) ?? [];
+                const isToday =
+                  d.getFullYear() === today.getFullYear() &&
+                  d.getMonth() === today.getMonth() &&
+                  d.getDate() === today.getDate();
+                const cellBg =
+                  dayGames.length === 1
+                    ? opponentOf(dayGames[0], team, teams).opp?.primaryColor
+                    : null;
+                const cellTx = cellBg
+                  ? hexLuminance(cellBg) > 0.45
+                    ? 'text-brand-ink'
+                    : 'text-white'
+                  : 'text-stone-400';
+                const hasGame = dayGames.length > 0;
+                const isSingle = dayGames.length === 1;
+                const singleGame = isSingle ? dayGames[0] : null;
+                const dateLabel = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+                if (!hasGame) {
+                  return (
+                    <div
+                      key={i}
+                      style={delay}
+                      className={`cal-cell-in group relative flex aspect-[3/2] flex-col overflow-hidden border-b border-r border-brand-line ${
+                        isToday ? 'ring-2 ring-brand-gold ring-inset' : ''
+                      }`}
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={`absolute left-1.5 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
+                          isToday ? 'bg-brand-navy text-white' : 'text-stone-400'
+                        }`}
+                      >
+                        {d.getDate()}
+                      </span>
+                      <div className="flex-1 bg-stone-50/60" />
+                    </div>
+                  );
+                }
+                if (isSingle && singleGame) {
+                  const { oppName } = opponentOf(singleGame, team, teams);
+                  const aria = `${oppName} on ${dateLabel} — ${singleGame.status || 'Scheduled'}`;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      style={delay}
+                      onClick={() => setSelectedGame(singleGame)}
+                      aria-label={aria}
+                      className={`cal-cell-in group relative flex aspect-[3/2] flex-col overflow-hidden border-b border-r border-brand-line text-left transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-inset ${
+                        isToday ? 'ring-2 ring-brand-gold ring-inset' : ''
+                      } ${hasGame ? 'cursor-pointer' : ''}`}
+                    >
+                      <span
+                        className={`pointer-events-none absolute left-1.5 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
+                          isToday ? 'bg-brand-navy text-white' : cellTx
+                        }`}
+                      >
+                        {d.getDate()}
+                      </span>
+                      <div className="flex min-h-0 flex-1 flex-col">
+                        <GameBlock game={singleGame} team={team} teams={teams} />
+                      </div>
+                    </button>
+                  );
+                }
+                // defensive: 2 games in one day (team-centric should not happen)
                 return (
                   <div
                     key={i}
@@ -235,7 +432,6 @@ export function MonthlyCalendar({
                     className={`cal-cell-in group relative flex aspect-[3/2] flex-col overflow-hidden border-b border-r border-brand-line ${
                       isToday ? 'ring-2 ring-brand-gold ring-inset' : ''
                     }`}
-                    aria-hidden="true"
                   >
                     <span
                       className={`absolute left-1.5 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
@@ -244,72 +440,26 @@ export function MonthlyCalendar({
                     >
                       {d.getDate()}
                     </span>
-                    <div className="flex-1 bg-stone-50/60" />
-                  </div>
-                );
-              }
-              if (isSingle && singleGame) {
-                const { oppName } = opponentOf(singleGame, team, teams);
-                const aria = `${oppName} on ${dateLabel} — ${singleGame.status || 'Scheduled'}`;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    style={delay}
-                    onClick={() => setSelectedGame(singleGame)}
-                    aria-label={aria}
-                    className={`cal-cell-in group relative flex aspect-[3/2] flex-col overflow-hidden border-b border-r border-brand-line text-left transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-inset ${
-                      isToday ? 'ring-2 ring-brand-gold ring-inset' : ''
-                    } ${hasGame ? 'cursor-pointer' : ''}`}
-                  >
-                    <span
-                      className={`pointer-events-none absolute left-1.5 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
-                        isToday ? 'bg-brand-navy text-white' : cellTx
-                      }`}
-                    >
-                      {d.getDate()}
-                    </span>
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <GameBlock game={singleGame} team={team} teams={teams} />
+                    <div className="flex min-h-0 flex-1 flex-row divide-x divide-black/10">
+                      {dayGames.map((g) => {
+                        const { oppName } = opponentOf(g, team, teams);
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => setSelectedGame(g)}
+                            aria-label={`${oppName} on ${dateLabel}`}
+                            className="flex min-h-0 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-inset"
+                          >
+                            <GameBlock game={g} team={team} teams={teams} />
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
-                );
-              }
-              // defensive: 2 games in one day (team-centric should not happen)
-              return (
-                <div
-                  key={i}
-                  style={delay}
-                  className={`cal-cell-in group relative flex aspect-[3/2] flex-col overflow-hidden border-b border-r border-brand-line ${
-                    isToday ? 'ring-2 ring-brand-gold ring-inset' : ''
-                  }`}
-                >
-                  <span
-                    className={`absolute left-1.5 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
-                      isToday ? 'bg-brand-navy text-white' : 'text-stone-400'
-                    }`}
-                  >
-                    {d.getDate()}
-                  </span>
-                  <div className="flex min-h-0 flex-1 flex-row divide-x divide-black/10">
-                    {dayGames.map((g) => {
-                      const { oppName } = opponentOf(g, team, teams);
-                      return (
-                        <button
-                          key={g.id}
-                          type="button"
-                          onClick={() => setSelectedGame(g)}
-                          aria-label={`${oppName} on ${dateLabel}`}
-                          className="flex min-h-0 min-w-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-inset"
-                        >
-                          <GameBlock game={g} team={team} teams={teams} />
-                        </button>
-                      );
-                    })}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </>
       )}

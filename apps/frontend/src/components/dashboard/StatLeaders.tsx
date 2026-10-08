@@ -19,10 +19,12 @@ const CATEGORIES: StatCategory[] = [
   { key: 'blk', label: 'BLK', perGame: (p) => p.blocks, total: (p) => p.blocksTotal },
 ];
 
-// Tailwind needs static class names; extend when categories change.
+// Tailwind needs static class names; extend when categories change. Five
+// columns of headshot + value + name need ~144px each, so the podium only
+// starts at md — below that the categories stack into a list.
 const GRID_COLS: Record<number, string> = {
-  3: 'grid-cols-3',
-  5: 'grid-cols-5',
+  3: 'md:grid-cols-3',
+  5: 'md:grid-cols-5',
 };
 
 function leaderOf(
@@ -78,7 +80,7 @@ export function StatLeadersPanel({
             </div>
           </div>
           <div
-            className={`grid ${GRID_COLS[CATEGORIES.length] ?? 'grid-cols-3'} divide-x divide-brand-line`}
+            className={`flex flex-col divide-y divide-brand-line ${GRID_COLS[CATEGORIES.length] ?? 'md:grid-cols-3'} md:grid md:divide-x md:divide-y-0`}
           >
             {CATEGORIES.map((cat) => {
               const leader = leaderOf(players, cat, timeframe);
@@ -92,9 +94,9 @@ export function StatLeadersPanel({
               return (
                 <div
                   key={cat.key}
-                  className="flex flex-col items-center gap-2 px-4 py-6 text-center"
+                  className="flex items-center gap-3 px-5 py-3 text-left md:flex-col md:items-center md:gap-2 md:px-3 md:py-6 md:text-center"
                 >
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+                  <span className="w-9 shrink-0 text-[11px] font-bold uppercase tracking-wider text-stone-500 md:w-auto md:text-xs md:tracking-[0.2em]">
                     {cat.label}
                   </span>
                   {hasData ? (
@@ -104,23 +106,29 @@ export function StatLeadersPanel({
                           src={leader!.headshotUrl}
                           alt=""
                           aria-hidden="true"
-                          className="h-20 w-28 rounded-lg object-cover"
+                          className="h-11 w-11 shrink-0 rounded-lg object-cover md:h-20 md:w-28"
                         />
                       ) : (
-                        <div className="flex h-20 w-28 items-center justify-center rounded-lg bg-stone-100" />
+                        <div className="h-11 w-11 shrink-0 rounded-lg bg-stone-100 md:h-20 md:w-28" />
                       )}
-                      <p className="font-heading text-4xl font-semibold leading-none tabular-nums text-brand-ink">
+                      {/* Last in the mobile list (pushed right of the name), third in the podium. */}
+                      <p className="order-last font-heading text-2xl font-semibold leading-none tabular-nums text-brand-ink md:order-none md:text-4xl">
                         {timeframe === 'perGame' ? value!.toFixed(1) : Math.round(value!)}
                       </p>
-                      <p className="text-base font-semibold text-brand-ink">{leader!.name}</p>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-                        {leader!.position}
-                      </p>
+                      <div className="flex min-w-0 flex-1 flex-col md:flex-none md:items-center">
+                        <p className="break-words text-sm font-semibold leading-snug text-brand-ink md:text-base">
+                          {leader!.name}
+                        </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500 md:text-xs">
+                          {leader!.position}
+                        </p>
+                      </div>
                     </>
                   ) : (
                     <>
-                      <div className="flex h-20 w-28 items-center justify-center rounded-lg bg-stone-100" />
-                      <span className="py-4 text-stone-400">—</span>
+                      <div className="h-11 w-11 shrink-0 rounded-lg bg-stone-100 md:h-20 md:w-28" />
+                      <span className="order-last text-stone-400 md:order-none md:py-4">—</span>
+                      <div className="min-w-0 flex-1 md:hidden" />
                     </>
                   )}
                 </div>

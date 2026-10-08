@@ -268,7 +268,7 @@ function DashboardPage() {
             </>
           )}
         </main>
-        <aside className="hidden h-fit flex-col gap-6 self-start xl:sticky xl:top-6 xl:flex xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto xl:overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d6d3d1_transparent]">
+        <aside className="hidden h-fit flex-col gap-6 self-start [--sticky-offset:0px] xl:sticky xl:top-[calc(var(--header-h)+1.5rem)] xl:flex xl:max-h-[calc(100dvh-var(--header-h)-3rem)] xl:overflow-y-auto xl:overscroll-contain [scrollbar-width:thin] [scrollbar-color:#d6d3d1_transparent]">
           <LeaderboardPanel
             title="Leaderboard"
             entries={toEntries(flatBoard.data)}
