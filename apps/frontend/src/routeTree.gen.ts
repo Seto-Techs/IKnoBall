@@ -21,6 +21,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthVerifyRouteImport } from './routes/auth/verify';
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email';
 import { Route as GameGameIdRouteImport } from './routes/game.$gameId';
+import { Route as PrototypeBoxscoreRouteImport } from './routes/prototype.boxscore';
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -82,6 +83,11 @@ const GameGameIdRoute = GameGameIdRouteImport.update({
   path: '/game/$gameId',
   getParentRoute: () => rootRouteImport,
 } as any);
+const PrototypeBoxscoreRoute = PrototypeBoxscoreRouteImport.update({
+  id: '/prototype/boxscore',
+  path: '/prototype/boxscore',
+  getParentRoute: () => rootRouteImport,
+} as any);
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/auth/verify': typeof AuthVerifyRoute;
   '/auth/verify-email': typeof AuthVerifyEmailRoute;
   '/game/$gameId': typeof GameGameIdRoute;
+  '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/auth/verify': typeof AuthVerifyRoute;
   '/auth/verify-email': typeof AuthVerifyEmailRoute;
   '/game/$gameId': typeof GameGameIdRoute;
+  '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/auth/verify': typeof AuthVerifyRoute;
   '/auth/verify-email': typeof AuthVerifyEmailRoute;
   '/game/$gameId': typeof GameGameIdRoute;
+  '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
@@ -140,7 +149,8 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/verify'
     | '/auth/verify-email'
-    | '/game/$gameId';
+    | '/game/$gameId'
+    | '/prototype/boxscore';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -154,7 +164,8 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/verify'
     | '/auth/verify-email'
-    | '/game/$gameId';
+    | '/game/$gameId'
+    | '/prototype/boxscore';
   id:
     | '__root__'
     | '/'
@@ -168,7 +179,8 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/verify'
     | '/auth/verify-email'
-    | '/game/$gameId';
+    | '/game/$gameId'
+    | '/prototype/boxscore';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   AuthVerifyRoute: typeof AuthVerifyRoute;
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute;
   GameGameIdRoute: typeof GameGameIdRoute;
+  PrototypeBoxscoreRoute: typeof PrototypeBoxscoreRoute;
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameGameIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/prototype/boxscore': {
+      id: '/prototype/boxscore';
+      path: '/prototype/boxscore';
+      fullPath: '/prototype/boxscore';
+      preLoaderRoute: typeof PrototypeBoxscoreRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -288,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthVerifyRoute: AuthVerifyRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   GameGameIdRoute: GameGameIdRoute,
+  PrototypeBoxscoreRoute: PrototypeBoxscoreRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
