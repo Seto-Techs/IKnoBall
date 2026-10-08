@@ -83,6 +83,9 @@ class TeamResponse {
 }
 
 class LastGameResponse {
+  @ApiProperty({ example: '0022500623', description: 'NBA game id, for the detail page' })
+  gameId!: string;
+
   @ApiProperty({ example: 'NYK' })
   opponentAbbr!: string;
 
@@ -352,6 +355,7 @@ export class TeamsController {
     // Latest final games with real scores (any phase: regular season, play-in, playoffs)
     const lastRows = await this.db.db
       .select({
+        id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
         homeScore: scheduleGames.homeTeamScore,
@@ -378,6 +382,7 @@ export class TeamsController {
       const oppScore = isHome ? (g.awayScore ?? 0) : (g.homeScore ?? 0);
       const oppTricode = isHome ? (g.awayTricode ?? '') : (g.homeTricode ?? '');
       return {
+        gameId: g.id,
         opponentAbbr: ABBR_MAP[oppTricode] ?? oppTricode,
         isHome,
         ourScore,
