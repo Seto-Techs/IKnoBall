@@ -51,9 +51,7 @@ function PlayerRow({ p }: { p: PlayerStat }) {
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-brand-ink">{p.name}</p>
-        <p className="text-xs font-bold uppercase tracking-widest text-stone-500">
-          {p.position}
-        </p>
+        <p className="text-xs font-bold uppercase tracking-widest text-stone-500">{p.position}</p>
       </div>
       <div className="flex shrink-0 gap-3">
         {STAT_LABELS.map((s) => (
@@ -137,9 +135,7 @@ export function TeamCard({
         </div>
         <div className="text-right text-xs text-stone-500">
           <p className="font-semibold text-brand-ink">{team.headCoach}</p>
-          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">
-            Head Coach
-          </p>
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Head Coach</p>
         </div>
       </div>
 
@@ -150,9 +146,7 @@ export function TeamCard({
           <p className="truncate text-sm font-semibold text-brand-ink">{team.arena}</p>
         </div>
         <div className="bg-white px-5 py-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">
-            Logo / Code
-          </p>
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Logo / Code</p>
           <p className="text-sm font-semibold text-brand-ink">{team.abbreviation}</p>
         </div>
       </div>

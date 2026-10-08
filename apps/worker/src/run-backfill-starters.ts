@@ -66,10 +66,7 @@ async function run() {
 
         try {
           const response = await cdn.fetchLiveBoxScore(target.gameId);
-          const players = [
-            ...response.game.homeTeam.players,
-            ...response.game.awayTeam.players,
-          ];
+          const players = [...response.game.homeTeam.players, ...response.game.awayTeam.players];
 
           if (!players.length) {
             failed += 1;

@@ -72,7 +72,5 @@ const MIN_COLOR_DISTANCE = 100;
  * and cards unreadable, so a close pair falls back to the brand navy/red.
  */
 export function distinctPair(away: string, home: string): ColorPair {
-  return colorDistance(away, home) >= MIN_COLOR_DISTANCE
-    ? { away, home }
-    : FALLBACK_PAIR;
+  return colorDistance(away, home) >= MIN_COLOR_DISTANCE ? { away, home } : FALLBACK_PAIR;
 }

@@ -248,9 +248,7 @@ export function AtAGlance({
 
         <div className="flex items-center justify-between gap-4">
           <SeriesSide team={data.away} leading={data.away.wins > data.home.wins} />
-          <span className="text-xs font-bold uppercase tracking-widest text-stone-500">
-            Series
-          </span>
+          <span className="text-xs font-bold uppercase tracking-widest text-stone-500">Series</span>
           <SeriesSide team={data.home} leading={data.home.wins > data.away.wins} align="right" />
         </div>
 

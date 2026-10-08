@@ -6,8 +6,7 @@ import { formatGameDate, formatTimeET, getGameStatus, getSeasonBadge } from '../
 function statusPill(g: Game): { text: string; cls: string } {
   const status = getGameStatus(g);
   if (status === 'final') return { text: 'Final', cls: 'bg-stone-900 text-white' };
-  if (status === 'live')
-    return { text: '● Live', cls: 'bg-brand-red text-white animate-pulse' };
+  if (status === 'live') return { text: '● Live', cls: 'bg-brand-red text-white animate-pulse' };
   return { text: `${formatTimeET(g.gameDateTime)} ET`, cls: 'bg-brand-navyDark text-white' };
 }
 

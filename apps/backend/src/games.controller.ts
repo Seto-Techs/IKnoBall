@@ -733,28 +733,30 @@ export class GamesController {
     });
   }
 
-  private mapBoxStats(row: Partial<{
-    minutes: string | null;
-    fgMade: number | null;
-    fgAttempted: number | null;
-    fgPct: number | null;
-    fg3Made: number | null;
-    fg3Attempted: number | null;
-    fg3Pct: number | null;
-    ftMade: number | null;
-    ftAttempted: number | null;
-    ftPct: number | null;
-    oreb: number | null;
-    dreb: number | null;
-    reb: number | null;
-    ast: number | null;
-    stl: number | null;
-    blk: number | null;
-    tov: number | null;
-    pf: number | null;
-    pts: number | null;
-    plusMinus: number | null;
-  }>): BoxScoreStatsResponse {
+  private mapBoxStats(
+    row: Partial<{
+      minutes: string | null;
+      fgMade: number | null;
+      fgAttempted: number | null;
+      fgPct: number | null;
+      fg3Made: number | null;
+      fg3Attempted: number | null;
+      fg3Pct: number | null;
+      ftMade: number | null;
+      ftAttempted: number | null;
+      ftPct: number | null;
+      oreb: number | null;
+      dreb: number | null;
+      reb: number | null;
+      ast: number | null;
+      stl: number | null;
+      blk: number | null;
+      tov: number | null;
+      pf: number | null;
+      pts: number | null;
+      plusMinus: number | null;
+    }>,
+  ): BoxScoreStatsResponse {
     return {
       minutes: formatMinutes(row.minutes ?? null),
       fgMade: row.fgMade ?? null,

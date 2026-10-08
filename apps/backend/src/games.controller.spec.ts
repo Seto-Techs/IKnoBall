@@ -311,13 +311,7 @@ describe('GamesController.getBoxScore', () => {
   ];
 
   it('maps the summary, team totals and per-player rows for a final game', async () => {
-    const controller = makeController([
-      [boxGame],
-      [boxSummary],
-      boxTeams,
-      boxPlayers,
-      boxNames,
-    ]);
+    const controller = makeController([[boxGame], [boxSummary], boxTeams, boxPlayers, boxNames]);
 
     const res = await controller.getBoxScore('0012600033');
 
@@ -340,13 +334,7 @@ describe('GamesController.getBoxScore', () => {
   });
 
   it('keeps the feed order rather than re-sorting players', async () => {
-    const controller = makeController([
-      [boxGame],
-      [boxSummary],
-      boxTeams,
-      boxPlayers,
-      boxNames,
-    ]);
+    const controller = makeController([[boxGame], [boxSummary], boxTeams, boxPlayers, boxNames]);
 
     const res = await controller.getBoxScore('0012600033');
 
