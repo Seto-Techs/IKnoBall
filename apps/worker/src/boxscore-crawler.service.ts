@@ -249,6 +249,8 @@ export class BoxscoreCrawlerService {
           playerSlug: '',
           position: p.position,
           jerseyNum: p.jerseyNum,
+          starter: p.starter,
+          order: p.order,
           statistics: p.statistics
             ? {
                 minutes: p.statistics.minutesCalculated || p.statistics.minutes,
@@ -458,6 +460,8 @@ export class BoxscoreCrawlerService {
       homeTeam: {
         players: response.boxScoreTraditional.homeTeam.players.map((player) => ({
           personId: player.personId,
+          starter: player.starter ?? '0',
+          order: player.order,
           statistics: norm(player.statistics),
         })),
         statistics: response.boxScoreTraditional.homeTeam.statistics,
@@ -465,6 +469,8 @@ export class BoxscoreCrawlerService {
       awayTeam: {
         players: response.boxScoreTraditional.awayTeam.players.map((player) => ({
           personId: player.personId,
+          starter: player.starter ?? '0',
+          order: player.order,
           statistics: norm(player.statistics),
         })),
         statistics: response.boxScoreTraditional.awayTeam.statistics,
@@ -719,6 +725,8 @@ export class BoxscoreCrawlerService {
         playerId: playerRecord.id,
         playerExternalId: String(player.personId),
         teamExternalId: player.teamExternalId,
+        starter: player.starter === '1',
+        displayOrder: player.order ?? null,
         ...this.mapStats(player.statistics),
       });
     }
