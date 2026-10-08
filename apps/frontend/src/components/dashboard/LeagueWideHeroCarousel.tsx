@@ -3,7 +3,13 @@ import { useNavigate } from '@tanstack/react-router';
 import { MapPin } from 'lucide-react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { useTopPlayers } from '../../lib/api';
-import { canonicalAbbr, formatTimeET, getGameStatus, getSeasonBadge } from '../../lib/game-utils';
+import {
+  canonicalAbbr,
+  formatTimeET,
+  getGameStatus,
+  getSeasonBadge,
+  hexLuminance,
+} from '../../lib/game-utils';
 import { MatchupBackdrop } from './MatchupBackdrop';
 
 function getTeamByTricode(
@@ -123,6 +129,9 @@ function HeroSlide({
       ? 'bg-brand-red text-white animate-pulse'
       : 'bg-white text-brand-navy';
   const muted = isFinal ? 'opacity-[0.85] saturate-[0.7]' : '';
+  // The spine sits on the seam between the two team colours, so a bright primary on
+  // either side washes out its translucent surfaces. Same guard the other panels use.
+  const spineOnBright = hexLuminance(awayColor) > 0.45 || hexLuminance(homeColor) > 0.45;
   const seasonBadge = getSeasonBadge(g);
 
   const renderTeamOrPlayer = (
@@ -251,69 +260,77 @@ function HeroSlide({
   return (
     <div
       className={`relative flex min-w-full shrink-0 flex-col sm:h-[400px] sm:flex-row ${muted}`}
-      style={{ minHeight: showTopPlayer ? 400 : 280 }}
+      // Below sm the slide is height-driven: VS stays centred, the badge rides above it,
+      // and the meta group needs its own room plus the band the page indicator sits in.
+      // 280 was sized for the old overlay layout, where the CTA and the dots collided.
+      style={{ minHeight: showTopPlayer ? 400 : 320 }}
     >
       <MatchupBackdrop awayColor={awayColor} homeColor={homeColor} />
 
       <div className="relative flex flex-1 items-stretch justify-between px-4 sm:px-6">
         {renderTeamOrPlayer('away', away, awayFullName, awayAbbr, awayLogo, awayTop, awayLoading)}
 
-        {/* Center spine — VS is geometrically centered; logo groups are also centered; meta floats without pushing VS */}
-        <div className="relative flex w-[168px] shrink-0 self-stretch px-2 sm:w-[220px] sm:px-4">
-          {/* VS — absolute dead-center of the card */}
-          <span
-            className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 font-heading text-3xl font-black italic leading-none tracking-[0.06em] text-white sm:text-4xl"
-            style={
-              {
-                WebkitTextStroke: '1.5px rgba(0,0,0,0.5)',
-                textShadow: '0 4px 12px rgba(0,0,0,0.4)',
-              } as React.CSSProperties
-            }
-          >
-            VS
-          </span>
-
-          {/* Preseason pill — directly on top of VS (does not affect VS centering) */}
-          {seasonBadge && (
+        {/* Center spine — VS stays dead-centre on the logos' axis; the season badge is
+            anchored above it so it can never move VS; the meta group flows at the bottom
+            and reserves the band the carousel's page indicator sits in. */}
+        <div className="relative flex w-[168px] shrink-0 flex-col items-center self-stretch px-2 sm:w-[220px] sm:px-4">
+          {/* VS + badge, one anchored unit. inset-x matches the spine's padding so the
+              badge's max-w-full is exactly the column's content width. */}
+          <div className="absolute inset-x-2 top-1/2 z-10 flex -translate-y-1/2 justify-center sm:inset-x-4">
             <span
-              title={seasonBadge.detail ?? undefined}
-              className={`absolute left-1/2 top-1/2 z-10 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] shadow ring-1 ${
-                seasonBadge.variant === 'preseason'
-                  ? 'bg-amber-400 text-stone-900 ring-amber-300'
-                  : seasonBadge.variant === 'playoffs'
-                    ? 'bg-brand-red text-white ring-white/20'
-                    : seasonBadge.variant === 'allstar'
-                      ? 'bg-brand-gold text-brand-navy ring-white/20'
-                      : 'bg-white/20 text-white ring-white/30 backdrop-blur'
-              }`}
-              style={{ transform: 'translate(-50%, calc(-50% - 38px))' } as React.CSSProperties}
+              className="font-heading text-3xl font-black italic leading-none tracking-[0.06em] text-white sm:text-4xl"
+              style={
+                {
+                  WebkitTextStroke: '1.5px rgba(0,0,0,0.5)',
+                  textShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                } as React.CSSProperties
+              }
             >
-              {seasonBadge.label}
-              {seasonBadge.detail ? ` • ${seasonBadge.detail}` : ''}
+              VS
             </span>
-          )}
 
-          {/* Bottom cluster — hugs bottom: time pill on top of arena pill, then Predict hugging bottom edge */}
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5 sm:bottom-4">
+            {seasonBadge && (
+              <span
+                title={seasonBadge.detail ?? undefined}
+                className={`absolute bottom-full left-1/2 mb-3 max-w-full -translate-x-1/2 truncate rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] shadow ring-1 ${
+                  seasonBadge.variant === 'preseason'
+                    ? 'bg-amber-400 text-stone-900 ring-amber-300'
+                    : seasonBadge.variant === 'playoffs'
+                      ? 'bg-brand-red text-white ring-white/20'
+                      : seasonBadge.variant === 'allstar'
+                        ? 'bg-brand-gold text-brand-navy ring-white/20'
+                        : 'bg-white/20 text-white ring-white/30 backdrop-blur'
+                }`}
+              >
+                {seasonBadge.label}
+                {seasonBadge.detail ? ` • ${seasonBadge.detail}` : ''}
+              </span>
+            )}
+          </div>
+
+          {/* Meta — in flow, pinned to the bottom. pb-7/pb-8 clears the page indicator,
+              which is absolutely positioned at bottom-3 in the carousel. */}
+          <div className="mt-auto flex flex-col items-center gap-2 pb-7 sm:gap-3 sm:pb-8">
             <span
               className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-widest shadow ${pillClass}`}
             >
               {pillText}
             </span>
-            <span className="hidden max-w-[160px] items-center gap-1 whitespace-nowrap rounded-full bg-black/25 px-3 py-1 text-xs font-semibold tracking-wide text-white ring-1 ring-white/20 backdrop-blur sm:inline-flex sm:max-w-[200px]">
+            <span
+              className={`inline-flex max-w-[152px] items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white ring-1 backdrop-blur sm:max-w-[200px] sm:px-3 sm:text-xs ${
+                spineOnBright ? 'bg-black/40 ring-white/30' : 'bg-black/25 ring-white/20'
+              }`}
+            >
               <MapPin className="h-3 w-3 shrink-0 text-white/80" aria-hidden="true" />
               <span className="truncate">
                 {g.arenaName ? g.arenaName : `${awayAbbr} @ ${homeAbbr}`}
               </span>
             </span>
-            <span className="max-w-[140px] truncate text-center text-[11px] font-medium leading-tight text-white/75 sm:hidden">
-              {g.arenaName ? g.arenaName : `${awayAbbr} @ ${homeAbbr}`}
-            </span>
             {isFinal ? (
               <button
                 type="button"
                 onClick={() => navigate({ to: '/game/$gameId', params: { gameId: g.id } })}
-                className="rounded-full border border-white/20 bg-white/15 px-4 py-2 text-xs font-bold uppercase tracking-widest text-white/70 transition hover:bg-white/25 hover:text-white"
+                className="whitespace-nowrap rounded-full bg-stone-700 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/40 shadow transition hover:bg-stone-600"
               >
                 View Recap
               </button>
@@ -321,7 +338,7 @@ function HeroSlide({
               <button
                 type="button"
                 onClick={() => navigate({ to: '/game/$gameId', params: { gameId: g.id } })}
-                className="rounded-full bg-brand-red px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:brightness-110"
+                className="whitespace-nowrap rounded-full bg-brand-red px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:brightness-110"
               >
                 Watch Live
               </button>
@@ -329,7 +346,7 @@ function HeroSlide({
               <button
                 type="button"
                 onClick={() => navigate({ to: '/game/$gameId', params: { gameId: g.id } })}
-                className="rounded-full bg-white px-6 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy shadow transition hover:brightness-95"
+                className="whitespace-nowrap rounded-full bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy shadow transition hover:brightness-95"
               >
                 Predict →
               </button>
