@@ -28,6 +28,9 @@ class StatLeader {
 
   @ApiProperty({ example: 25.0 })
   value!: number;
+
+  @ApiProperty({ example: 'https://cdn.nba.com/headshots/nba/latest/260x190/1641705.png' })
+  headshotUrl!: string;
 }
 
 class TeamLeaders {
@@ -232,6 +235,7 @@ export class TeamsController {
       .select({
         teamAbbr: players.teamAbbr,
         displayName: players.displayName,
+        externalId: players.externalId,
         ptsPerGame: playerSeasonStats.ptsPerGame,
         rebPerGame: playerSeasonStats.rebPerGame,
         astPerGame: playerSeasonStats.astPerGame,
@@ -257,13 +261,17 @@ export class TeamsController {
     function topRow(
       rows: typeof stats,
       field: 'ptsPerGame' | 'rebPerGame' | 'astPerGame',
-    ): { name: string; value: number } {
+    ): { name: string; value: number; headshotUrl: string } {
       const best = rows
         .filter((r) => r[field] != null)
         .sort((a, b) => (b[field] ?? 0) - (a[field] ?? 0))[0];
       return {
         name: best?.displayName ?? '',
         value: Math.round((best?.[field] ?? 0) * 10) / 10,
+        // Same CDN pattern as the players and league-leaders endpoints.
+        headshotUrl: best?.externalId
+          ? `https://cdn.nba.com/headshots/nba/latest/260x190/${best.externalId}.png`
+          : '',
       };
     }
 

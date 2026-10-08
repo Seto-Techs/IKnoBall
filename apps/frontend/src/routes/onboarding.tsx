@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { isLightColor, darken } from '../lib/color';
 import { useSaveTeam, useTeams, type TeamWithLeaders } from '../lib/api';
 import { useSession } from '../lib/use-auth';
@@ -183,184 +183,129 @@ function OnboardingPage() {
 
       {/* ── Right: Detail Sidebar — always rendered, animated ── */}
       <div
-        className={`lg:absolute lg:inset-y-0 lg:right-0 lg:w-[340px] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 ease-out ${
+        className={`flex flex-col lg:absolute lg:inset-y-0 lg:right-0 lg:w-[340px] lg:overflow-y-auto transition-all duration-300 ease-out ${
           selected ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'
         }`}
       >
         {selected && (
-          <div className="flex h-full flex-col gap-2 py-3">
-            {/* Logo */}
-            <div className="flex justify-center">
+          // my-auto centres the card in the rail; if the card ever grows taller than the
+          // rail the auto margin collapses and shrink-0 keeps its height, so the rail
+          // scrolls and the top stays reachable.
+          <div className="my-auto flex shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            {/* Club-colour band: crest, city, name and division on one line. */}
+            <div
+              className={`flex items-center gap-3.5 px-6 py-5 ${
+                isLightCard ? 'text-stone-900' : 'text-white'
+              }`}
+              style={{ backgroundColor: selected.primaryColor }}
+            >
               <img
                 src={selected.logoUrl}
-                alt={selected.fullName}
-                className="h-36 w-36 object-contain"
+                alt=""
+                aria-hidden="true"
+                className="h-14 w-14 shrink-0 object-contain"
               />
-            </div>
-
-            {/* City + Team name */}
-            <h3 className="mt-4 text-center text-sm font-semibold uppercase tracking-[0.2em] text-stone-400">
-              {selected.city}
-            </h3>
-            <h2 className="text-center text-2xl font-extrabold uppercase tracking-tight text-stone-900">
-              {selected.teamName}
-            </h2>
-
-            {/* Conference / Division */}
-            <div className="mt-3 flex flex-col items-center gap-1.5 text-sm text-stone-500">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-stone-400" />
-                {selected.conference === 'East' ? 'Eastern' : 'Western'} Conference
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: selected.primaryColor }}
-                />
-                {selected.division} Division
-              </span>
-            </div>
-
-            <div className="h-px bg-gray-100" />
-
-            {/* Info pills */}
-            <div className="flex flex-col items-center gap-2 text-center">
-              <InfoPill
-                label="CONFERENCE"
-                value={selected.conference === 'East' ? 'Eastern' : 'Western'}
-              />
-              <InfoPill label="DIVISION" value={selected.division} />
-              <InfoPill label="CODE" value={selected.abbreviation} />
-            </div>
-
-            {/* Stat Leaders */}
-            {selected.leaders && (
-              <>
-                <div className="h-px bg-gray-100" />
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-stone-400">
-                    2025-26 Leaders
-                  </p>
-                  <div className="w-full space-y-1.5">
-                    {(['pts', 'reb', 'ast'] as const).map((cat) => {
-                      const s = selected.leaders![cat];
-                      const label = { pts: 'PTS', reb: 'REB', ast: 'AST' }[cat];
-                      return (
-                        <div
-                          key={cat}
-                          className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2"
-                        >
-                          <span className="w-7 text-center text-xs font-bold text-stone-400">
-                            {label}
-                          </span>
-                          <span className="text-sm font-medium text-stone-700 truncate">
-                            {s.name}
-                          </span>
-                          <span className="ml-auto text-sm font-semibold tabular-nums text-stone-900">
-                            {s.value.toFixed(1)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="h-px bg-gray-100" />
-
-            {/* Arena */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100">
-                <svg
-                  className="h-4 w-4 text-stone-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wider text-stone-400">
-                  Arena
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                  {selected.city}
                 </p>
-                <p className="text-base font-medium text-stone-700">{selected.arena}</p>
-              </div>
-            </div>
-
-            {/* Head Coach */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100">
-                <svg
-                  className="h-4 w-4 text-stone-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wider text-stone-400">
-                  Head Coach
+                <h2 className="font-heading text-[22px] font-bold uppercase leading-tight">
+                  {selected.teamName}
+                </h2>
+                <p className="mt-0.5 text-xs opacity-90">
+                  {selected.conference === 'East' ? 'Eastern' : 'Western'} · {selected.division}
                 </p>
-                <p className="text-base font-medium text-stone-700">{selected.headCoach}</p>
               </div>
             </div>
 
-            {/* Spacer — pushes button to bottom */}
-            <div className="flex-1" />
-
-            {/* Continue button */}
-            <button
-              onClick={() => {
-                if (saveTeam.isPending) return;
-                saveTeam.mutate(selected.abbreviation, {
-                  onSuccess: () => navigate({ to: '/dashboard', search: {} as never }),
-                });
-              }}
-              disabled={saveTeam.isPending}
-              className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
-              style={{ backgroundColor: selected.primaryColor }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.filter = 'brightness(1.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.filter = '';
-              }}
-            >
-              {saveTeam.isPending ? 'Saving…' : 'Continue'}
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
-                />
-              </svg>
-            </button>
-
-            {saveTeam.isError && (
-              <p className="text-center text-sm font-medium text-red-600">
-                Couldn't save your team. Check your connection and try again.
+            <div className="flex flex-col gap-3.5 px-6 py-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">
+                2025-26 Leaders
               </p>
-            )}
+
+              {/* One tile per category, so a face repeats when one player leads two of them. */}
+              <div className="grid grid-cols-3 gap-2">
+                {(['pts', 'reb', 'ast'] as const).map((cat) => {
+                  const leader = selected.leaders?.[cat] ?? null;
+                  const label = { pts: 'PTS', reb: 'REB', ast: 'AST' }[cat];
+                  return (
+                    <div
+                      key={cat}
+                      className="flex flex-col items-center gap-1 rounded-[10px] border border-brand-line bg-stone-50 px-0.5 py-2"
+                    >
+                      {leader?.headshotUrl ? (
+                        <img
+                          src={leader.headshotUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="aspect-[260/190] w-full rounded-lg bg-white object-contain"
+                        />
+                      ) : (
+                        <div className="aspect-[260/190] w-full rounded-lg bg-white" />
+                      )}
+                      <p className="flex items-baseline gap-1">
+                        <span className="font-heading text-xl font-semibold leading-none tabular-nums text-brand-ink">
+                          {leader ? leader.value.toFixed(1) : '—'}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-stone-400">
+                          {label}
+                        </span>
+                      </p>
+                      {/* Two lines reserved, so the three tiles stay the same height. */}
+                      <p className="line-clamp-2 min-h-[2.9em] w-full text-center text-[10px] leading-[1.35] text-stone-500">
+                        {leader?.name ?? ''}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div aria-hidden="true" className="h-px bg-brand-line" />
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <Fact icon={<ArenaIcon />} label="Arena" value={selected.arena} />
+                <Fact icon={<CoachIcon />} label="Head coach" value={selected.headCoach} />
+              </div>
+
+              <button
+                onClick={() => {
+                  if (saveTeam.isPending) return;
+                  saveTeam.mutate(selected.abbreviation, {
+                    onSuccess: () => navigate({ to: '/dashboard', search: {} as never }),
+                  });
+                }}
+                disabled={saveTeam.isPending}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
+                style={{ backgroundColor: selected.primaryColor }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.filter = 'brightness(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.filter = '';
+                }}
+              >
+                {saveTeam.isPending ? 'Saving…' : 'Continue'}
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                  />
+                </svg>
+              </button>
+
+              {saveTeam.isError && (
+                <p className="text-center text-sm font-medium text-red-600">
+                  Couldn't save your team. Check your connection and try again.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -368,13 +313,53 @@ function OnboardingPage() {
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function Fact({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div>
-      <p className="text-sm font-semibold uppercase tracking-wider text-stone-400">{label}</p>
-      <span className="mt-1 inline-block rounded-md border border-gray-200 bg-white px-2.5 py-1 text-sm font-medium text-stone-700">
-        {value}
+    <div className="flex min-w-0 items-center gap-2">
+      <span className="shrink-0 text-stone-400" aria-hidden="true">
+        {icon}
       </span>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">{label}</p>
+        {/* Wraps rather than truncates: the longest arena is "Rocket Mortgage FieldHouse". */}
+        <p className="text-xs font-medium leading-snug break-words text-stone-700">{value}</p>
+      </div>
     </div>
+  );
+}
+
+function ArenaIcon() {
+  return (
+    <svg
+      className="h-3.5 w-3.5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.6}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
+      />
+    </svg>
+  );
+}
+
+function CoachIcon() {
+  return (
+    <svg
+      className="h-3.5 w-3.5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.6}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
+      />
+    </svg>
   );
 }

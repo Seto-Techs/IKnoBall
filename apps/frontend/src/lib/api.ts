@@ -92,6 +92,7 @@ export interface StandingsResponse {
 export interface StatLeader {
   name: string;
   value: number;
+  headshotUrl: string;
 }
 
 export interface TeamWithLeaders {
