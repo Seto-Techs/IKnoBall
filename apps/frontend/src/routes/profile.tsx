@@ -13,6 +13,7 @@ import {
   type PredictionPickWithGame,
 } from '../lib/api';
 import { buildTeamLookup, canonicalAbbr } from '../lib/game-utils';
+import { picksPerGame } from '../components/predict/predictions';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/profile')({
@@ -72,19 +73,22 @@ function ProfilePage() {
 
   // The picks endpoint already carries the game, so history does not depend on
   // fetching a schedule window. Open picks sort first, then by tip-off; each
-  // mode is its own row.
+  // mode is its own row so the list can show that mode's payout.
   const historyEntries = [...(myPicks ?? [])].sort((a, b) => {
     const sa = a.gameStatus === 1 ? 0 : 1;
     const sb = b.gameStatus === 1 ? 0 : 1;
     if (sa !== sb) return sa - sb;
     return new Date(a.gameDateTime ?? 0).getTime() - new Date(b.gameDateTime ?? 0).getTime();
   });
-  const upcomingPicks = historyEntries.filter((pick) => pick.gameStatus === 1);
 
-  // Stats span both modes: a settled pick is a correct call when it scored.
-  const settledEntries = historyEntries.filter((pick) => pick.status === 'settled');
+  // Counts are per pick, not per row: one submit writes both modes, so a game
+  // with two rows is still a single pick.
+  const pickEntries = picksPerGame(historyEntries);
+  const openPicks = pickEntries.filter((pick) => pick.gameStatus === 1);
+  const settledEntries = pickEntries.filter((pick) => pick.status === 'settled');
   const correctCount = settledEntries.filter((pick) => (pick.points ?? 0) > 0).length;
   const wrongCount = settledEntries.length - correctCount;
+  // Points are the one figure that is per mode, so it deliberately sums both.
   const totalPoints = historyEntries.reduce((sum, pick) => sum + (pick.points ?? 0), 0);
   const accuracy = settledEntries.length
     ? `${Math.round((correctCount / settledEntries.length) * 100)}%`
@@ -201,7 +205,7 @@ function ProfilePage() {
               <Panel title="My Predictions" className="overflow-hidden" contentClassName="!p-0">
                 <div className="flex items-center justify-end border-b border-brand-line px-5 py-2">
                   <span className="rounded-full bg-stone-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-stone-500">
-                    {upcomingPicks.length} open · {historyEntries.length} total
+                    {openPicks.length} open · {pickEntries.length} total
                   </span>
                 </div>
                 <div className="divide-y divide-brand-line">

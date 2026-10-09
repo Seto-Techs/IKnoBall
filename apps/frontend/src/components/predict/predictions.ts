@@ -58,6 +58,25 @@ export function picksOf(picks: GamePicks | undefined): SavedPrediction[] {
 }
 
 /**
+ * One entry per game, keeping the first mode seen.
+ *
+ * A single submit writes a flat row and a weighted row on the same side (see
+ * `docs/prediction-scoring.md`), so one pick is two rows. Anything that counts
+ * picks rather than one board's rows has to collapse them first, or every pick
+ * counts twice.
+ */
+export function picksPerGame<T extends { gameId: string }>(picks: T[]): T[] {
+  const seen = new Set<string>();
+  const unique: T[] = [];
+  for (const pick of picks) {
+    if (seen.has(pick.gameId)) continue;
+    seen.add(pick.gameId);
+    unique.push(pick);
+  }
+  return unique;
+}
+
+/**
  * A settled points value with the right unit: `1 pt`, `0 pts`, `20 pts`.
  *
  * Classic picks settle to exactly 1, so the singular form is reachable.
