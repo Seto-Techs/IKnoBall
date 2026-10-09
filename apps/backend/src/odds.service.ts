@@ -4,7 +4,6 @@ import { gameOddsSnapshots, scheduleGames } from '@iknoball/database';
 import { fetchNbaOdds, pickBook, type OddsBook } from '@iknoball/predictions';
 import { DatabaseService } from './infrastructure/database/database.service';
 import { RedisService } from './infrastructure/redis/redis.service';
-import { PinnacleOddsService } from './pinnacle-odds.service';
 
 export interface ResolvedOdds {
   gameId: string;
@@ -54,7 +53,6 @@ export class OddsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly redis: RedisService,
-    private readonly pinnacle: PinnacleOddsService,
   ) {}
 
   /**
@@ -110,11 +108,11 @@ export class OddsService {
   /**
    * Fetch the freshest price for a game and persist it as a snapshot.
    *
-   * Pinnacle is asked first. It is a sharp single-book line with far better
-   * coverage than the CDN (which only lists games a bookmaker has actually
-   * posted), so asking it first is what stops a game from sitting unpriced.
-   * The CDN is the fallback, and remains the only source that carries an
-   * opening line.
+   * The NBA CDN is the only source. Pinnacle used to be asked first for its
+   * coverage, but its guest API returns 403 from this deployment's egress and
+   * the endpoint does not validate `X-API-Key`, so the block is network-level
+   * rather than a credential problem — see `docs/prediction-scoring.md`. The CDN
+   * is also the only source that carries an opening line.
    */
   private async refreshFromFeed(gameId: string): Promise<ResolvedOdds | null> {
     const [game] = await this.database.db
@@ -128,28 +126,7 @@ export class OddsService {
 
     if (!game) return null;
 
-    const fromPinnacle = await this.refreshFromPinnacle(gameId, game.homeTeamId, game.awayTeamId);
-    if (fromPinnacle) return fromPinnacle;
-
     return this.refreshFromCdn(gameId, game.homeTeamId, game.awayTeamId);
-  }
-
-  /** Pinnacle's price for the game, or null when it has not posted one. */
-  private async refreshFromPinnacle(
-    gameId: string,
-    homeTeamId: number | null,
-    awayTeamId: number | null,
-  ): Promise<ResolvedOdds | null> {
-    let book: OddsBook | null;
-    try {
-      book = await this.pinnacle.findBook(gameId, homeTeamId, awayTeamId);
-    } catch (error) {
-      // An unreachable fallback must never break the request; try the CDN.
-      this.logger.warn(`Pinnacle unavailable for game=${gameId}: ${(error as Error).message}`);
-      return null;
-    }
-
-    return book ? this.recordSnapshot(gameId, book) : null;
   }
 
   /** The NBA CDN's price for the game, or null when it has none. */

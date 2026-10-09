@@ -126,6 +126,18 @@ export class BoxscoreCrawlerService {
         gameStatus: summary.boxScoreSummary.gameStatus,
         gameStatusText: summary.boxScoreSummary.gameStatusText,
         gameCode: summary.boxScoreSummary.gameCode,
+        // The crawler is the authoritative source for a final score.
+        //
+        // `schedule_games.homeTeamScore`/`awayTeamScore` are otherwise written
+        // only by the daily schedule sync, which reconciles today alone. A game
+        // that tips late on day D and ends after midnight is marked final on
+        // D+1 — by which point the sync has moved on and will never revisit D —
+        // so the feed's 0-0 placeholder is what stays in the row forever. That
+        // stranded prediction picks (settlement reads these columns) and made
+        // completed games render 0-0. These values are already fetched for
+        // `schedule_boxscore_summaries`; writing them here closes the window.
+        homeTeamScore: summary.boxScoreSummary.homeTeam.score,
+        awayTeamScore: summary.boxScoreSummary.awayTeam.score,
       })
       .where(eq(scheduleGames.id, scheduleGameId));
 

@@ -34,9 +34,10 @@ interface PendingPick {
  * Settlement reads only `lockedDecimal`, never live odds, so the price a user
  * accepted at submit is exactly what they are paid on.
  *
- * Picks are voided when the game never reached a final state: either its
- * schedule row is gone, or it is long past its tip-off without finishing. Both
- * count as neither a win nor a loss and drop out of the leaderboard.
+ * Picks are voided when the game never produced a readable result: its schedule
+ * row is gone, it is long past its tip-off without finishing, or it is marked
+ * final but the score never arrived. All count as neither a win nor a loss and
+ * drop out of the leaderboard.
  */
 @Injectable()
 export class PredictionSettlementService {
@@ -44,11 +45,11 @@ export class PredictionSettlementService {
   private readonly enabled = process.env.PREDICTION_SETTLEMENT_ENABLED !== 'false';
 
   /**
-   * How long after tip-off a game may stay unfinished before its picks are
-   * voided. Wide enough that a delayed or suspended game is never voided early.
+   * How long after tip-off a pick may stay unsettleable before it is voided.
+   * Wide enough that a delayed or suspended game is never voided early.
    */
-  private readonly voidAfterMs =
-    Number(process.env.PREDICTION_VOID_AFTER_HOURS || '48') * 60 * 60 * 1000;
+  private readonly voidAfterHours = Number(process.env.PREDICTION_VOID_AFTER_HOURS || '48');
+  private readonly voidAfterMs = this.voidAfterHours * 60 * 60 * 1000;
 
   /** Single-process guard; the worker runs one instance per deployment. */
   private inFlight = false;
@@ -118,19 +119,33 @@ export class PredictionSettlementService {
         }
 
         const points = this.scorePick(row);
-        if (points === null) {
-          pending += 1;
+        if (points !== null) {
+          settlements.push({ id: row.id, points });
           continue;
         }
-        settlements.push({ id: row.id, points });
+
+        // Final, but the result is unreadable: the score is missing, or the row
+        // still holds the 0-0 placeholder the schedule feed writes for a game
+        // that has not been played. The boxscore crawler normally corrects this
+        // within minutes, so it is usually transient; past the threshold it is a
+        // feed gap that will not heal, and leaving the pick pending would strand
+        // it off the leaderboard forever.
+        if (this.pastVoidThreshold(row, now)) {
+          this.logger.warn(
+            `pick=${row.id} final game has an unreadable score past ${this.voidAfterHours}h; voiding`,
+          );
+          voids.push(row.id);
+          continue;
+        }
+
+        pending += 1;
         continue;
       }
 
       // Backstop for a game that stays non-final forever. The daily schedule
       // sync only reconciles today, so a game postponed on an earlier day is
       // never cleaned up; this is what catches it.
-      const tipoff = row.gameDateTimeUTC?.getTime();
-      if (tipoff !== undefined && tipoff !== null && now.getTime() - tipoff > this.voidAfterMs) {
+      if (this.pastVoidThreshold(row, now)) {
         voids.push(row.id);
         continue;
       }
@@ -165,6 +180,18 @@ export class PredictionSettlementService {
     );
 
     return { settled: settlements.length, voided: voids.length, pending };
+  }
+
+  /**
+   * Whether a pick has been unsettleable for longer than the void threshold,
+   * measured from tip-off.
+   *
+   * A pick with no tip-off time can never cross the threshold, so it stays
+   * pending rather than being voided on a guess.
+   */
+  private pastVoidThreshold(row: PendingPick, now: Date): boolean {
+    const tipoff = row.gameDateTimeUTC?.getTime();
+    return tipoff !== undefined && tipoff !== null && now.getTime() - tipoff > this.voidAfterMs;
   }
 
   /**

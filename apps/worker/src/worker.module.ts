@@ -9,8 +9,6 @@ import { ScheduleSyncService } from './schedule-sync.service';
 import { NbaBoxScoreClient } from './nba-boxscore.client';
 import { NbaCdnBoxScoreClient } from './nba-cdn-boxscore.client';
 import { NbaCdnOddsClient } from './nba-odds.client';
-import { PinnacleOddsClient } from './pinnacle-odds.client';
-import { FallbackOddsProvider } from './fallback-odds.provider';
 import { OddsSyncService } from './odds-sync.service';
 import { PredictionSettlementService } from './prediction-settlement.service';
 import { BoxscoreCrawlerService } from './boxscore-crawler.service';
@@ -32,8 +30,6 @@ import { LiveBoxscoreProcessor } from './processors/live-boxscore.processor';
     NbaBoxScoreClient,
     NbaCdnBoxScoreClient,
     NbaCdnOddsClient,
-    PinnacleOddsClient,
-    FallbackOddsProvider,
     OddsSyncService,
     PredictionSettlementService,
     BoxscoreCrawlerService,
