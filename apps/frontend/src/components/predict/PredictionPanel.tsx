@@ -249,7 +249,7 @@ export function PredictionPanel({
                 type="button"
                 onClick={submit}
                 disabled={!side || pending || locked}
-                className="flex-1 rounded-full px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex-1 rounded-md px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ backgroundColor: accentColor }}
               >
                 {pending ? 'Saving…' : hasExisting ? 'Update pick' : 'Place pick'}
@@ -260,7 +260,7 @@ export function PredictionPanel({
                   type="button"
                   disabled={pending}
                   onClick={() => removePick.mutate(game.id, { onSuccess: () => setPick(null) })}
-                  className="flex items-center gap-1.5 rounded-full border border-brand-line bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-stone-500 transition hover:text-brand-red disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-md border border-brand-line bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-stone-500 transition hover:text-brand-red disabled:opacity-40"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   Remove

@@ -330,7 +330,7 @@ function HeroSlide({
               <button
                 type="button"
                 onClick={() => navigate({ to: '/game/$gameId', params: { gameId: g.id } })}
-                className="whitespace-nowrap rounded-full bg-stone-700 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/40 shadow transition hover:bg-stone-600"
+                className="whitespace-nowrap rounded-md bg-stone-700 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/40 shadow transition hover:bg-stone-600"
               >
                 View Recap
               </button>
@@ -338,7 +338,7 @@ function HeroSlide({
               <button
                 type="button"
                 onClick={() => navigate({ to: '/game/$gameId', params: { gameId: g.id } })}
-                className="whitespace-nowrap rounded-full bg-brand-red px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:brightness-110"
+                className="whitespace-nowrap rounded-md bg-brand-red px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white shadow transition hover:brightness-110"
               >
                 Watch Live
               </button>
@@ -346,7 +346,7 @@ function HeroSlide({
               <button
                 type="button"
                 onClick={() => navigate({ to: '/game/$gameId', params: { gameId: g.id } })}
-                className="whitespace-nowrap rounded-full bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy shadow transition hover:brightness-95"
+                className="whitespace-nowrap rounded-md bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy shadow transition hover:brightness-95"
               >
                 Predict →
               </button>
@@ -514,7 +514,7 @@ export function LeagueWideHeroCarousel({
             type="button"
             aria-label="Previous game"
             onClick={() => go(idx - 1)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
             ‹
           </button>
@@ -522,7 +522,7 @@ export function LeagueWideHeroCarousel({
             type="button"
             aria-label="Next game"
             onClick={() => go(idx + 1)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
           >
             ›
           </button>
@@ -535,7 +535,7 @@ export function LeagueWideHeroCarousel({
             type="button"
             onClick={() => setShowTopPlayer((v) => !v)}
             aria-pressed={showTopPlayer}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-widest shadow-md ring-1 transition backdrop-blur ${
+            className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-xs font-black uppercase tracking-widest shadow-md ring-1 transition backdrop-blur ${
               showTopPlayer
                 ? 'bg-white text-brand-navy ring-white'
                 : 'bg-white/15 text-white ring-white/20 hover:bg-white/20'

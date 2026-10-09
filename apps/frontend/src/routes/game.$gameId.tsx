@@ -77,7 +77,7 @@ function GameDetailPage() {
             <button
               type="button"
               onClick={() => navigate({ to: '/predict' })}
-              className="rounded-full bg-brand-navyDark px-6 py-2.5 text-sm font-bold uppercase tracking-widest text-white"
+              className="rounded-md bg-brand-navyDark px-6 py-2.5 text-sm font-bold uppercase tracking-widest text-white"
             >
               Browse games
             </button>

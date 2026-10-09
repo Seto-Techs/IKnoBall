@@ -102,7 +102,7 @@ export function MatchupHero({
         <button
           type="button"
           onClick={onBack}
-          className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-black/50"
+          className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-md bg-black/35 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-black/50"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Back
         </button>

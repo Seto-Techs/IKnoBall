@@ -205,7 +205,7 @@ function DashboardPage() {
             <button
               type="button"
               onClick={() => setTab('team')}
-              className={`rounded-lg px-6 py-3 text-sm font-bold transition-colors ${
+              className={`rounded-md px-6 py-3 text-sm font-bold transition-colors ${
                 !isLeague
                   ? 'bg-brand-navyDark text-white shadow'
                   : 'text-stone-500 hover:bg-stone-50 hover:text-stone-700'
@@ -217,7 +217,7 @@ function DashboardPage() {
             <button
               type="button"
               onClick={() => setTab('league')}
-              className={`rounded-lg px-6 py-3 text-sm font-bold transition-colors ${
+              className={`rounded-md px-6 py-3 text-sm font-bold transition-colors ${
                 isLeague
                   ? 'bg-brand-navyDark text-white shadow'
                   : 'text-stone-500 hover:bg-stone-50 hover:text-stone-700'

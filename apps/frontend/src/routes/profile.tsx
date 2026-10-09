@@ -161,7 +161,7 @@ function ProfilePage() {
               </div>
               <Link
                 to="/onboarding"
-                className="shrink-0 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white backdrop-blur transition hover:bg-white/20 sm:ml-auto"
+                className="shrink-0 rounded-md border border-white/30 bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white backdrop-blur transition hover:bg-white/20 sm:ml-auto"
               >
                 Change Team
               </Link>

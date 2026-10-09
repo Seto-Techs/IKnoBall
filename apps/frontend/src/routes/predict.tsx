@@ -176,7 +176,7 @@ function PredictPage() {
             <button
               type="button"
               onClick={() => refetch()}
-              className="mt-1 flex items-center gap-2 rounded-full bg-brand-navyDark px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+              className="mt-1 flex items-center gap-2 rounded-md bg-brand-navyDark px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
             </button>

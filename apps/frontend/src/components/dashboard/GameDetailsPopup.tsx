@@ -201,7 +201,7 @@ export function GameDetailsPopup({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-stone-600 ring-1 ring-black/5 backdrop-blur-md transition hover:bg-white hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+          className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-md bg-white/80 text-stone-600 ring-1 ring-black/5 backdrop-blur-md transition hover:bg-white hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
         >
           <X className="h-4 w-4" />
         </button>
@@ -490,7 +490,7 @@ export function GameDetailsPopup({
             <button
               type="button"
               onClick={handlePredict}
-              className="flex w-full items-center justify-center rounded-full bg-brand-navyDark px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white ring-1 ring-black/5 transition hover:bg-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 active:scale-[0.98]"
+              className="flex w-full items-center justify-center rounded-md bg-brand-navyDark px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white ring-1 ring-black/5 transition hover:bg-brand-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 active:scale-[0.98]"
             >
               Predict this game
             </button>
@@ -498,7 +498,7 @@ export function GameDetailsPopup({
             <button
               type="button"
               onClick={handlePredict}
-              className="flex w-full items-center justify-center rounded-full bg-stone-900 px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+              className="flex w-full items-center justify-center rounded-md bg-stone-900 px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
             >
               Predict live
             </button>
@@ -506,7 +506,7 @@ export function GameDetailsPopup({
             <button
               type="button"
               onClick={onClose}
-              className="flex w-full items-center justify-center rounded-full border border-brand-line bg-white px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-brand-ink transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+              className="flex w-full items-center justify-center rounded-md border border-brand-line bg-white px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-brand-ink transition hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
             >
               Close
             </button>

@@ -294,7 +294,7 @@ export function MonthlyCalendar({
           onClick={prev}
           disabled={!canPrev}
           aria-label="Previous month"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:bg-white/10 active:scale-90 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:bg-white/10 active:scale-90 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
         >
           ‹
         </button>
@@ -307,7 +307,7 @@ export function MonthlyCalendar({
           onClick={next}
           disabled={!canNext}
           aria-label="Next month"
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:bg-white/10 active:scale-90 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition-all duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] hover:bg-white/10 active:scale-90 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
         >
           ›
         </button>

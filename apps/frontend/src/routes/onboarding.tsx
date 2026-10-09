@@ -275,7 +275,7 @@ function OnboardingPage() {
                   });
                 }}
                 disabled={saveTeam.isPending}
-                className={`flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
+                className={`flex w-full items-center justify-center gap-2 rounded-md px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
                 style={{ backgroundColor: selected.primaryColor }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.filter = 'brightness(1.1)';

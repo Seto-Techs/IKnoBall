@@ -105,7 +105,7 @@ export function HeroBanner({
               <Link
                 to="/game/$gameId"
                 params={{ gameId: nextGame.id }}
-                className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${
+                className={`flex items-center gap-3 rounded-md border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${
                   isBright
                     ? 'border-brand-ink/15 hover:border-brand-ink/35 hover:bg-brand-ink/5'
                     : 'border-white/20 hover:border-white/45 hover:bg-white/10'
@@ -139,7 +139,7 @@ export function HeroBanner({
             )}
             <button
               onClick={onChooseTeam}
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${isBright ? 'border-brand-ink/20 text-brand-ink/70 hover:border-brand-ink/40 hover:bg-brand-ink/5' : 'border-white/20 text-white/70 hover:border-white/40 hover:bg-white/10'}`}
+              className={`rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${isBright ? 'border-brand-ink/20 text-brand-ink/70 hover:border-brand-ink/40 hover:bg-brand-ink/5' : 'border-white/20 text-white/70 hover:border-white/40 hover:bg-white/10'}`}
             >
               Change Team
             </button>

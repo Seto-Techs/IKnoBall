@@ -227,7 +227,7 @@ export function AtAGlance({
                 type="button"
                 aria-label="Previous meetings"
                 onClick={() => go(page - 1)}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-line text-stone-500 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-brand-line text-stone-500 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
               >
                 ‹
               </button>
@@ -238,7 +238,7 @@ export function AtAGlance({
                 type="button"
                 aria-label="Next meetings"
                 onClick={() => go(page + 1)}
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-line text-stone-500 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-brand-line text-stone-500 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy/40"
               >
                 ›
               </button>

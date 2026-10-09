@@ -365,7 +365,7 @@ export function PreviousGameDayCard({
                 type="button"
                 aria-label="Previous page"
                 onClick={() => go(page - 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
               >
                 ‹
               </button>
@@ -373,7 +373,7 @@ export function PreviousGameDayCard({
                 type="button"
                 aria-label="Next page"
                 onClick={() => go(page + 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
               >
                 ›
               </button>

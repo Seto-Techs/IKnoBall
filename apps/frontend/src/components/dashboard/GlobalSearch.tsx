@@ -629,7 +629,7 @@ export function GlobalSearchTrigger({ onActivate }: { onActivate?: () => void })
         aria-label="Search"
         aria-expanded={open}
         onClick={openSearch}
-        className={`flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink lg:hidden ${FOCUS_RING}`}
+        className={`flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink lg:hidden ${FOCUS_RING}`}
       >
         <Search className="h-5 w-5" aria-hidden="true" />
       </button>
@@ -648,7 +648,7 @@ export function GlobalSearchTrigger({ onActivate }: { onActivate?: () => void })
                 type="button"
                 aria-label="Close search"
                 onClick={close}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink ${FOCUS_RING}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink ${FOCUS_RING}`}
               >
                 <ArrowLeft className="h-5 w-5" aria-hidden="true" />
               </button>

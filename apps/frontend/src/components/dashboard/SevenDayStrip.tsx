@@ -230,7 +230,7 @@ export function SevenDayStrip({
                       <button
                         type="button"
                         onClick={() => setOpenDayKey(popoverOpen ? null : key)}
-                        className={`mx-auto mt-auto rounded-full px-2.5 py-1 text-[11px] font-bold underline decoration-brand-gold decoration-2 underline-offset-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
+                        className={`mx-auto mt-auto rounded-md px-2.5 py-1 text-[11px] font-bold underline decoration-brand-gold decoration-2 underline-offset-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                           popoverOpen
                             ? 'bg-brand-navy text-white'
                             : 'text-brand-navy hover:bg-arena-50'
