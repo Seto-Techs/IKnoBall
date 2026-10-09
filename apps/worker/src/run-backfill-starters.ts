@@ -21,9 +21,12 @@ import { NbaCdnBoxScoreClient } from './nba-cdn-boxscore.client';
  * Safe to re-run: only rows whose `starter` is still null are considered, so a
  * game already backfilled is skipped entirely.
  *
- * Usage (from apps/worker):
- *   bun src/run-backfill-starters.ts
- *   STARTER_BACKFILL_CONCURRENCY=8 bun src/run-backfill-starters.ts
+ * Usage (from apps/worker, after `bun run worker:build`):
+ *   bun run backfill:starters
+ *   STARTER_BACKFILL_CONCURRENCY=8 bun run backfill:starters
+ *
+ * Runs on Node, not Bun: cdn.nba.com rejects Bun's fetch fingerprint with a
+ * 403 (curl and Node both get 200), which fails every game in the backfill.
  */
 
 @Module({ providers: [DatabaseService, NbaCdnBoxScoreClient] })
