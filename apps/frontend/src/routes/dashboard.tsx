@@ -29,7 +29,7 @@ import {
   useLeagueGamesPrevious,
   useLeagueLeaders,
 } from '../lib/api';
-import { picksOf, usePredictions } from '../components/predict/predictions';
+import { picksOf, picksPerGame, usePredictions } from '../components/predict/predictions';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/dashboard')({
@@ -123,8 +123,9 @@ function DashboardPage() {
 
   const chooseTeam = () => navigate({ to: '/onboarding' });
 
-  // Stats span both modes: a settled pick counts as correct when it scored.
-  const myPicks = Object.values(predictions).flatMap((game) => picksOf(game));
+  // One pick covers both modes, so count games: counting rows would score
+  // every pick twice.
+  const myPicks = picksPerGame(Object.values(predictions).flatMap((game) => picksOf(game)));
   const settledPicks = myPicks.filter((pick) => pick.status === 'settled');
   const correctPicks = settledPicks.filter((pick) => (pick.points ?? 0) > 0).length;
   const wrongPicks = settledPicks.length - correctPicks;

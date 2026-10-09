@@ -107,14 +107,14 @@ export function slateStats(days: SlateDay[], predictions: PicksByGame): SlateSta
       if (isOpen) pickedOpen++;
       if (getGameStatus(game) !== 'final') continue;
 
-      // Each mode is its own entry, so a game can contribute more than one
-      // resolved pick.
+      // One pick covers both modes, so a final game resolves once — not once
+      // per row.
       const winner = winnerOf(game);
       if (!winner) continue;
-      for (const pick of picksOf(gamePicks)) {
-        resolved++;
-        if (pick.pick === winner) correct++;
-      }
+      const [pick] = picksOf(gamePicks);
+      if (!pick) continue;
+      resolved++;
+      if (pick.pick === winner) correct++;
     }
   }
 
