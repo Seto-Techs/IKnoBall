@@ -276,13 +276,13 @@ function PickCard() {
 function Hero() {
   return (
     <section id="top" className="bg-brand-navyDark text-white">
-      <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+      <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-24">
         <div>
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
             2025–26 season · 30 teams
           </span>
 
-          <h1 className="mt-6 font-heading text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+          <h1 className="mt-6 font-heading text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl">
             Pick every game.
             <br />
             <span className="text-basketball-400">Score it two ways.</span>
