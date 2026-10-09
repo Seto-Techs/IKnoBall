@@ -122,7 +122,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={signIn.isPending}
-              className="w-full rounded-full bg-brand-navyDark px-4 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-md bg-brand-navyDark px-4 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-brand-navy disabled:cursor-not-allowed disabled:opacity-60"
             >
               {signIn.isPending ? 'Signing in…' : 'Sign in'}
             </button>
@@ -151,7 +151,7 @@ function LoginPage() {
                 onError: (err) => setDiscordError(err.message),
               });
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-[#5865F2] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#4752C4] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-md bg-[#5865F2] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#4752C4] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <FaDiscord className="h-4 w-4 shrink-0" />
             {discordSignIn.isPending ? 'Redirecting…' : 'Continue with Discord'}

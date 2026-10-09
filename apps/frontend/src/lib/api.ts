@@ -9,6 +9,7 @@ export interface TeamRecord {
   conference: string;
   division: string;
   lastGames: {
+    gameId: string;
     opponentAbbr: string;
     isHome: boolean;
     ourScore: number;
@@ -92,6 +93,7 @@ export interface StandingsResponse {
 export interface StatLeader {
   name: string;
   value: number;
+  headshotUrl: string;
 }
 
 export interface TeamWithLeaders {
@@ -317,6 +319,84 @@ export interface HeadToHead {
   home: SeriesTeam;
   away: SeriesTeam;
   meetings: SeriesMeeting[];
+}
+
+export interface BoxScoreStats {
+  minutes: string | null;
+  fgMade: number | null;
+  fgAttempted: number | null;
+  fgPct: number | null;
+  fg3Made: number | null;
+  fg3Attempted: number | null;
+  fg3Pct: number | null;
+  ftMade: number | null;
+  ftAttempted: number | null;
+  ftPct: number | null;
+  oreb: number | null;
+  dreb: number | null;
+  reb: number | null;
+  ast: number | null;
+  stl: number | null;
+  blk: number | null;
+  tov: number | null;
+  pf: number | null;
+  pts: number | null;
+  plusMinus: number | null;
+}
+
+export interface BoxScorePlayer extends BoxScoreStats {
+  playerId: string;
+  externalId: string;
+  name: string;
+  jersey: string | null;
+  position: string | null;
+  headshotUrl: string;
+  /** In the starting five. Null on games captured before starters were stored. */
+  starter: boolean | null;
+}
+
+export interface BoxScorePeriod {
+  period: number;
+  periodType: string;
+  score: number;
+}
+
+export interface BoxScoreSide {
+  teamId: number;
+  tricode: string;
+  teamName: string;
+  score: number | null;
+  periods: BoxScorePeriod[];
+  stats: BoxScoreStats;
+  players: BoxScorePlayer[];
+}
+
+export interface BoxScore {
+  gameId: string;
+  /** 2 = live, 3 = final. */
+  status: number;
+  statusText: string;
+  period: number;
+  gameClock: string;
+  home: BoxScoreSide;
+  away: BoxScoreSide;
+}
+
+/** Team totals and the per-player box score for a game, live or final. */
+export function useGameBoxscore(gameId?: string) {
+  return useQuery({
+    queryKey: ['game-boxscore', gameId],
+    queryFn: async (): Promise<BoxScore | null> => {
+      const res = await fetchJson<{ data: BoxScore | null }>(
+        `/games/${encodeURIComponent(gameId ?? '')}/boxscore`,
+      );
+      return res.data;
+    },
+    enabled: !!gameId,
+    staleTime: 1000 * 60,
+    // A live game keeps moving; poll while it is in progress, then stop.
+    refetchInterval: (query) => (query.state.data?.status === 2 ? 60_000 : false),
+  });
 }
 
 /** Regular-season series between the game's two teams in the prior season. */

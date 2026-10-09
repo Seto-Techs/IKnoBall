@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import type { TeamRecord, TeamWithLeaders } from '../../lib/api';
 import { formatGameDate, hexLuminance } from './shared';
 
@@ -10,7 +11,7 @@ export function HeroBanner({
 }: {
   team: TeamWithLeaders;
   record?: TeamRecord | null;
-  nextGame?: { homeTeam: string; awayTeam: string; gameDateTime: string } | null;
+  nextGame?: { id: string; homeTeam: string; awayTeam: string; gameDateTime: string } | null;
   onChooseTeam: () => void;
   teams?: TeamWithLeaders[] | null;
 }) {
@@ -56,28 +57,33 @@ export function HeroBanner({
       />
 
       <div className="relative z-10">
-        {/* ── Row 1: Team identity — horizontal ── */}
-        <div className="flex items-center justify-center gap-8 px-8 pt-7 pb-5">
+        {/* ── Row 1: Team identity ──
+            Stacked below md. Two text-7xl words plus the crest need ~800px, and
+            the xl rail layout leaves the centre column only ~600px, so the
+            sizes step back down at xl. */}
+        <div className="flex flex-col items-center justify-center gap-1 px-4 pt-6 pb-5 text-center md:flex-row md:flex-wrap md:gap-x-6 md:gap-y-2 md:px-8 md:pt-7">
           <p
-            className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}
+            className={`font-heading text-3xl font-semibold uppercase tracking-wide md:text-4xl lg:text-5xl xl:text-4xl 2xl:text-5xl ${tx}`}
           >
             {topLine}
           </p>
           <img
             src={team.logoUrl}
             alt={`${team.fullName} logo`}
-            className="h-auto max-h-32 w-auto max-w-32 shrink object-contain"
+            className="order-first h-16 w-16 object-contain md:order-none md:h-auto md:max-h-24 md:w-auto md:max-w-24 lg:max-h-28 lg:max-w-28 2xl:max-h-32 2xl:max-w-32"
           />
           <h1
-            className={`shrink-0 font-heading text-7xl font-semibold uppercase tracking-wide ${tx}`}
+            className={`font-heading text-3xl font-semibold uppercase tracking-wide md:text-4xl lg:text-5xl xl:text-4xl 2xl:text-5xl ${tx}`}
           >
             {bottomLine}
           </h1>
         </div>
 
         {/* ── Row 2: Stats | Last 5 | Upcoming | CTA ── */}
-        <div className={`flex items-center justify-between gap-6 border-t px-8 py-4 ${rule}`}>
-          <div className="flex items-center gap-5">
+        <div
+          className={`flex flex-col gap-3 border-t px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between md:gap-6 lg:px-8 ${rule}`}
+        >
+          <div className="flex items-center gap-4 sm:gap-5">
             <>
               <span className={`text-sm font-semibold ${txMuted}`}>
                 {team.conference === 'East' ? 'Eastern' : 'Western'} · {team.division}
@@ -94,30 +100,46 @@ export function HeroBanner({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-6">
-            <div className="flex items-center gap-3">
-              {opponent?.logoUrl && (
-                <img
-                  src={opponent.logoUrl}
-                  alt=""
-                  aria-hidden="true"
-                  className="h-14 w-14 shrink-0 object-contain"
-                />
-              )}
-              <div className="min-w-0">
-                <p className={`truncate font-heading text-xl font-semibold uppercase ${tx}`}>
-                  {opponent?.abbreviation ?? opponentName ?? '—'}
-                </p>
-                {nextGame && (
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+            {nextGame ? (
+              <Link
+                to="/game/$gameId"
+                params={{ gameId: nextGame.id }}
+                className={`flex items-center gap-3 rounded-md border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${
+                  isBright
+                    ? 'border-brand-ink/15 hover:border-brand-ink/35 hover:bg-brand-ink/5'
+                    : 'border-white/20 hover:border-white/45 hover:bg-white/10'
+                }`}
+              >
+                {opponent?.logoUrl && (
+                  <img
+                    src={opponent.logoUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="h-14 w-14 shrink-0 object-contain"
+                  />
+                )}
+                <div className="min-w-0">
+                  <p className={`truncate font-heading text-xl font-semibold uppercase ${tx}`}>
+                    {opponent?.abbreviation ?? opponentName ?? '—'}
+                  </p>
                   <p className={`mt-0.5 text-sm ${txMuted}`}>
                     {formatGameDate(nextGame.gameDateTime, 'EEE, MMM d')} · Upcoming
                   </p>
-                )}
+                </div>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="min-w-0">
+                  <p className={`truncate font-heading text-xl font-semibold uppercase ${tx}`}>
+                    {opponent?.abbreviation ?? opponentName ?? '—'}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
             <button
               onClick={onChooseTeam}
-              className={`rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${isBright ? 'border-brand-ink/20 text-brand-ink/70 hover:border-brand-ink/40 hover:bg-brand-ink/5' : 'border-white/20 text-white/70 hover:border-white/40 hover:bg-white/10'}`}
+              className={`rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${isBright ? 'border-brand-ink/20 text-brand-ink/70 hover:border-brand-ink/40 hover:bg-brand-ink/5' : 'border-white/20 text-white/70 hover:border-white/40 hover:bg-white/10'}`}
             >
               Change Team
             </button>

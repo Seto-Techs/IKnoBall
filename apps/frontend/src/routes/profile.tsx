@@ -10,10 +10,10 @@ import {
   useTeamRecord,
   useTeams,
   useTopPlayers,
+  type PredictionMode,
   type PredictionPickWithGame,
 } from '../lib/api';
 import { buildTeamLookup, canonicalAbbr } from '../lib/game-utils';
-import { picksPerGame } from '../components/predict/predictions';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/profile')({
@@ -81,12 +81,20 @@ function ProfilePage() {
     return new Date(a.gameDateTime ?? 0).getTime() - new Date(b.gameDateTime ?? 0).getTime();
   });
 
-  // Counts are per pick, not per row: one submit writes both modes, so a game
-  // with two rows is still a single pick.
-  const pickEntries = picksPerGame(historyEntries);
-  const openPicks = pickEntries.filter((pick) => pick.gameStatus === 1);
-  const settledEntries = pickEntries.filter((pick) => pick.status === 'settled');
-  const correctCount = settledEntries.filter((pick) => (pick.points ?? 0) > 0).length;
+  // One pick writes a flat row and a weighted row, so group by game: the list
+  // shows each game once carrying both payouts, and the counts below are per
+  // pick rather than per row.
+  const rowsByGame = new Map<string, PredictionPickWithGame[]>();
+  for (const pick of historyEntries) {
+    const rows = rowsByGame.get(pick.gameId);
+    if (rows) rows.push(pick);
+    else rowsByGame.set(pick.gameId, [pick]);
+  }
+  const gameRows = [...rowsByGame.values()];
+
+  const openPicks = gameRows.filter(([pick]) => pick.gameStatus === 1);
+  const settledEntries = gameRows.filter(([pick]) => pick.status === 'settled');
+  const correctCount = settledEntries.filter(([pick]) => (pick.points ?? 0) > 0).length;
   const wrongCount = settledEntries.length - correctCount;
   // Points are the one figure that is per mode, so it deliberately sums both.
   const totalPoints = historyEntries.reduce((sum, pick) => sum + (pick.points ?? 0), 0);
@@ -165,7 +173,7 @@ function ProfilePage() {
               </div>
               <Link
                 to="/onboarding"
-                className="shrink-0 rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white backdrop-blur transition hover:bg-white/20 sm:ml-auto"
+                className="shrink-0 rounded-md border border-white/30 bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white backdrop-blur transition hover:bg-white/20 sm:ml-auto"
               >
                 Change Team
               </Link>
@@ -202,26 +210,26 @@ function ProfilePage() {
                 />
               </div>
 
-              <Panel title="My Predictions" className="overflow-hidden" contentClassName="!p-0">
+              <Panel title="My Predictions" clip contentClassName="!p-0">
                 <div className="flex items-center justify-end border-b border-brand-line px-5 py-2">
                   <span className="rounded-full bg-stone-100 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-stone-500">
-                    {openPicks.length} open · {pickEntries.length} total
+                    {openPicks.length} open · {gameRows.length} total
                   </span>
                 </div>
                 <div className="divide-y divide-brand-line">
-                  {historyEntries.length === 0 && (
+                  {gameRows.length === 0 && (
                     <EmptyState message="No predictions yet — make your first pick from the Predictions page." />
                   )}
-                  {historyEntries.map((pick) => (
+                  {gameRows.map((rows) => (
                     <HistoryRow
-                      key={`${pick.gameId}-${pick.mode}`}
-                      pick={pick}
+                      key={rows[0].gameId}
+                      rows={rows}
                       lookup={lookup}
                       accentColor={accentColor}
                     />
                   ))}
                 </div>
-                {historyEntries.length > 0 && (
+                {gameRows.length > 0 && (
                   <div className="border-t border-brand-line px-5 py-3 text-center">
                     <Link
                       to="/predict"
@@ -235,7 +243,7 @@ function ProfilePage() {
             </div>
 
             <aside className="min-w-0">
-              <Panel title={team.teamName} className="overflow-hidden" contentClassName="!p-0">
+              <Panel title={team.teamName} clip contentClassName="!p-0">
                 <div
                   className="flex items-center gap-4 px-5 py-4"
                   style={{ backgroundColor: team.primaryColor }}
@@ -299,24 +307,84 @@ function ProfilePage() {
   );
 }
 
+/** Flat before weighted — the order a pick's two rows are written in. */
+const MODE_ORDER: Record<PredictionMode, number> = { flat: 0, weighted: 1 };
+
+const POINTS_SCALE = 10;
+const POINTS_CEILING = 150;
+
+/**
+ * What a mode pays if the pick lands: flat always 1, weighted the locked price
+ * on the same scale the server settles with. Null when a weighted pick has no
+ * price locked yet.
+ *
+ * Mirrors `potentialPoints` in `@iknoball/predictions`. The frontend does not
+ * depend on that package — the image build never compiles it — so the two have
+ * to be kept in step by hand. Settlement stays authoritative either way; this
+ * only feeds the preview.
+ */
+function wouldBePoints(mode: PredictionMode, lockedDecimal: number | null): number | null {
+  if (mode === 'flat') return 1;
+  if (lockedDecimal === null) return null;
+  return Math.min(Math.round(POINTS_SCALE * lockedDecimal), POINTS_CEILING);
+}
+
+/**
+ * One mode's payout for a pick.
+ *
+ * Settled and correct shows what it scored; missed shows what it would have
+ * scored, struck through; anything still open shows the same figure dimmed,
+ * because the price can still move before it settles.
+ */
+function ModeChip({ row }: { row: PredictionPickWithGame }) {
+  const settled = row.status === 'settled';
+  const missed = settled && (row.points ?? 0) === 0;
+  const value =
+    row.status === 'voided'
+      ? null
+      : settled && !missed
+        ? row.points
+        : wouldBePoints(row.mode, row.lockedDecimal);
+
+  return (
+    <span
+      className={`rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-stone-500 ${
+        settled ? '' : 'opacity-60'
+      }`}
+    >
+      {row.mode === 'flat' ? 'Flat' : 'Weighted'}
+      <span
+        className={`ml-1 tabular-nums text-brand-ink ${
+          missed ? 'line-through decoration-brand-red decoration-2' : ''
+        }`}
+      >
+        {value ?? '—'}
+      </span>
+    </span>
+  );
+}
+
 function HistoryRow({
-  pick,
+  rows,
   lookup,
   accentColor,
 }: {
-  pick: PredictionPickWithGame;
+  /** Every mode held on one game. Both always name the same side. */
+  rows: PredictionPickWithGame[];
   lookup: ReturnType<typeof buildTeamLookup>;
   accentColor: string;
 }) {
+  const [pick] = rows;
   const awayAbbr = pick.awayTricode ?? (pick.awayTeam ?? '?').slice(0, 3).toUpperCase();
   const homeAbbr = pick.homeTricode ?? (pick.homeTeam ?? '?').slice(0, 3).toUpperCase();
   const away = lookup.byKey.get(canonicalAbbr(awayAbbr)) ?? null;
   const home = lookup.byKey.get(canonicalAbbr(homeAbbr)) ?? null;
   const picked = pick.side === 'away' ? awayAbbr : homeAbbr;
-  const modeLabel = pick.mode === 'flat' ? 'Flat' : 'Weighted';
+  const modes = [...rows].sort((a, b) => MODE_ORDER[a.mode] - MODE_ORDER[b.mode]);
 
   // Status comes from the server, which is authoritative: it knows about voided
-  // games and about picks settled after the line moved.
+  // games and about picks settled after the line moved. Both modes share a side
+  // and settle in the same pass, so one verdict covers the whole pick.
   let resultLabel: string;
   if (pick.status === 'voided') {
     resultLabel = 'Void';
@@ -332,7 +400,7 @@ function HistoryRow({
     <Link
       to="/game/$gameId"
       params={{ gameId: pick.gameId }}
-      className="flex items-center gap-3 px-5 py-3 transition hover:bg-stone-50"
+      className="flex flex-col gap-2 px-5 py-3 transition hover:bg-stone-50 sm:flex-row sm:items-center sm:gap-3"
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         {away?.logoUrl ? (
@@ -351,32 +419,34 @@ function HistoryRow({
           })}
         </span>
       </div>
-      <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-stone-600">
-        {picked}
-      </span>
-      <span className="hidden rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-stone-500 sm:inline">
-        {modeLabel}
-      </span>
-      <span className="w-10 shrink-0 text-right text-sm font-black tabular-nums text-brand-ink">
-        {pick.points ?? '—'}
-      </span>
-      <span
-        className={`w-24 shrink-0 rounded-full px-2.5 py-1 text-center text-[11px] font-black uppercase tracking-widest ${
-          resultLabel === '✓ Correct'
-            ? 'bg-emerald-500/15 text-emerald-700'
-            : resultLabel === 'Open'
-              ? 'bg-brand-navy/10 text-brand-navy'
-              : resultLabel === '✗ Missed'
-                ? 'bg-brand-red/10 text-brand-red'
-                : 'bg-stone-100 text-stone-500'
-        }`}
-      >
-        {resultLabel}
-      </span>
-      <span
-        className="hidden h-2 w-2 shrink-0 rounded-full sm:block"
-        style={{ backgroundColor: accentColor }}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-black uppercase tracking-widest text-stone-600">
+          {picked}
+        </span>
+        {/* One chip per mode, so both payouts for this pick stay visible. */}
+        <span className="flex shrink-0 items-center gap-1">
+          {modes.map((row) => (
+            <ModeChip key={row.mode} row={row} />
+          ))}
+        </span>
+        <span
+          className={`w-24 shrink-0 rounded-full px-2.5 py-1 text-center text-[11px] font-black uppercase tracking-widest ${
+            resultLabel === '✓ Correct'
+              ? 'bg-emerald-500/15 text-emerald-700'
+              : resultLabel === 'Open'
+                ? 'bg-brand-navy/10 text-brand-navy'
+                : resultLabel === '✗ Missed'
+                  ? 'bg-brand-red/10 text-brand-red'
+                  : 'bg-stone-100 text-stone-500'
+          }`}
+        >
+          {resultLabel}
+        </span>
+        <span
+          className="hidden h-2 w-2 shrink-0 rounded-full sm:block"
+          style={{ backgroundColor: accentColor }}
+        />
+      </div>
     </Link>
   );
 }

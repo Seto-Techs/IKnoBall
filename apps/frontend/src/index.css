@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Height of the sticky top nav. DashboardHeader measures the real element and
+     overwrites this; the fallback is the lg+ height, which is where the
+     dashboard rails exist. */
+  --header-h: 65px;
+
+  /* Where a sticky header lands inside its own scrollport. The document
+     scrollport has the nav in the way, so sticky panel titles offset by it.
+     A nested scroll container (the dashboard rails) resets this to 0, because
+     the nav is outside that scrollport. */
+  --sticky-offset: var(--header-h);
+}
+
 @layer base {
   html,
   body {

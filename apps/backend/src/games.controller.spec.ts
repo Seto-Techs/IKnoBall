@@ -253,6 +253,112 @@ describe('GamesController.getHeadToHead', () => {
   });
 });
 
+describe('GamesController.getBoxScore', () => {
+  const boxGame: Row = { scheduleGameId: 'sg-1', homeTricode: 'POR', awayTricode: 'GSW' };
+
+  const boxSummary: Row = {
+    gameStatus: 3,
+    gameStatusText: 'Final',
+    period: 4,
+    gameClock: 'PT00M00.00S',
+    homeTeamId: 1610612757,
+    awayTeamId: 1610612744,
+    homeScore: 123,
+    awayScore: 118,
+    homePeriods: [{ period: 1, periodType: 'REGULAR', score: 36 }],
+    awayPeriods: [{ period: 1, periodType: 'REGULAR', score: 31 }],
+  };
+
+  const boxTeams: Row[] = [
+    { side: 'home', teamExternalId: 1610612757, minutes: 'PT240M00.00S', pts: 123, reb: 59 },
+    { side: 'away', teamExternalId: 1610612744, minutes: 'PT240M00.00S', pts: 118, reb: 50 },
+  ];
+
+  const boxPlayers: Row[] = [
+    {
+      playerId: 'p-1',
+      externalId: '1630166',
+      teamExternalId: 1610612757,
+      starter: true,
+      displayName: 'Deni Avdija',
+      firstName: 'Deni',
+      lastName: 'Avdija',
+      jersey: '8',
+      position: 'F',
+      minutes: 'PT21M01.00S',
+      pts: 23,
+      reb: 2,
+    },
+    {
+      playerId: 'p-2',
+      externalId: '1630695',
+      teamExternalId: 1610612757,
+      starter: false,
+      displayName: 'Micah Potter',
+      firstName: 'Micah',
+      lastName: 'Potter',
+      jersey: '9',
+      position: 'C',
+      minutes: 'PT13M00.00S',
+      pts: 13,
+      reb: 6,
+    },
+  ];
+
+  const boxNames: Row[] = [
+    { abbreviation: 'POR', fullName: 'Portland Trail Blazers' },
+    { abbreviation: 'GSW', fullName: 'Golden State Warriors' },
+  ];
+
+  it('maps the summary, team totals and per-player rows for a final game', async () => {
+    const controller = makeController([[boxGame], [boxSummary], boxTeams, boxPlayers, boxNames]);
+
+    const res = await controller.getBoxScore('0012600033');
+
+    expect(res.is_success).toBe(true);
+    expect(res.message).toBe('Box score fetched.');
+    expect(res.data?.status).toBe(3);
+    expect(res.data?.home.tricode).toBe('POR');
+    expect(res.data?.home.teamName).toBe('Portland Trail Blazers');
+    expect(res.data?.home.score).toBe(123);
+    expect(res.data?.home.periods).toEqual([{ period: 1, periodType: 'REGULAR', score: 36 }]);
+    expect(res.data?.home.stats.pts).toBe(123);
+    // Minutes are normalised out of the feed's ISO duration.
+    expect(res.data?.home.players[0]).toMatchObject({
+      name: 'Deni Avdija',
+      minutes: '21:01',
+      starter: true,
+      pts: 23,
+    });
+    expect(res.data?.home.players[1]).toMatchObject({ name: 'Micah Potter', starter: false });
+  });
+
+  it('keeps the feed order rather than re-sorting players', async () => {
+    const controller = makeController([[boxGame], [boxSummary], boxTeams, boxPlayers, boxNames]);
+
+    const res = await controller.getBoxScore('0012600033');
+
+    // Avdija (23) is listed before Potter (13); the endpoint must not sort.
+    expect(res.data?.home.players.map((p) => p.name)).toEqual(['Deni Avdija', 'Micah Potter']);
+  });
+
+  it('returns null data when the game has no stored box score', async () => {
+    const controller = makeController([[boxGame], []]);
+
+    const res = await controller.getBoxScore('0012600033');
+
+    expect(res).toEqual({ is_success: true, message: 'No box score for this game.', data: null });
+  });
+
+  it('returns null data when the game id is unknown', async () => {
+    const controller = makeController([[]]);
+
+    const res = await controller.getBoxScore('9999999999');
+
+    expect(res).toEqual({ is_success: true, message: 'Game not found.', data: null });
+  });
+});
+
 describe('GamesController routing', () => {
   it('serves a game by id over HTTP', async () => {
     const app = await makeApp([[gameRow], teamRows]);
@@ -273,6 +379,37 @@ describe('GamesController routing', () => {
 
     expect(res.body.data.season).toBe('2025-26');
     expect(res.body.data.meetings).toEqual([]);
+    await app.close();
+  });
+
+  it('serves the box score over HTTP without shadowing the :id route', async () => {
+    const app = await makeApp([
+      [{ scheduleGameId: 'sg-1', homeTricode: 'POR', awayTricode: 'GSW' }],
+      [
+        {
+          gameStatus: 3,
+          gameStatusText: 'Final',
+          period: 4,
+          gameClock: 'PT00M00.00S',
+          homeTeamId: 1,
+          awayTeamId: 2,
+          homeScore: 123,
+          awayScore: 118,
+          homePeriods: [],
+          awayPeriods: [],
+        },
+      ],
+      [],
+      [],
+      [],
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .get('/api/games/0012600033/boxscore')
+      .expect(200);
+
+    expect(res.body.data.home.tricode).toBe('POR');
+    expect(res.body.data.home.score).toBe(123);
     await app.close();
   });
 

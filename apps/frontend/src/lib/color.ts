@@ -43,3 +43,34 @@ export function darken(hex: string, amount: number): string {
   const b = Math.round(parseInt(hex.slice(5, 7), 16) * (1 - amount));
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
+
+/** Euclidean distance in RGB. Roughly 0–441; below ~100 reads as one colour. */
+export function colorDistance(a: string, b: string): number {
+  const parse = (hex: string): [number, number, number] | null => {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex ?? '').trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const ca = parse(a);
+  const cb = parse(b);
+  if (!ca || !cb) return Number.POSITIVE_INFINITY;
+  return Math.sqrt(ca.reduce((sum, v, i) => sum + (v - cb[i]) ** 2, 0));
+}
+
+export interface ColorPair {
+  away: string;
+  home: string;
+}
+
+const FALLBACK_PAIR: ColorPair = { away: '#1C4188', home: '#882233' };
+const MIN_COLOR_DISTANCE = 100;
+
+/**
+ * A pair of colours that stay distinguishable side by side. Two team primaries
+ * can be near-identical — UTA and DEN are both navy — which leaves split bars
+ * and cards unreadable, so a close pair falls back to the brand navy/red.
+ */
+export function distinctPair(away: string, home: string): ColorPair {
+  return colorDistance(away, home) >= MIN_COLOR_DISTANCE ? { away, home } : FALLBACK_PAIR;
+}

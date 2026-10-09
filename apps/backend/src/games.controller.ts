@@ -3,10 +3,31 @@ import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
-import { teams, scheduleDays, scheduleGames } from '@iknoball/database';
+import {
+  teams,
+  scheduleDays,
+  scheduleGames,
+  scheduleBoxscoreSummaries,
+  scheduleBoxscoreTeams,
+  scheduleBoxscorePlayers,
+  players,
+} from '@iknoball/database';
 import { and, gte, lt, lte, asc, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
 
 const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
+
+/**
+ * The NBA feed reports minutes as an ISO-8601 duration ("PT34M21.00S"). Turn it
+ * into the "34:21" a box score shows. Unrecognised input passes through.
+ */
+function formatMinutes(value: string | null): string | null {
+  if (!value) return null;
+  const match = /^PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/.exec(value.trim());
+  if (!match) return value;
+  const mins = Number(match[1] ?? 0);
+  const secs = Math.round(Number(match[2] ?? 0));
+  return `${mins}:${String(secs).padStart(2, '0')}`;
+}
 
 /** '2026-27' -> '2025-26'. Returns the input unchanged if it is not YYYY-YY. */
 function previousSeason(season: string): string {
@@ -133,6 +154,155 @@ class HeadToHeadResponse {
 
   @ApiProperty({ type: [SeriesMeeting] })
   meetings!: SeriesMeeting[];
+}
+
+class BoxScoreStatsResponse {
+  @ApiProperty({ example: '34:21', nullable: true, description: 'Minutes played, "MM:SS"' })
+  minutes!: string | null;
+
+  @ApiProperty({ example: 8, nullable: true })
+  fgMade!: number | null;
+
+  @ApiProperty({ example: 16, nullable: true })
+  fgAttempted!: number | null;
+
+  @ApiProperty({ example: 0.5, nullable: true })
+  fgPct!: number | null;
+
+  @ApiProperty({ example: 6, nullable: true })
+  fg3Made!: number | null;
+
+  @ApiProperty({ example: 11, nullable: true })
+  fg3Attempted!: number | null;
+
+  @ApiProperty({ example: 0.545, nullable: true })
+  fg3Pct!: number | null;
+
+  @ApiProperty({ example: 2, nullable: true })
+  ftMade!: number | null;
+
+  @ApiProperty({ example: 4, nullable: true })
+  ftAttempted!: number | null;
+
+  @ApiProperty({ example: 0.5, nullable: true })
+  ftPct!: number | null;
+
+  @ApiProperty({ example: 2, nullable: true })
+  oreb!: number | null;
+
+  @ApiProperty({ example: 5, nullable: true })
+  dreb!: number | null;
+
+  @ApiProperty({ example: 7, nullable: true })
+  reb!: number | null;
+
+  @ApiProperty({ example: 6, nullable: true })
+  ast!: number | null;
+
+  @ApiProperty({ example: 0, nullable: true })
+  stl!: number | null;
+
+  @ApiProperty({ example: 1, nullable: true })
+  blk!: number | null;
+
+  @ApiProperty({ example: 1, nullable: true })
+  tov!: number | null;
+
+  @ApiProperty({ example: 5, nullable: true })
+  pf!: number | null;
+
+  @ApiProperty({ example: 24, nullable: true })
+  pts!: number | null;
+
+  @ApiProperty({ example: 14, nullable: true })
+  plusMinus!: number | null;
+}
+
+class BoxScorePlayerResponse extends BoxScoreStatsResponse {
+  @ApiProperty({ example: 'clx...' })
+  playerId!: string;
+
+  @ApiProperty({ example: '1642868', description: 'NBA person id' })
+  externalId!: string;
+
+  @ApiProperty({ example: 'Miles Kelly' })
+  name!: string;
+
+  @ApiProperty({ example: '11', nullable: true })
+  jersey!: string | null;
+
+  @ApiProperty({ example: 'G', nullable: true })
+  position!: string | null;
+
+  @ApiProperty({ example: 'https://cdn.nba.com/headshots/nba/latest/260x190/1642868.png' })
+  headshotUrl!: string;
+
+  @ApiProperty({
+    example: true,
+    description: 'In the starting five. Null when the game predates starter capture.',
+    nullable: true,
+  })
+  starter!: boolean | null;
+}
+
+class BoxScorePeriodResponse {
+  @ApiProperty({ example: 1 })
+  period!: number;
+
+  @ApiProperty({ example: 'REGULAR', description: 'REGULAR or OVERTIME' })
+  periodType!: string;
+
+  @ApiProperty({ example: 36 })
+  score!: number;
+}
+
+class BoxScoreSideResponse {
+  @ApiProperty({ example: 1610612744 })
+  teamId!: number;
+
+  @ApiProperty({ example: 'GSW' })
+  tricode!: string;
+
+  @ApiProperty({ example: 'Golden State Warriors' })
+  teamName!: string;
+
+  @ApiProperty({ example: 118, nullable: true })
+  score!: number | null;
+
+  @ApiProperty({ type: [BoxScorePeriodResponse] })
+  periods!: BoxScorePeriodResponse[];
+
+  @ApiProperty({ type: BoxScoreStatsResponse })
+  stats!: BoxScoreStatsResponse;
+
+  @ApiProperty({
+    type: [BoxScorePlayerResponse],
+    description: 'In the feed order: starters first, then the bench.',
+  })
+  players!: BoxScorePlayerResponse[];
+}
+
+class BoxScoreResponse {
+  @ApiProperty({ example: '0012600033' })
+  gameId!: string;
+
+  @ApiProperty({ example: 3, description: '2 = live, 3 = final' })
+  status!: number;
+
+  @ApiProperty({ example: 'Final' })
+  statusText!: string;
+
+  @ApiProperty({ example: 4 })
+  period!: number;
+
+  @ApiProperty({ example: 'PT00M00.00S' })
+  gameClock!: string;
+
+  @ApiProperty({ type: BoxScoreSideResponse, description: "The game's home team" })
+  home!: BoxScoreSideResponse;
+
+  @ApiProperty({ type: BoxScoreSideResponse, description: "The game's away team" })
+  away!: BoxScoreSideResponse;
 }
 
 @ApiTags('Games')
@@ -560,6 +730,211 @@ export class GamesController {
         homeScore: g.homeScore,
         awayScore: g.awayScore,
       })),
+    });
+  }
+
+  private mapBoxStats(
+    row: Partial<{
+      minutes: string | null;
+      fgMade: number | null;
+      fgAttempted: number | null;
+      fgPct: number | null;
+      fg3Made: number | null;
+      fg3Attempted: number | null;
+      fg3Pct: number | null;
+      ftMade: number | null;
+      ftAttempted: number | null;
+      ftPct: number | null;
+      oreb: number | null;
+      dreb: number | null;
+      reb: number | null;
+      ast: number | null;
+      stl: number | null;
+      blk: number | null;
+      tov: number | null;
+      pf: number | null;
+      pts: number | null;
+      plusMinus: number | null;
+    }>,
+  ): BoxScoreStatsResponse {
+    return {
+      minutes: formatMinutes(row.minutes ?? null),
+      fgMade: row.fgMade ?? null,
+      fgAttempted: row.fgAttempted ?? null,
+      fgPct: row.fgPct ?? null,
+      fg3Made: row.fg3Made ?? null,
+      fg3Attempted: row.fg3Attempted ?? null,
+      fg3Pct: row.fg3Pct ?? null,
+      ftMade: row.ftMade ?? null,
+      ftAttempted: row.ftAttempted ?? null,
+      ftPct: row.ftPct ?? null,
+      oreb: row.oreb ?? null,
+      dreb: row.dreb ?? null,
+      reb: row.reb ?? null,
+      ast: row.ast ?? null,
+      stl: row.stl ?? null,
+      blk: row.blk ?? null,
+      tov: row.tov ?? null,
+      pf: row.pf ?? null,
+      pts: row.pts ?? null,
+      plusMinus: row.plusMinus ?? null,
+    };
+  }
+
+  /** Period scores are jsonb; guard the shape before handing them to the client. */
+  private mapPeriods(value: unknown): BoxScorePeriodResponse[] {
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((entry) => entry as { period?: number; periodType?: string; score?: number })
+      .filter((entry) => typeof entry?.period === 'number')
+      .map((entry) => ({
+        period: entry.period as number,
+        periodType: entry.periodType ?? 'REGULAR',
+        score: entry.score ?? 0,
+      }));
+  }
+
+  @Get(':id/boxscore')
+  @ApiOperation({ summary: 'Team totals and the full per-player box score for a game' })
+  @ApiDataResponse(BoxScoreResponse, HttpStatus.OK, 'Box score.', 'Box score.')
+  async getBoxScore(@Param('id') id: string): Promise<ApiResponse<BoxScoreResponse>> {
+    const [game] = await this.db.db
+      .select({
+        scheduleGameId: scheduleGames.id,
+        homeTricode: scheduleGames.homeTeamTricode,
+        awayTricode: scheduleGames.awayTeamTricode,
+      })
+      .from(scheduleGames)
+      .where(eq(scheduleGames.gameId, id))
+      .limit(1);
+
+    if (!game) {
+      return response<BoxScoreResponse>(true, 'Game not found.', null);
+    }
+
+    const [summary] = await this.db.db
+      .select({
+        gameStatus: scheduleBoxscoreSummaries.gameStatus,
+        gameStatusText: scheduleBoxscoreSummaries.gameStatusText,
+        period: scheduleBoxscoreSummaries.period,
+        gameClock: scheduleBoxscoreSummaries.gameClock,
+        homeTeamId: scheduleBoxscoreSummaries.homeTeamId,
+        awayTeamId: scheduleBoxscoreSummaries.awayTeamId,
+        homeScore: scheduleBoxscoreSummaries.homeScore,
+        awayScore: scheduleBoxscoreSummaries.awayScore,
+        homePeriods: scheduleBoxscoreSummaries.homePeriods,
+        awayPeriods: scheduleBoxscoreSummaries.awayPeriods,
+      })
+      .from(scheduleBoxscoreSummaries)
+      .where(eq(scheduleBoxscoreSummaries.scheduleGameId, game.scheduleGameId))
+      .limit(1);
+
+    if (!summary) {
+      return response<BoxScoreResponse>(true, 'No box score for this game.', null);
+    }
+
+    const teamRows = await this.db.db
+      .select()
+      .from(scheduleBoxscoreTeams)
+      .where(eq(scheduleBoxscoreTeams.scheduleGameId, game.scheduleGameId));
+
+    // Feed order (starters first, then bench) so a live box score can list the
+    // players the way the feed presents them.
+    const playerRows = await this.db.db
+      .select({
+        playerId: scheduleBoxscorePlayers.playerId,
+        externalId: scheduleBoxscorePlayers.playerExternalId,
+        teamExternalId: scheduleBoxscorePlayers.teamExternalId,
+        starter: scheduleBoxscorePlayers.starter,
+        displayName: players.displayName,
+        firstName: players.firstName,
+        lastName: players.lastName,
+        jersey: players.jersey,
+        position: players.position,
+        minutes: scheduleBoxscorePlayers.minutes,
+        fgMade: scheduleBoxscorePlayers.fgMade,
+        fgAttempted: scheduleBoxscorePlayers.fgAttempted,
+        fgPct: scheduleBoxscorePlayers.fgPct,
+        fg3Made: scheduleBoxscorePlayers.fg3Made,
+        fg3Attempted: scheduleBoxscorePlayers.fg3Attempted,
+        fg3Pct: scheduleBoxscorePlayers.fg3Pct,
+        ftMade: scheduleBoxscorePlayers.ftMade,
+        ftAttempted: scheduleBoxscorePlayers.ftAttempted,
+        ftPct: scheduleBoxscorePlayers.ftPct,
+        oreb: scheduleBoxscorePlayers.oreb,
+        dreb: scheduleBoxscorePlayers.dreb,
+        reb: scheduleBoxscorePlayers.reb,
+        ast: scheduleBoxscorePlayers.ast,
+        stl: scheduleBoxscorePlayers.stl,
+        blk: scheduleBoxscorePlayers.blk,
+        tov: scheduleBoxscorePlayers.tov,
+        pf: scheduleBoxscorePlayers.pf,
+        pts: scheduleBoxscorePlayers.pts,
+        plusMinus: scheduleBoxscorePlayers.plusMinus,
+      })
+      .from(scheduleBoxscorePlayers)
+      .innerJoin(players, eq(scheduleBoxscorePlayers.playerId, players.id))
+      .where(eq(scheduleBoxscorePlayers.scheduleGameId, game.scheduleGameId))
+      .orderBy(asc(scheduleBoxscorePlayers.displayOrder));
+
+    const playersByTeam = new Map<number, BoxScorePlayerResponse[]>();
+    for (const row of playerRows) {
+      const list = playersByTeam.get(row.teamExternalId) ?? [];
+      list.push({
+        playerId: row.playerId,
+        externalId: row.externalId,
+        name: row.displayName ?? `${row.firstName} ${row.lastName}`.trim(),
+        jersey: row.jersey ?? null,
+        position: row.position ?? null,
+        headshotUrl: `https://cdn.nba.com/headshots/nba/latest/260x190/${row.externalId}.png`,
+        starter: row.starter ?? null,
+        ...this.mapBoxStats(row),
+      });
+      playersByTeam.set(row.teamExternalId, list);
+    }
+
+    const teamBySide = new Map(teamRows.map((row) => [row.side, row]));
+    const nameByAbbr = await this.mapNames([
+      { homeTricode: game.homeTricode, awayTricode: game.awayTricode },
+    ]);
+    const canonical = (t: string | null) => (t ? (ABBR_MAP[t] ?? t) : '');
+
+    const side = (
+      which: 'home' | 'away',
+      teamId: number,
+      tricode: string | null,
+      score: number | null,
+      periods: unknown,
+    ): BoxScoreSideResponse => ({
+      teamId,
+      tricode: canonical(tricode),
+      teamName: teamName(tricode, nameByAbbr),
+      score,
+      periods: this.mapPeriods(periods),
+      stats: this.mapBoxStats(teamBySide.get(which) ?? {}),
+      players: playersByTeam.get(teamId) ?? [],
+    });
+
+    return response(true, 'Box score fetched.', {
+      gameId: id,
+      status: summary.gameStatus,
+      statusText: summary.gameStatusText,
+      period: summary.period,
+      gameClock: summary.gameClock ?? '',
+      home: side(
+        'home',
+        summary.homeTeamId,
+        game.homeTricode,
+        summary.homeScore,
+        summary.homePeriods,
+      ),
+      away: side(
+        'away',
+        summary.awayTeamId,
+        game.awayTricode,
+        summary.awayScore,
+        summary.awayPeriods,
+      ),
     });
   }
 

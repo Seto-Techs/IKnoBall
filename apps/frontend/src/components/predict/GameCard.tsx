@@ -333,7 +333,7 @@ export function GameCard({
           <Link
             to="/game/$gameId"
             params={{ gameId: game.id }}
-            className="whitespace-nowrap rounded-full px-5 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="whitespace-nowrap rounded-md px-5 py-1.5 text-[11px] font-black uppercase tracking-widest text-white shadow transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             style={{ backgroundColor: accentColor }}
           >
             {actionLabel} →

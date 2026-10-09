@@ -1,6 +1,8 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
+import { Link } from '@tanstack/react-router';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { canonicalAbbr } from '../../lib/game-utils';
+import { buildPages } from '../../lib/pagination';
 
 function abbrFromFallback(tricode: string | null | undefined, fallback: string): string {
   if (tricode) return canonicalAbbr(tricode);
@@ -44,30 +46,6 @@ function useItemsPerPage(): number {
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return ipp;
-}
-
-/** Build sliding windows with no empty gap on last page.
- *  e.g. 7 games, ipp=3 => [0-2],[3-5],[4-6] (last window snapped to end, overlapping)
- *       9 games, ipp=3 => [0-2],[3-5],[6-8] (no overlap needed)
- */
-function buildPages<T>(arr: T[], ipp: number): T[][] {
-  if (arr.length <= ipp) return arr.length ? [arr] : [];
-  const pages: T[][] = [];
-  let start = 0;
-  while (start < arr.length) {
-    if (start + ipp > arr.length) {
-      const snapStart = Math.max(0, arr.length - ipp);
-      // avoid duplicate of previous window when snapStart already covered
-      const last = pages[pages.length - 1];
-      const snapSlice = arr.slice(snapStart, snapStart + ipp);
-      if (last && last.length === snapSlice.length && last[0] === snapSlice[0]) break;
-      pages.push(snapSlice);
-      break;
-    }
-    pages.push(arr.slice(start, start + ipp));
-    start += ipp;
-  }
-  return pages;
 }
 
 export function PreviousGameDayCard({
@@ -197,9 +175,11 @@ export function PreviousGameDayCard({
     } catch {}
 
     return (
-      <div
+      <Link
         key={g.id}
-        className="flex flex-col overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm transition hover:shadow-md"
+        to="/game/$gameId"
+        params={{ gameId: g.id }}
+        className="group flex flex-col overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
       >
         {/* hero — same design as GameDetailsPopup (MonthlyCalendar click) */}
         <div className="relative flex h-[170px] shrink-0 overflow-hidden">
@@ -365,7 +345,7 @@ export function PreviousGameDayCard({
             {g.arenaName ?? `${awayAbbr} @ ${homeAbbr}`}
           </span>
         </div>
-      </div>
+      </Link>
     );
   };
 
@@ -385,7 +365,7 @@ export function PreviousGameDayCard({
                 type="button"
                 aria-label="Previous page"
                 onClick={() => go(page - 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
               >
                 ‹
               </button>
@@ -393,7 +373,7 @@ export function PreviousGameDayCard({
                 type="button"
                 aria-label="Next page"
                 onClick={() => go(page + 1)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/20 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
               >
                 ›
               </button>

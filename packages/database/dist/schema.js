@@ -300,6 +300,14 @@ exports.scheduleBoxscorePlayers = (0, pg_core_1.pgTable)('schedule_boxscore_play
         .references(() => exports.players.id),
     playerExternalId: (0, pg_core_1.text)('playerExternalId').notNull(),
     teamExternalId: (0, pg_core_1.integer)('teamExternalId').notNull(),
+    /** True when the feed lists this player in the starting five. */
+    starter: (0, pg_core_1.boolean)('starter'),
+    /**
+     * The feed's box-score display order (starters first, then the bench). Kept
+     * so a live box score can list players in the order the feed presents them,
+     * which ordering by any stat would lose.
+     */
+    displayOrder: (0, pg_core_1.integer)('displayOrder'),
     ...stats,
     createdAt: createdAt(),
     updatedAt: updatedAt(),

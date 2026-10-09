@@ -21,6 +21,10 @@ export type BoxScoreTraditionalResponse = {
         playerSlug?: string;
         position?: string;
         jerseyNum?: string;
+        /** Present on the CDN-shaped payload: "1" in the starting five, else "0". */
+        starter?: string;
+        /** The feed's display order; starters come first. */
+        order?: number;
         statistics: {
           minutes: string;
           fieldGoalsMade: number;
@@ -77,6 +81,10 @@ export type BoxScoreTraditionalResponse = {
         playerSlug?: string;
         position?: string;
         jerseyNum?: string;
+        /** Present on the CDN-shaped payload: "1" in the starting five, else "0". */
+        starter?: string;
+        /** The feed's display order; starters come first. */
+        order?: number;
         statistics: {
           minutes: string;
           fieldGoalsMade: number;

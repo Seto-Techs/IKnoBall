@@ -1,22 +1,26 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { ArrowLeft, Clock, MapPin } from 'lucide-react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { formatGameDate, formatTimeET, getGameStatus, getSeasonBadge } from '../../lib/game-utils';
 
 function statusPill(g: Game): { text: string; cls: string } {
   const status = getGameStatus(g);
-  if (status === 'final')
-    return {
-      text: `Final  ${g.awayScore ?? 0}–${g.homeScore ?? 0}`,
-      cls: 'bg-stone-900 text-white',
-    };
-  if (status === 'live')
-    return {
-      text: `● Live  ${g.awayScore ?? 0}–${g.homeScore ?? 0}`,
-      cls: 'bg-brand-red text-white animate-pulse',
-    };
+  if (status === 'final') return { text: 'Final', cls: 'bg-stone-900 text-white' };
+  if (status === 'live') return { text: '● Live', cls: 'bg-brand-red text-white animate-pulse' };
   return { text: `${formatTimeET(g.gameDateTime)} ET`, cls: 'bg-brand-navyDark text-white' };
 }
+
+const VS_STYLE: CSSProperties = {
+  WebkitTextStroke: '1.6px rgba(0,0,0,0.6)',
+  paintOrder: 'stroke fill',
+  textShadow: '0 4px 18px rgba(0,0,0,0.48)',
+};
+
+const SCORE_STYLE: CSSProperties = {
+  WebkitTextStroke: '1.2px rgba(0,0,0,0.6)',
+  paintOrder: 'stroke fill',
+  textShadow: '0 3px 14px rgba(0,0,0,0.45)',
+};
 
 export function MatchupHero({
   game,
@@ -48,6 +52,8 @@ export function MatchupHero({
   const dateLabel = formatGameDate(game.gameDateTime, 'EEEE, MMMM d, yyyy');
   const pill = useMemo(() => statusPill(game), [game]);
   const badge = getSeasonBadge(game);
+  // The score only means something once the game is under way.
+  const showScore = getGameStatus(game) !== 'scheduled';
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-brand-line shadow-sm">
@@ -96,7 +102,7 @@ export function MatchupHero({
         <button
           type="button"
           onClick={onBack}
-          className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full bg-black/35 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-black/50"
+          className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-md bg-black/35 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/25 backdrop-blur transition hover:bg-black/50"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Back
         </button>
@@ -105,11 +111,11 @@ export function MatchupHero({
       {/* Meta strip */}
       <div className="relative z-10 flex items-center justify-center gap-3 px-20 pt-5">
         <span
-          className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-widest shadow ${pill.cls}`}
+          className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-widest shadow ${pill.cls}`}
         >
           {pill.text}
         </span>
-        <span className="hidden rounded-full bg-black/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-white ring-1 ring-white/20 backdrop-blur sm:inline-flex">
+        <span className="hidden rounded-full bg-black/30 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white ring-1 ring-white/20 backdrop-blur sm:inline-flex">
           {badge.label}
           {badge.detail ? ` • ${badge.detail}` : ''}
         </span>
@@ -123,7 +129,7 @@ export function MatchupHero({
             <img
               src={awayMark}
               alt={awayName}
-              className="h-28 w-28 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+              className="h-20 w-20 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
               loading="lazy"
             />
           ) : (
@@ -138,23 +144,29 @@ export function MatchupHero({
             </span>
           )}
           <span
-            className="font-heading text-lg font-black uppercase tracking-wide text-white sm:text-2xl"
+            className="font-heading text-xl font-black uppercase tracking-wide text-white sm:text-[32px]"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
           >
             {awayName}
           </span>
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Away</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-white/75">Away</span>
         </div>
 
-        {/* VS */}
-        <div className="flex w-[120px] shrink-0 flex-col items-center justify-center gap-2 sm:w-[160px]">
+        {/* Away score — between the away block and the VS group */}
+        {showScore && (
           <span
-            className="font-heading text-5xl font-black italic leading-none tracking-[0.04em] text-white sm:text-6xl"
-            style={{
-              WebkitTextStroke: '1.6px rgba(0,0,0,0.6)',
-              paintOrder: 'stroke fill',
-              textShadow: '0 4px 18px rgba(0,0,0,0.48)',
-            }}
+            className="flex shrink-0 items-center px-1 font-heading text-3xl font-black leading-none tabular-nums text-white sm:px-2 sm:text-6xl"
+            style={SCORE_STYLE}
+          >
+            {game.awayScore ?? 0}
+          </span>
+        )}
+
+        {/* VS + meta */}
+        <div className="flex w-[96px] shrink-0 flex-col items-center justify-center gap-2 sm:w-[380px]">
+          <span
+            className="font-heading text-xl font-black italic leading-none tracking-[0.04em] text-white sm:text-[32px]"
+            style={VS_STYLE}
           >
             VS
           </span>
@@ -168,13 +180,23 @@ export function MatchupHero({
           </div>
         </div>
 
+        {/* Home score — between the VS group and the home block */}
+        {showScore && (
+          <span
+            className="flex shrink-0 items-center px-1 font-heading text-3xl font-black leading-none tabular-nums text-white sm:px-2 sm:text-6xl"
+            style={SCORE_STYLE}
+          >
+            {game.homeScore ?? 0}
+          </span>
+        )}
+
         {/* Home */}
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
           {homeMark ? (
             <img
               src={homeMark}
               alt={homeName}
-              className="h-28 w-28 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+              className="h-20 w-20 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
               loading="lazy"
             />
           ) : (
@@ -189,12 +211,12 @@ export function MatchupHero({
             </span>
           )}
           <span
-            className="font-heading text-lg font-black uppercase tracking-wide text-white sm:text-2xl"
+            className="font-heading text-xl font-black uppercase tracking-wide text-white sm:text-[32px]"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
           >
             {homeName}
           </span>
-          <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/75">Home</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-white/75">Home</span>
         </div>
       </div>
     </div>

@@ -136,11 +136,11 @@ export function PredictionPanel({
           Make a Prediction
         </h2>
         {locked ? (
-          <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-white">
+          <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white">
             <Lock className="h-3 w-3" aria-hidden="true" /> Locked
           </span>
         ) : (
-          <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-widest text-white">
             {badge.label}
           </span>
         )}
@@ -153,7 +153,7 @@ export function PredictionPanel({
           <div className="flex flex-col items-center gap-2 py-4 text-center">
             <Lock className="h-6 w-6 text-stone-300" aria-hidden="true" />
             <p className="text-sm text-stone-500">Locked at tip-off.</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-stone-400">
+            <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">
               Predictions close once the game starts
             </p>
           </div>
@@ -208,7 +208,7 @@ export function PredictionPanel({
                         {abbr}
                       </span>
                       <span
-                        className={`text-[10px] font-black uppercase tracking-[0.18em] ${tx} opacity-80`}
+                        className={`text-xs font-bold uppercase tracking-widest ${tx} opacity-80`}
                       >
                         {isAway ? 'Away' : 'Home'}
                       </span>
@@ -224,7 +224,7 @@ export function PredictionPanel({
                 <dt className="text-xs font-black uppercase tracking-widest text-brand-ink">
                   Classic
                 </dt>
-                <dd className="text-[11px] text-stone-500">
+                <dd className="text-xs text-stone-500">
                   {flatPick?.points != null ? formatPoints(flatPick.points) : '1 point if correct'}
                 </dd>
               </div>
@@ -232,7 +232,7 @@ export function PredictionPanel({
                 <dt className="text-xs font-black uppercase tracking-widest text-brand-ink">
                   Weighted
                 </dt>
-                <dd className="text-right text-[11px] text-stone-500">
+                <dd className="text-right text-xs text-stone-500">
                   {weightedReturnLabel({
                     pick: weightedPick,
                     oddsForSide,
@@ -249,7 +249,7 @@ export function PredictionPanel({
                 type="button"
                 onClick={submit}
                 disabled={!side || pending || locked}
-                className="flex-1 rounded-full px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex-1 rounded-md px-6 py-3 text-sm font-extrabold uppercase tracking-widest text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ backgroundColor: accentColor }}
               >
                 {pending ? 'Saving…' : hasExisting ? 'Update pick' : 'Place pick'}
@@ -260,7 +260,7 @@ export function PredictionPanel({
                   type="button"
                   disabled={pending}
                   onClick={() => removePick.mutate(game.id, { onSuccess: () => setPick(null) })}
-                  className="flex items-center gap-1.5 rounded-full border border-brand-line bg-white px-4 py-3 text-[11px] font-black uppercase tracking-widest text-stone-500 transition hover:text-brand-red disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-md border border-brand-line bg-white px-4 py-3 text-xs font-bold uppercase tracking-widest text-stone-500 transition hover:text-brand-red disabled:opacity-40"
                 >
                   <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   Remove
@@ -269,20 +269,20 @@ export function PredictionPanel({
             </div>
 
             {error && (
-              <p className="mt-3 flex items-start gap-2 rounded-lg bg-brand-red/10 px-3 py-2 text-[11px] font-semibold text-brand-red">
+              <p className="mt-3 flex items-start gap-2 rounded-lg bg-brand-red/10 px-3 py-2 text-xs font-semibold text-brand-red">
                 <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 {error.message}
               </p>
             )}
 
             {!side && (
-              <p className="mt-3 text-center text-[11px] font-medium uppercase tracking-widest text-stone-400">
+              <p className="mt-3 text-center text-xs font-bold uppercase tracking-widest text-stone-500">
                 Tap a team to choose your side
               </p>
             )}
 
             {side && !locked && (
-              <p className="mt-3 text-center text-[11px] font-medium text-stone-400">
+              <p className="mt-3 text-center text-xs font-medium text-stone-500">
                 One pick counts in both modes. Classic always pays 1; weighted pays the locked
                 price.
               </p>

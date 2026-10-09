@@ -4,11 +4,12 @@ import { Activity, MapPin } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
 import { LoadingSpinner } from '../components/dashboard/shared';
 import { AtAGlance } from '../components/gameDetail/AtAGlance';
+import { BoxScorePanel } from '../components/gameDetail/BoxScore';
 import { MatchupHero } from '../components/gameDetail/MatchupHero';
 import { TeamCard } from '../components/gameDetail/TeamCard';
 import { PredictionPanel } from '../components/predict/PredictionPanel';
-import { useTeamRecord, useTeams, useTopPlayers } from '../lib/api';
-import { buildTeamLookup, resolveGameTeams } from '../lib/game-utils';
+import { useGameBoxscore, useTeamRecord, useTeams, useTopPlayers } from '../lib/api';
+import { buildTeamLookup, getGameStatus, resolveGameTeams } from '../lib/game-utils';
 import { useGameById } from '../lib/use-game';
 import { useSession, useSignOut } from '../lib/use-auth';
 
@@ -25,6 +26,7 @@ function GameDetailPage() {
 
   const { game, isLoading } = useGameById(gameId);
   const { data: teams } = useTeams({ enabled: !!user });
+  const { data: boxscore } = useGameBoxscore(gameId);
 
   const lookup = useMemo(() => buildTeamLookup(teams), [teams]);
   const { away, home } = useMemo(
@@ -34,6 +36,10 @@ function GameDetailPage() {
 
   const awayRecord = useTeamRecord(away?.abbreviation);
   const homeRecord = useTeamRecord(home?.abbreviation);
+
+  // The team previews are season context for a game that has not started; once
+  // it is under way the box score replaces them.
+  const showTeamPreview = !!game && getGameStatus(game) === 'scheduled';
 
   const { data: awayPlayers, isLoading: awayPlayersLoading } = useTopPlayers(away?.abbreviation);
   const { data: homePlayers, isLoading: homePlayersLoading } = useTopPlayers(home?.abbreviation);
@@ -71,7 +77,7 @@ function GameDetailPage() {
             <button
               type="button"
               onClick={() => navigate({ to: '/predict' })}
-              className="rounded-full bg-brand-navyDark px-6 py-2.5 text-sm font-bold uppercase tracking-widest text-white"
+              className="rounded-md bg-brand-navyDark px-6 py-2.5 text-sm font-bold uppercase tracking-widest text-white"
             >
               Browse games
             </button>
@@ -90,30 +96,40 @@ function GameDetailPage() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
               {/* Left: matchup detail */}
               <div className="flex min-w-0 flex-col gap-6">
-                <AtAGlance gameId={gameId} />
+                <AtAGlance gameId={gameId} awayTeam={away} homeTeam={home} />
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  {away ? (
-                    <TeamCard
-                      team={away}
-                      record={awayRecord.data}
-                      players={awayPlayers}
-                      loading={awayPlayersLoading || awayRecord.isLoading}
-                      side="away"
-                      accentColor={away.primaryColor}
-                    />
-                  ) : null}
-                  {home ? (
-                    <TeamCard
-                      team={home}
-                      record={homeRecord.data}
-                      players={homePlayers}
-                      loading={homePlayersLoading || homeRecord.isLoading}
-                      side="home"
-                      accentColor={home.primaryColor}
-                    />
-                  ) : null}
-                </div>
+                {boxscore ? (
+                  <BoxScorePanel
+                    data={boxscore}
+                    awayColor={away?.primaryColor}
+                    homeColor={home?.primaryColor}
+                  />
+                ) : null}
+
+                {showTeamPreview && (
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {away ? (
+                      <TeamCard
+                        team={away}
+                        record={awayRecord.data}
+                        players={awayPlayers}
+                        loading={awayPlayersLoading || awayRecord.isLoading}
+                        side="away"
+                        accentColor={away.primaryColor}
+                      />
+                    ) : null}
+                    {home ? (
+                      <TeamCard
+                        team={home}
+                        record={homeRecord.data}
+                        players={homePlayers}
+                        loading={homePlayersLoading || homeRecord.isLoading}
+                        side="home"
+                        accentColor={home.primaryColor}
+                      />
+                    ) : null}
+                  </div>
+                )}
 
                 {/* Venue + stamp info */}
                 <div className="flex items-start gap-3 rounded-xl border border-brand-line bg-white px-5 py-4 shadow-sm">
@@ -121,7 +137,7 @@ function GameDetailPage() {
                     <MapPin className="h-4 w-4 text-stone-500" aria-hidden="true" />
                   </span>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                    <p className="text-xs font-bold uppercase tracking-widest text-stone-500">
                       Venue
                     </p>
                     <p className="text-sm font-semibold text-brand-ink">

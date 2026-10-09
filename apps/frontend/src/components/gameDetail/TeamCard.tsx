@@ -15,7 +15,7 @@ function FormDots({ record }: { record?: TeamRecord | null }) {
           <span
             key={i}
             title={`${won ? 'W' : 'L'} vs ${g.opponentAbbr} ${g.ourScore}-${g.oppScore}`}
-            className={`flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-black ${
+            className={`flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-bold ${
               won ? 'bg-emerald-500 text-white' : 'bg-brand-red text-white'
             }`}
           >
@@ -51,17 +51,15 @@ function PlayerRow({ p }: { p: PlayerStat }) {
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-brand-ink">{p.name}</p>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
-          {p.position}
-        </p>
+        <p className="text-xs font-bold uppercase tracking-widest text-stone-500">{p.position}</p>
       </div>
       <div className="flex shrink-0 gap-3">
         {STAT_LABELS.map((s) => (
           <div key={s.label} className="w-10 text-right">
-            <div className="text-sm font-black tabular-nums text-brand-navy">
+            <div className="text-sm font-bold tabular-nums text-brand-navy">
               {Number(p[s.key] ?? 0).toFixed(1)}
             </div>
-            <div className="text-[9px] font-bold uppercase tracking-widest text-stone-400">
+            <div className="text-xs font-bold uppercase tracking-widest text-stone-500">
               {s.label}
             </div>
           </div>
@@ -109,7 +107,7 @@ export function TeamCard({
           <span className={`font-heading text-2xl font-black ${tx}`}>{team.abbreviation}</span>
         )}
         <div className="min-w-0">
-          <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${txMuted}`}>
+          <p className={`text-xs font-bold uppercase tracking-widest ${txMuted}`}>
             {side === 'away' ? 'Away' : 'Home'}
           </p>
           <h3 className={`truncate font-heading text-xl font-black uppercase tracking-wide ${tx}`}>
@@ -128,7 +126,7 @@ export function TeamCard({
             <p className="font-heading text-2xl font-black leading-none tabular-nums text-brand-ink">
               {record ? `${record.wins}-${record.losses}` : '—'}
             </p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Record</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Record</p>
           </div>
           <div>
             <p className="text-sm font-semibold text-stone-500">Last 5</p>
@@ -137,22 +135,18 @@ export function TeamCard({
         </div>
         <div className="text-right text-xs text-stone-500">
           <p className="font-semibold text-brand-ink">{team.headCoach}</p>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
-            Head Coach
-          </p>
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Head Coach</p>
         </div>
       </div>
 
       {/* Coaches / arena quick facts */}
       <div className="grid grid-cols-2 gap-px border-b border-brand-line bg-brand-line">
         <div className="bg-white px-5 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Arena</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Arena</p>
           <p className="truncate text-sm font-semibold text-brand-ink">{team.arena}</p>
         </div>
         <div className="bg-white px-5 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
-            Logo / Code
-          </p>
+          <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Logo / Code</p>
           <p className="text-sm font-semibold text-brand-ink">{team.abbreviation}</p>
         </div>
       </div>
@@ -165,10 +159,10 @@ export function TeamCard({
           className="flex w-full items-center justify-between py-3 text-left"
           aria-expanded={open}
         >
-          <span className="text-[11px] font-black uppercase tracking-widest text-stone-500">
+          <span className="text-xs font-bold uppercase tracking-widest text-stone-500">
             Key Players
           </span>
-          <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-widest text-brand-navy">
+          <span className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-brand-navy">
             {open ? 'Hide' : 'Show'}
             {open ? (
               <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />

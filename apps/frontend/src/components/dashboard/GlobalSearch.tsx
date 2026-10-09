@@ -538,7 +538,7 @@ export function GlobalSearchField({ onActivate }: { onActivate?: () => void }) {
           {isFetching ? (
             <Loader2 className="h-4 w-4 animate-spin text-stone-400" aria-hidden="true" />
           ) : query.length === 0 ? (
-            <kbd className="rounded border border-brand-line px-1.5 py-0.5 text-[10px] font-semibold text-stone-400">
+            <kbd className="rounded border border-brand-line px-1.5 py-0.5 text-[11px] font-semibold text-stone-500">
               /
             </kbd>
           ) : null}
@@ -629,7 +629,7 @@ export function GlobalSearchTrigger({ onActivate }: { onActivate?: () => void })
         aria-label="Search"
         aria-expanded={open}
         onClick={openSearch}
-        className={`flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink lg:hidden ${FOCUS_RING}`}
+        className={`flex h-9 w-9 items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink lg:hidden ${FOCUS_RING}`}
       >
         <Search className="h-5 w-5" aria-hidden="true" />
       </button>
@@ -648,7 +648,7 @@ export function GlobalSearchTrigger({ onActivate }: { onActivate?: () => void })
                 type="button"
                 aria-label="Close search"
                 onClick={close}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink ${FOCUS_RING}`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-stone-500 transition-colors hover:bg-stone-100 hover:text-brand-ink ${FOCUS_RING}`}
               >
                 <ArrowLeft className="h-5 w-5" aria-hidden="true" />
               </button>
