@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useSession } from '../lib/use-auth';
 import { useEffect } from 'react';
+import LandingPage from '../components/landing/LandingPage';
+import { useSession } from '../lib/use-auth';
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
@@ -10,6 +11,7 @@ function IndexPage() {
   const navigate = useNavigate();
   const { data: session, isPending: sessionLoading } = useSession();
 
+  // Signed-in users skip the marketing page and land in the app.
   useEffect(() => {
     if (sessionLoading) return;
     if (session?.user) {
@@ -20,15 +22,5 @@ function IndexPage() {
     }
   }, [session, sessionLoading, navigate]);
 
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 py-20">
-      <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-basketball-500 shadow-sm">
-        <span className="text-2xl font-bold text-white">IK</span>
-      </div>
-      <h1 className="text-3xl font-bold tracking-tight text-stone-900">Welcome to IKnoBall</h1>
-      <p className="max-w-md text-center text-stone-500">
-        Basketball stats, schedules, and box scores — all in one place.
-      </p>
-    </div>
-  );
+  return <LandingPage />;
 }

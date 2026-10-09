@@ -44,9 +44,13 @@ export const Route = createRootRoute({
   component: () => {
     const { pathname } = useLocation();
     const isOnboarding = pathname.startsWith('/onboarding');
+    // The landing page is full-bleed and ships its own nav, so the shell must
+    // not wrap it in a max-width container or render the default header.
+    const isLanding = pathname === '/';
     // These routes render the dashboard header and own their own page width and
     // padding, so the shell must not wrap them in a max-width container.
     const isAppShell =
+      isLanding ||
       isOnboarding ||
       pathname.startsWith('/dashboard') ||
       pathname.startsWith('/predict') ||
