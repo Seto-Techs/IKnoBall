@@ -126,6 +126,26 @@ The schedule/boxscore crawl stopped in mid-June 2026: Finals games 4-7 are still
 
 ---
 
+## Profile history: one row per pick, not one per mode
+
+- Priority: P2 · Label: Improvement · State: Backlog
+
+**Problem**
+`prediction_picks` holds two rows per pick — a `flat` row and a `weighted` row on the same side — because one submit covers both modes (`docs/prediction-scoring.md`). The profile's "My Predictions" list renders those rows directly, so a game the user picked once appears twice, tagged `FLAT` and `WEIGHTED`. Once the counts are fixed (PR #49) the badge reads one pick per game while the list below still shows two rows for it, which reads as a contradiction.
+
+**Change (branch `fix/ui`)**
+
+- Collapse the history list in `apps/frontend/src/routes/profile.tsx` to one row per game, showing both payouts on that row (`FLAT 1 pt · WEIGHTED 18 pts`) instead of one mode per row.
+- Reuse `picksPerGame` from `apps/frontend/src/components/predict/predictions.ts`, added in PR #49 — so branch off `dev` after #49, or merge `dev` in first.
+- Keep the existing ordering (open first, then by tip-off).
+
+**Accepted tradeoffs**
+
+- One row carrying two payouts is denser than one row per mode.
+- The result badge (`✓ Correct` / `✗ Missed`) collapses to a single verdict. Both modes always name the same side and settle in the same pass, so one verdict is correct for both.
+
+---
+
 ## Template — blank issue body
 
 - Title:
