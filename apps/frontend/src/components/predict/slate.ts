@@ -1,5 +1,5 @@
 import type { Game } from '../../lib/api';
-import { etDateKey, gameDateKey, getGameStatus, shiftEtDate } from '../../lib/game-utils';
+import { etDateKey, gameDateKey, getGameStatus } from '../../lib/game-utils';
 import { hasPick, picksOf, type PicksByGame } from './predictions';
 
 /** Calendar days the slate covers: today plus the next six. */
@@ -15,7 +15,14 @@ export interface SlateDay {
   dayOfMonth: string;
   isToday: boolean;
   games: Game[];
+  /** Games with at least one mode held. */
   picked: number;
+  /** Of `picked`, the ones still open for a pick. */
+  pickedOpen: number;
+  /** Of `picked`, the ones final with a decided winner. */
+  settled: number;
+  /** Of `settled`, how many landed. */
+  correct: number;
   open: number;
 }
 
@@ -43,9 +50,15 @@ export function formatSlateDayLabel(key: string): string {
   return labelFormatter.format(anchor);
 }
 
-export function buildSlateDays(
+/**
+ * `SLATE_DAY_COUNT` days starting at `startKey`, in order.
+ *
+ * The start is explicit so a week view can anchor on a Sunday instead of today.
+ */
+export function buildDaysFrom(
   games: Game[] | undefined,
   predictions: PicksByGame,
+  startKey: string,
   now: Date = new Date(),
 ): SlateDay[] {
   const gamesByDate = new Map<string, Game[]>();
@@ -58,13 +71,34 @@ export function buildSlateDays(
   }
 
   const todayKey = etDateKey(now);
+  const start = new Date(`${startKey}T12:00:00.000Z`);
   const days: SlateDay[] = [];
   for (let offset = 0; offset < SLATE_DAY_COUNT; offset++) {
-    const key = shiftEtDate(offset, now);
-    const anchor = new Date(`${key}T12:00:00.000Z`);
+    const anchor = new Date(start);
+    anchor.setUTCDate(anchor.getUTCDate() + offset);
+    const key = anchor.toISOString().slice(0, 10);
     const dayGames = (gamesByDate.get(key) ?? [])
       .slice()
       .sort((a, b) => new Date(a.gameDateTime).getTime() - new Date(b.gameDateTime).getTime());
+
+    let picked = 0;
+    let pickedOpen = 0;
+    let settled = 0;
+    let correct = 0;
+    for (const game of dayGames) {
+      const gamePicks = predictions[game.id];
+      if (!hasPick(gamePicks)) continue;
+      picked++;
+      if (getGameStatus(game) === 'scheduled') pickedOpen++;
+      if (getGameStatus(game) !== 'final') continue;
+      // One pick covers both modes, so a final game resolves once — not once
+      // per row.
+      const winner = winnerOf(game);
+      const [pick] = picksOf(gamePicks);
+      if (!winner || !pick) continue;
+      settled++;
+      if (pick.pick === winner) correct++;
+    }
 
     days.push({
       key,
@@ -75,7 +109,10 @@ export function buildSlateDays(
       dayOfMonth: String(anchor.getUTCDate()),
       isToday: key === todayKey,
       games: dayGames,
-      picked: dayGames.filter((g) => hasPick(predictions[g.id])).length,
+      picked,
+      pickedOpen,
+      settled,
+      correct,
       open: dayGames.filter((g) => getGameStatus(g) === 'scheduled').length,
     });
   }
@@ -88,34 +125,27 @@ function winnerOf(game: Game): 'away' | 'home' | null {
   return game.awayScore > game.homeScore ? 'away' : 'home';
 }
 
-export function slateStats(days: SlateDay[], predictions: PicksByGame): SlateStats {
+/**
+ * Roll the per-day tallies up into the strip above the slate.
+ *
+ * A pure sum over `days`: `buildDaysFrom` already resolved each day against the
+ * picks, so nothing is recomputed here.
+ */
+export function slateStats(days: SlateDay[]): SlateStats {
   let total = 0;
   let open = 0;
-  let pickedOpen = 0;
   let picked = 0;
+  let pickedOpen = 0;
   let resolved = 0;
   let correct = 0;
 
   for (const day of days) {
-    for (const game of day.games) {
-      total++;
-      const isOpen = getGameStatus(game) === 'scheduled';
-      if (isOpen) open++;
-      const gamePicks = predictions[game.id];
-      if (!hasPick(gamePicks)) continue;
-      picked++;
-      if (isOpen) pickedOpen++;
-      if (getGameStatus(game) !== 'final') continue;
-
-      // One pick covers both modes, so a final game resolves once — not once
-      // per row.
-      const winner = winnerOf(game);
-      if (!winner) continue;
-      const [pick] = picksOf(gamePicks);
-      if (!pick) continue;
-      resolved++;
-      if (pick.pick === winner) correct++;
-    }
+    total += day.games.length;
+    open += day.open;
+    picked += day.picked;
+    pickedOpen += day.pickedOpen;
+    resolved += day.settled;
+    correct += day.correct;
   }
 
   return { total, open, picked, remaining: open - pickedOpen, resolved, correct };

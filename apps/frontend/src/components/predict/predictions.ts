@@ -85,6 +85,26 @@ export function formatPoints(points: number): string {
   return `${points} ${points === 1 ? 'pt' : 'pts'}`;
 }
 
+const POINTS_SCALE = 10;
+const POINTS_CEILING = 150;
+
+/**
+ * What a pick would pay if it lands, for a row that has not settled yet.
+ *
+ * Mirrors `potentialPoints` in `@iknoball/predictions`. The frontend does not
+ * depend on that package — the image build never compiles it — so the two have
+ * to be kept in step by hand. Settlement stays authoritative either way; this
+ * only feeds the preview.
+ *
+ * Null when a weighted pick has no price locked yet, which is a real state: the
+ * opening line has not appeared, so there is nothing to project from.
+ */
+export function potentialPoints(mode: PredictionMode, lockedDecimal: number | null): number | null {
+  if (mode === 'flat') return 1;
+  if (lockedDecimal === null) return null;
+  return Math.min(Math.round(POINTS_SCALE * lockedDecimal), POINTS_CEILING);
+}
+
 function toSavedPick(pick: PredictionPickWithGame): SavedPrediction {
   return {
     gameId: pick.gameId,

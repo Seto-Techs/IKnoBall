@@ -244,17 +244,45 @@ export function useLeagueGamesToday() {
   });
 }
 
+/** Games in an inclusive `[from, to]` date window. The API caps the span at 31 days. */
+export async function fetchGamesRange(from: string, to: string): Promise<Game[]> {
+  const res = await fetchJson<{ data: Game[] }>(
+    `/games/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+  );
+  return res.data;
+}
+
+/** Longest window `GET /games/range` accepts, in days. */
+export const GAMES_RANGE_MAX_DAYS = 31;
+
 export function useLeagueGamesRange(from: string, to: string, enabled = true) {
   return useQuery({
     queryKey: ['league-games-range', from, to],
-    queryFn: async (): Promise<Game[]> => {
-      const res = await fetchJson<{ data: Game[] }>(
-        `/games/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-      );
-      return res.data;
-    },
+    queryFn: () => fetchGamesRange(from, to),
     enabled: enabled && !!from && !!to,
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+export interface GameSeason {
+  /** `YYYY-YY`, as the schedule feed labels it. */
+  season: string;
+  firstGameDate: string;
+  lastGameDate: string;
+  games: number;
+}
+
+/** Seasons present in the schedule, newest first. */
+export function useGameSeasons(enabled = true) {
+  return useQuery({
+    queryKey: ['game-seasons'],
+    queryFn: async (): Promise<GameSeason[]> => {
+      const res = await fetchJson<{ data: GameSeason[] }>('/games/seasons');
+      return res.data;
+    },
+    enabled,
+    // A season boundary only changes when the schedule does.
+    staleTime: 1000 * 60 * 60,
   });
 }
 
