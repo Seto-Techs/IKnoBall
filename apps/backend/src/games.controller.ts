@@ -12,7 +12,21 @@ import {
   scheduleBoxscorePlayers,
   players,
 } from '@iknoball/database';
-import { and, gte, lt, lte, asc, desc, eq, inArray, notInArray, or } from 'drizzle-orm';
+import {
+  and,
+  gte,
+  lt,
+  lte,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  max,
+  min,
+  notInArray,
+  or,
+} from 'drizzle-orm';
 
 const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
 
@@ -303,6 +317,20 @@ class BoxScoreResponse {
 
   @ApiProperty({ type: BoxScoreSideResponse, description: "The game's away team" })
   away!: BoxScoreSideResponse;
+}
+
+class SeasonResponse {
+  @ApiProperty({ example: '2026-27', description: 'Season label, "YYYY-YY"' })
+  season!: string;
+
+  @ApiProperty({ example: '2026-10-03', description: 'First game date in the season' })
+  firstGameDate!: string;
+
+  @ApiProperty({ example: '2027-04-11', description: 'Last game date in the season' })
+  lastGameDate!: string;
+
+  @ApiProperty({ example: 155, description: 'Games scheduled in the season' })
+  games!: number;
 }
 
 @ApiTags('Games')
@@ -630,6 +658,37 @@ export class GamesController {
       true,
       'Games in range fetched.',
       rows.map((g) => this.toResponse(g, nameByAbbr)),
+    );
+  }
+
+  @Get('seasons')
+  @ApiOperation({ summary: 'Seasons present in the schedule, newest first' })
+  @ApiDataResponse(SeasonResponse, HttpStatus.OK, 'Seasons fetched.', 'Seasons fetched.', true)
+  async getSeasons(): Promise<ApiResponse<SeasonResponse[]>> {
+    // `seasonYear` is the feed's own label for a season, so the boundaries come
+    // from the data rather than from date arithmetic on the client.
+    const rows = await this.db.db
+      .select({
+        season: scheduleDays.seasonYear,
+        firstGameDate: min(scheduleDays.gameDate),
+        lastGameDate: max(scheduleDays.gameDate),
+        games: count(scheduleGames.id),
+      })
+      .from(scheduleDays)
+      .leftJoin(scheduleGames, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .groupBy(scheduleDays.seasonYear)
+      .orderBy(desc(scheduleDays.seasonYear));
+
+    return response(
+      true,
+      'Seasons fetched.',
+      rows.map((row) => ({
+        season: row.season,
+        firstGameDate: row.firstGameDate ?? '',
+        lastGameDate: row.lastGameDate ?? '',
+        // `count()` comes back as a bigint string from pg.
+        games: Number(row.games ?? 0),
+      })),
     );
   }
 

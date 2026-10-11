@@ -32,7 +32,10 @@ function createDb(responses: Row[][]) {
     select: vi.fn(() => chain),
     from: vi.fn(() => chain),
     innerJoin: vi.fn(() => chain),
+    leftJoin: vi.fn(() => chain),
     where: vi.fn(() => terminal()),
+    // Aggregates have no `where()`: the query ends after group/order.
+    groupBy: vi.fn(() => terminal()),
   };
   return chain;
 }
@@ -424,6 +427,33 @@ describe('GamesController routing', () => {
       .expect(200);
     expect(range.body.message).toBe('No games in range.');
 
+    await app.close();
+  });
+
+  it('lists the seasons in the schedule, newest first', async () => {
+    const app = await makeApp([
+      [
+        {
+          season: '2026-27',
+          firstGameDate: '2026-10-03',
+          lastGameDate: '2027-04-11',
+          games: '155',
+        },
+        {
+          season: '2025-26',
+          firstGameDate: '2025-09-30',
+          lastGameDate: '2026-06-19',
+          games: '1109',
+        },
+      ],
+    ]);
+
+    const res = await request(app.getHttpServer()).get('/api/games/seasons').expect(200);
+
+    expect(res.body.data).toEqual([
+      { season: '2026-27', firstGameDate: '2026-10-03', lastGameDate: '2027-04-11', games: 155 },
+      { season: '2025-26', firstGameDate: '2025-09-30', lastGameDate: '2026-06-19', games: 1109 },
+    ]);
     await app.close();
   });
 });
