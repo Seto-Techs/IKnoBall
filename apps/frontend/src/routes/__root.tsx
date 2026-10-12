@@ -55,7 +55,8 @@ export const Route = createRootRoute({
       pathname.startsWith('/dashboard') ||
       pathname.startsWith('/predict') ||
       pathname.startsWith('/profile') ||
-      pathname.startsWith('/game');
+      pathname.startsWith('/game') ||
+      pathname.startsWith('/player');
 
     return (
       <div

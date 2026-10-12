@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import type { BoxScore, BoxScorePlayer, BoxScoreSide } from '../../lib/api';
 import { distinctPair, type ColorPair } from '../../lib/color';
 
@@ -267,7 +268,13 @@ function PlayerRow({ player }: { player: BoxScorePlayer }) {
   return (
     <tr className="border-t border-brand-line transition hover:bg-stone-50">
       <th scope="row" className="py-2 pr-3 text-left font-normal">
-        <span className="text-sm font-semibold text-brand-ink">{player.name}</span>
+        <Link
+          to="/player/$playerId"
+          params={{ playerId: player.playerId }}
+          className="rounded-sm text-sm font-semibold text-brand-ink hover:text-brand-navy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        >
+          {player.name}
+        </Link>
         {(player.jersey || player.position) && (
           <span className="ml-2 text-xs font-bold uppercase tracking-widest text-stone-500">
             {[player.jersey ? `#${player.jersey}` : null, player.position]

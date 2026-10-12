@@ -31,15 +31,35 @@ type Row =
 
 type Group = { label: string; rows: { row: Row; index: number }[] };
 
+type RowTarget =
+  | { to: '/game/$gameId'; gameId: string }
+  | { to: '/player/$playerId'; playerId: string };
+
 /**
- * Every result resolves to a game: games by id, teams and players by their next
- * tip-off. That is the only navigable destination in the app today — there is no
- * team or player route yet — so a row without one renders as non-interactive.
+ * Where a result opens: games and players each have their own page, while a team
+ * has none yet, so a team row falls back to its next tip-off. A row without a
+ * destination renders as non-interactive.
  */
-function rowGameId(row: Row): string | null {
-  if (row.kind === 'game') return row.game.id;
-  if (row.kind === 'team') return row.team.nextGame?.id ?? null;
-  return row.player.nextGame?.id ?? null;
+function rowTarget(row: Row): RowTarget | null {
+  if (row.kind === 'game') return { to: '/game/$gameId', gameId: row.game.id };
+  if (row.kind === 'player') return { to: '/player/$playerId', playerId: row.player.id };
+  const nextGame = row.team.nextGame?.id;
+  return nextGame ? { to: '/game/$gameId', gameId: nextGame } : null;
+}
+
+/** Navigates to a result's page, whichever kind it is. */
+function useOpenRow() {
+  const navigate = useNavigate();
+  return useCallback(
+    (target: RowTarget) => {
+      if (target.to === '/game/$gameId') {
+        navigate({ to: '/game/$gameId', params: { gameId: target.gameId } });
+        return;
+      }
+      navigate({ to: '/player/$playerId', params: { playerId: target.playerId } });
+    },
+    [navigate],
+  );
 }
 
 function buildRows(results: SearchResults | undefined): Row[] {
@@ -295,12 +315,13 @@ function ResultRow({
   onHover: () => void;
   onSelect: () => void;
 }) {
-  const gameId = rowGameId(row);
+  const target = rowTarget(row);
   const optionId = `${listboxId}-option-${index}`;
   const wrapperClass = `px-4 py-2.5 transition-colors ${active ? 'bg-stone-100' : ''}`;
+  const linkClass = `flex items-center gap-3 rounded-sm ${FOCUS_RING}`;
 
   // The option wrapper carries the ARIA; the inner link keeps native link semantics.
-  if (!gameId) {
+  if (!target) {
     return (
       <div
         id={optionId}
@@ -325,14 +346,25 @@ function ResultRow({
       className={wrapperClass}
       onMouseEnter={onHover}
     >
-      <Link
-        to="/game/$gameId"
-        params={{ gameId }}
-        onClick={onSelect}
-        className={`flex items-center gap-3 rounded-sm ${FOCUS_RING}`}
-      >
-        <RowBody row={row} query={query} />
-      </Link>
+      {target.to === '/game/$gameId' ? (
+        <Link
+          to="/game/$gameId"
+          params={{ gameId: target.gameId }}
+          onClick={onSelect}
+          className={linkClass}
+        >
+          <RowBody row={row} query={query} />
+        </Link>
+      ) : (
+        <Link
+          to="/player/$playerId"
+          params={{ playerId: target.playerId }}
+          onClick={onSelect}
+          className={linkClass}
+        >
+          <RowBody row={row} query={query} />
+        </Link>
+      )}
     </div>
   );
 }
@@ -420,7 +452,7 @@ function useRowKeyboard({
   rows: Row[];
   activeIndex: number;
   setActiveIndex: (updater: (index: number) => number) => void;
-  onOpen: (gameId: string) => void;
+  onOpen: (target: RowTarget) => void;
 }) {
   return useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -435,10 +467,10 @@ function useRowKeyboard({
         setActiveIndex(() => (event.key === 'Home' ? 0 : rows.length - 1));
       } else if (event.key === 'Enter') {
         const row = rows[activeIndex];
-        const gameId = row ? rowGameId(row) : null;
-        if (!gameId) return;
+        const target = row ? rowTarget(row) : null;
+        if (!target) return;
         event.preventDefault();
-        onOpen(gameId);
+        onOpen(target);
       }
     },
     [rows, activeIndex, setActiveIndex, onOpen],
@@ -447,7 +479,7 @@ function useRowKeyboard({
 
 /** Desktop (lg+): inline field in the middle of the bar with a results panel. */
 export function GlobalSearchField({ onActivate }: { onActivate?: () => void }) {
-  const navigate = useNavigate();
+  const openRow = useOpenRow();
   const [open, setOpen] = useState(false);
   const {
     query,
@@ -491,11 +523,11 @@ export function GlobalSearchField({ onActivate }: { onActivate?: () => void }) {
   }, [open]);
 
   const handleOpen = useCallback(
-    (gameId: string) => {
+    (target: RowTarget) => {
       close();
-      navigate({ to: '/game/$gameId', params: { gameId } });
+      openRow(target);
     },
-    [close, navigate],
+    [close, openRow],
   );
 
   const onKeyDown = useRowKeyboard({ rows, activeIndex, setActiveIndex, onOpen: handleOpen });
@@ -565,7 +597,7 @@ export function GlobalSearchField({ onActivate }: { onActivate?: () => void }) {
 
 /** Below lg: icon trigger that opens a full-screen search sheet. */
 export function GlobalSearchTrigger({ onActivate }: { onActivate?: () => void }) {
-  const navigate = useNavigate();
+  const openRow = useOpenRow();
   const [open, setOpen] = useState(false);
   const {
     query,
@@ -611,12 +643,12 @@ export function GlobalSearchTrigger({ onActivate }: { onActivate?: () => void })
   }, [open, close]);
 
   const handleOpen = useCallback(
-    (gameId: string) => {
+    (target: RowTarget) => {
       setOpen(false);
       reset();
-      navigate({ to: '/game/$gameId', params: { gameId } });
+      openRow(target);
     },
-    [reset, navigate],
+    [reset, openRow],
   );
 
   const onKeyDown = useRowKeyboard({ rows, activeIndex, setActiveIndex, onOpen: handleOpen });

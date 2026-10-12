@@ -4,14 +4,16 @@ import { Bell, ChevronDown, LogOut, User, UserRound } from 'lucide-react';
 import { hexLuminance } from './shared';
 import { GlobalSearchField, GlobalSearchTrigger } from './GlobalSearch';
 
-export type NavKey = 'dashboard' | 'predict' | 'profile' | 'game' | undefined;
+export type NavKey = 'dashboard' | 'predict' | 'profile' | 'game' | 'player' | undefined;
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'predict', label: 'Predictions' },
 ];
 
-// Game detail lives in the Predictions section, so it keeps that tab lit.
+// Game detail lives in the Predictions section, so it keeps that tab lit. A
+// player profile belongs to no section — it is reached from search, a box score
+// or a team panel — so it lights nothing and `resolveNavKey` passes it through.
 function resolveNavKey(active?: NavKey): NavKey {
   return active === 'game' ? 'predict' : active;
 }

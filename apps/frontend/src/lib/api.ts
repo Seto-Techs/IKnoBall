@@ -410,6 +410,123 @@ export interface BoxScore {
   away: BoxScoreSide;
 }
 
+/* ── Player detail ── */
+
+export interface PlayerTeamRef {
+  externalId: number;
+  abbreviation: string;
+  teamName: string;
+  fullName: string;
+  city: string;
+  conference: string;
+  division: string;
+  logoUrl: string;
+  arena: string;
+  headCoach: string;
+  primaryColor: string;
+}
+
+export type PlayerSeasonType = 'regular' | 'playoffs';
+
+export interface PlayerSeasonStats {
+  season: string;
+  seasonType: PlayerSeasonType;
+  gp: number;
+  wins: number | null;
+  losses: number | null;
+  points: number | null;
+  rebounds: number | null;
+  assists: number | null;
+  steals: number | null;
+  blocks: number | null;
+  fgPct: number | null;
+  fg3Pct: number | null;
+  ftPct: number | null;
+  pointsTotal: number | null;
+  reboundsTotal: number | null;
+  assistsTotal: number | null;
+  stealsTotal: number | null;
+  blocksTotal: number | null;
+}
+
+/** One team's share of a season the player spent on more than one team. */
+export interface PlayerSeasonTeam extends PlayerSeasonStats {
+  teamAbbr: string;
+  teamName: string;
+  logoUrl: string;
+  primaryColor: string;
+}
+
+export interface PlayerSeason extends PlayerSeasonStats {
+  /** Per-team splits; empty unless the player was on 2+ teams that season. */
+  teams: PlayerSeasonTeam[];
+}
+
+export interface PlayerGameLogEntry {
+  gameId: string;
+  gameDate: string;
+  opponentTricode: string | null;
+  opponentName: string;
+  opponentLogoUrl: string;
+  isHome: boolean;
+  /** Null when the game has no final score on file. */
+  won: boolean | null;
+  minutes: string | null;
+  points: number | null;
+  rebounds: number | null;
+  assists: number | null;
+  steals: number | null;
+  blocks: number | null;
+}
+
+export interface PlayerNextGame {
+  id: string;
+  gameDateTime: string;
+  /** True when the player's team is the home side. */
+  isHome: boolean;
+  opponentTricode: string | null;
+  opponentName: string;
+  opponentLogoUrl: string;
+  arenaName: string | null;
+  arenaCity: string | null;
+}
+
+export interface PlayerGameLogPage {
+  /** Games the player has appeared in, across every season. */
+  total: number;
+  limit: number;
+  offset: number;
+  games: PlayerGameLogEntry[];
+}
+
+export interface PlayerDetail {
+  id: string;
+  externalId: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  position: string | null;
+  jersey: string | null;
+  height: string | null;
+  weight: string | null;
+  college: string | null;
+  country: string | null;
+  draftYear: number | null;
+  draftRound: number | null;
+  draftPick: number | null;
+  careerFrom: string | null;
+  careerTo: string | null;
+  headshotUrl: string;
+  team: PlayerTeamRef | null;
+  /**
+   * The season the summary panel shows — the current season when the player has
+   * played it, otherwise their most recent one. Also present in `seasons`.
+   */
+  currentSeason: PlayerSeasonStats | null;
+  seasons: PlayerSeason[];
+  nextGame: PlayerNextGame | null;
+}
+
 /** Team totals and the per-player box score for a game, live or final. */
 export function useGameBoxscore(gameId?: string) {
   return useQuery({
@@ -439,6 +556,48 @@ export function useHeadToHead(gameId?: string) {
     },
     enabled: !!gameId,
     staleTime: 1000 * 60 * 30,
+  });
+}
+
+/**
+ * A single player's bio, team, season stats and next game, by internal player
+ * id — the id the search, box score and team player endpoints return.
+ */
+export function usePlayer(playerId?: string) {
+  return useQuery({
+    queryKey: ['player', playerId],
+    queryFn: async (): Promise<PlayerDetail | null> => {
+      const res = await fetchJson<{ data: PlayerDetail | null }>(
+        `/players/${encodeURIComponent(playerId ?? '')}`,
+      );
+      return res.data;
+    },
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** Games per page of the game log, matching the backend's own page size. */
+export const PLAYER_GAME_LOG_PAGE_SIZE = 10;
+
+/**
+ * One page of a player's game log, newest first. The previous page stays on
+ * screen while the next one loads, so paging does not blank the table.
+ */
+export function usePlayerGames(playerId?: string, page = 0) {
+  const limit = PLAYER_GAME_LOG_PAGE_SIZE;
+  const offset = Math.max(0, page) * limit;
+  return useQuery({
+    queryKey: ['player-games', playerId, offset, limit],
+    queryFn: async (): Promise<PlayerGameLogPage> => {
+      const res = await fetchJson<{ data: PlayerGameLogPage }>(
+        `/players/${encodeURIComponent(playerId ?? '')}/games?limit=${limit}&offset=${offset}`,
+      );
+      return res.data;
+    },
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (previous) => previous,
   });
 }
 
