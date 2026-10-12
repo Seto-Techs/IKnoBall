@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { canonicalAbbr, getGameStatus } from '../../lib/game-utils';
+import { TeamMark } from '../TeamMark';
 
 function abbrFromFallback(tricode: string | null | undefined, fallback: string): string {
   if (tricode) return canonicalAbbr(tricode);
@@ -108,22 +109,20 @@ export function SevenDayStrip({
             compact ? '' : 'min-w-0 flex-1 overflow-hidden'
           }`}
         >
-          {awayTeam?.logoUrl ? (
-            <img
-              src={awayTeam.logoUrl}
-              alt={awayAbbr}
-              className="h-4 w-4 shrink-0 object-contain"
-            />
-          ) : null}
+          <TeamMark
+            logoUrl={awayTeam?.logoUrl}
+            alt={awayAbbr}
+            plate
+            className="h-4 w-4 shrink-0 object-contain"
+          />
           <span className={`text-[11px] font-bold ${compact ? '' : 'truncate'}`}>{awayAbbr}</span>
           <span className="text-[10px] text-stone-400">@</span>
-          {homeTeam?.logoUrl ? (
-            <img
-              src={homeTeam.logoUrl}
-              alt={homeAbbr}
-              className="h-4 w-4 shrink-0 object-contain"
-            />
-          ) : null}
+          <TeamMark
+            logoUrl={homeTeam?.logoUrl}
+            alt={homeAbbr}
+            plate
+            className="h-4 w-4 shrink-0 object-contain"
+          />
           <span className={`text-[11px] font-bold ${compact ? '' : 'truncate'}`}>{homeAbbr}</span>
         </div>
         <div

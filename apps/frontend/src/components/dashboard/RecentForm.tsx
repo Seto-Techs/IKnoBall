@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import type { TeamRecord, TeamWithLeaders } from '../../lib/api';
 import { darken, isLightColor } from '../../lib/color';
+import { TeamMark } from '../TeamMark';
 import { EmptyState, formatGameDate, hexLuminance, LoadingSpinner, Panel } from './shared';
 
 export function RecentForm({
@@ -63,20 +64,12 @@ export function RecentForm({
                 >
                   {won ? 'W' : 'L'}
                 </span>
-                {opp?.logoUrl ? (
-                  <img
-                    src={opp.logoUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="relative z-10 h-8 w-8 object-contain transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover/cell:scale-[1.06] md:h-12 md:w-12"
-                  />
-                ) : (
-                  <span
-                    className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full text-sm font-black md:h-12 md:w-12 md:text-lg ${isBright ? 'bg-brand-ink/10 text-brand-ink' : 'bg-white/15 text-white'}`}
-                  >
-                    {(opp?.abbreviation ?? game.opponentAbbr).slice(0, 2)}
-                  </span>
-                )}
+                <TeamMark
+                  logoUrl={opp?.logoUrl}
+                  alt=""
+                  plate
+                  className="relative z-10 h-8 w-8 shrink-0 object-contain transition-transform duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover/cell:scale-[1.06] md:h-12 md:w-12"
+                />
                 <span className={`relative z-10 text-[13px] font-extrabold tracking-tight ${tx}`}>
                   <span
                     className={`mr-1 font-bold ${bg ? (isBright ? 'text-brand-ink/55' : 'text-white/60') : 'text-stone-400'}`}

@@ -9,6 +9,7 @@ import {
 } from '../../lib/api';
 import { formatDateOnly } from '../../lib/game-utils';
 import { buildPages } from '../../lib/pagination';
+import { TeamMark } from '../TeamMark';
 
 function SeriesSide({
   team,
@@ -98,15 +99,12 @@ function MeetingCard({
         </div>
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-1 px-2">
-          {meetingAway?.logoUrl ? (
-            <img
-              src={meetingAway.logoUrl}
-              alt=""
-              className="h-9 w-9 object-contain drop-shadow"
-              loading="lazy"
-              onError={hideOnError}
-            />
-          ) : null}
+          <TeamMark
+            logoUrl={meetingAway?.logoUrl}
+            alt=""
+            className="h-9 w-9 object-contain drop-shadow"
+            onError={hideOnError}
+          />
           <span
             className={`font-heading text-sm font-black uppercase tracking-wide text-white ${
               awayWon ? '' : 'opacity-60'
@@ -122,15 +120,12 @@ function MeetingCard({
         </span>
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-1 px-2">
-          {meetingHome?.logoUrl ? (
-            <img
-              src={meetingHome.logoUrl}
-              alt=""
-              className="h-9 w-9 object-contain drop-shadow"
-              loading="lazy"
-              onError={hideOnError}
-            />
-          ) : null}
+          <TeamMark
+            logoUrl={meetingHome?.logoUrl}
+            alt=""
+            className="h-9 w-9 object-contain drop-shadow"
+            onError={hideOnError}
+          />
           <span
             className={`font-heading text-sm font-black uppercase tracking-wide text-white ${
               awayWon ? 'opacity-60' : ''

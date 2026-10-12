@@ -10,6 +10,7 @@ import {
   getSeasonBadge,
   hexLuminance,
 } from '../../lib/game-utils';
+import { TeamMark } from '../TeamMark';
 import { MatchupBackdrop } from './MatchupBackdrop';
 
 function getTeamByTricode(
@@ -141,7 +142,6 @@ function HeroSlide({
     side: 'away' | 'home',
     _team: TeamWithLeaders | null,
     fullName: string,
-    abbr: string,
     logo: string,
     topPlayer: typeof awayTop,
     loading: boolean,
@@ -149,36 +149,14 @@ function HeroSlide({
     if (!showTopPlayer) {
       return (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6">
-          {logo ? (
-            <img
-              // Distinct key from the headshot below: both are the first child of
-              // an identical wrapper, so React would otherwise reuse one DOM node
-              // and carry the headshot's `display: none` (set on load failure)
-              // onto the logo.
-              key="logo"
-              src={logo}
-              alt={fullName}
-              className="h-24 w-24 object-contain drop-shadow-[0_6px_16px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
-              loading="lazy"
-            />
-          ) : (
-            // Same box as the logo it stands in for. A bare text span is only as
-            // tall as its line box, and the shorter stack shifts this side's name
-            // off the other side's line.
-            <span className="flex h-24 w-24 items-center justify-center sm:h-36 sm:w-36">
-              <span
-                className="font-heading text-3xl font-black tracking-tighter text-white"
-                style={
-                  {
-                    WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                    textShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                  } as React.CSSProperties
-                }
-              >
-                {abbr}
-              </span>
-            </span>
-          )}
+          {/* TeamMark renders a component, not the headshot's `img`, so toggling
+              Top Player cannot reuse one DOM node and carry the headshot's
+              `display: none` (set on load failure) onto the mark. */}
+          <TeamMark
+            logoUrl={logo}
+            alt={fullName}
+            className="h-24 w-24 object-contain drop-shadow-[0_6px_16px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+          />
           <span
             className="font-heading text-center text-base font-black leading-tight tracking-wide text-white sm:text-2xl"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' } as React.CSSProperties}
@@ -209,20 +187,11 @@ function HeroSlide({
     if (!topPlayer) {
       return (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6">
-          {logo ? (
-            <img
-              src={logo}
-              alt={fullName}
-              className="h-16 w-16 object-contain opacity-60 sm:h-20 sm:w-20"
-              loading="lazy"
-            />
-          ) : (
-            <span className="flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20">
-              <span className="font-heading text-2xl font-black tracking-tighter text-white/70">
-                {abbr}
-              </span>
-            </span>
-          )}
+          <TeamMark
+            logoUrl={logo}
+            alt={fullName}
+            className="h-16 w-16 object-contain opacity-60 sm:h-20 sm:w-20"
+          />
           <span
             className="font-heading text-center text-base font-black leading-tight tracking-wide text-white sm:text-xl"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' } as React.CSSProperties}
@@ -294,7 +263,7 @@ function HeroSlide({
       <MatchupBackdrop awayColor={awayColor} homeColor={homeColor} />
 
       <div className="relative flex flex-1 items-stretch justify-between px-4 sm:px-6">
-        {renderTeamOrPlayer('away', away, awayFullName, awayAbbr, awayLogo, awayTop, awayLoading)}
+        {renderTeamOrPlayer('away', away, awayFullName, awayLogo, awayTop, awayLoading)}
 
         {/* Center spine — VS stays dead-centre on the logos' axis; the season badge is
             anchored above it so it can never move VS; the meta group flows at the bottom
@@ -380,7 +349,7 @@ function HeroSlide({
           </div>
         </div>
 
-        {renderTeamOrPlayer('home', home, homeFullName, homeAbbr, homeLogo, homeTop, homeLoading)}
+        {renderTeamOrPlayer('home', home, homeFullName, homeLogo, homeTop, homeLoading)}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useMemo, type CSSProperties } from 'react';
 import { ArrowLeft, Clock, MapPin } from 'lucide-react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { formatGameDate, formatTimeET, getGameStatus, getSeasonBadge } from '../../lib/game-utils';
+import { TeamMark } from '../TeamMark';
 
 function statusPill(g: Game): { text: string; cls: string } {
   const status = getGameStatus(g);
@@ -38,10 +39,6 @@ export function MatchupHero({
 
   const awayMark = away?.logoUrl ?? null;
   const homeMark = home?.logoUrl ?? null;
-  const awayAbbr =
-    away?.abbreviation ?? game.awayTricode ?? game.awayTeam.slice(0, 3).toUpperCase();
-  const homeAbbr =
-    home?.abbreviation ?? game.homeTricode ?? game.homeTeam.slice(0, 3).toUpperCase();
   const awayName = away?.teamName ?? game.awayTeam;
   const homeName = home?.teamName ?? game.homeTeam;
 
@@ -125,29 +122,11 @@ export function MatchupHero({
       <div className="relative z-10 flex min-h-[240px] items-stretch px-6 pb-6 pt-6 sm:min-h-[280px] sm:px-8">
         {/* Away */}
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          {awayMark ? (
-            <img
-              src={awayMark}
-              alt={awayName}
-              className="h-20 w-20 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
-              loading="lazy"
-            />
-          ) : (
-            // Same box as the logo it stands in for. A bare text span is only as
-            // tall as its line box, and the shorter stack shifts this side's name
-            // off the other side's line.
-            <span className="flex h-20 w-20 items-center justify-center sm:h-36 sm:w-36">
-              <span
-                className="font-heading text-5xl font-black tracking-tighter text-white sm:text-6xl"
-                style={{
-                  WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                  textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-                }}
-              >
-                {awayAbbr}
-              </span>
-            </span>
-          )}
+          <TeamMark
+            logoUrl={awayMark}
+            alt={awayName}
+            className="h-20 w-20 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+          />
           <span
             className="font-heading text-xl font-black uppercase tracking-wide text-white sm:text-[32px]"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
@@ -197,26 +176,11 @@ export function MatchupHero({
 
         {/* Home */}
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          {homeMark ? (
-            <img
-              src={homeMark}
-              alt={homeName}
-              className="h-20 w-20 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
-              loading="lazy"
-            />
-          ) : (
-            <span className="flex h-20 w-20 items-center justify-center sm:h-36 sm:w-36">
-              <span
-                className="font-heading text-5xl font-black tracking-tighter text-white sm:text-6xl"
-                style={{
-                  WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                  textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-                }}
-              >
-                {homeAbbr}
-              </span>
-            </span>
-          )}
+          <TeamMark
+            logoUrl={homeMark}
+            alt={homeName}
+            className="h-20 w-20 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
+          />
           <span
             className="font-heading text-xl font-black uppercase tracking-wide text-white sm:text-[32px]"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}

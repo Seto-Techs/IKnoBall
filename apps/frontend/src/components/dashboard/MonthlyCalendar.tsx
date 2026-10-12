@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { useTeamSchedule } from '../../lib/api';
+import { TeamMark } from '../TeamMark';
 import { hexLuminance, LoadingSpinner, Panel } from './shared';
 import { GameDetailsPopup } from './GameDetailsPopup';
 // Current season only: 2026-27 runs October 2026 – April 2027.
@@ -42,7 +43,6 @@ function opponentOf(game: Game, team: TeamWithLeaders, teams?: TeamWithLeaders[]
 /** Everything both the calendar cell and the mobile agenda row need about a game. */
 function describeGame(game: Game, team: TeamWithLeaders, teams?: TeamWithLeaders[] | null) {
   const { isHome, oppName, opp } = opponentOf(game, team, teams);
-  const abbr = opp?.abbreviation ?? oppName.slice(0, 3).toUpperCase();
   const isPreseason = (game.gameLabel ?? '') === 'Preseason';
   const isPlayoffs = !!(game.seriesText ?? '').trim();
   const isFinal = (game.status ?? '').toLowerCase().includes('final');
@@ -54,7 +54,6 @@ function describeGame(game: Game, team: TeamWithLeaders, teams?: TeamWithLeaders
     isHome,
     oppName,
     opp,
-    abbr,
     isPreseason,
     isPlayoffs,
     isFinal,
@@ -83,18 +82,8 @@ function GameBlock({
   team: TeamWithLeaders;
   teams?: TeamWithLeaders[] | null;
 }) {
-  const {
-    isHome,
-    opp,
-    abbr,
-    isPreseason,
-    isPlayoffs,
-    isFinal,
-    hasScore,
-    favScore,
-    oppScore,
-    isWin,
-  } = describeGame(game, team, teams);
+  const { isHome, opp, isPreseason, isPlayoffs, isFinal, hasScore, favScore, oppScore, isWin } =
+    describeGame(game, team, teams);
   const bg = opp?.primaryColor;
   const isBright = bg ? hexLuminance(bg) > 0.45 : false;
   const pillTx = isBright ? 'text-brand-ink' : 'text-white';
@@ -118,20 +107,12 @@ function GameBlock({
           Playoffs
         </span>
       )}
-      {opp?.logoUrl ? (
-        <img
-          src={opp.logoUrl}
-          alt=""
-          aria-hidden="true"
-          className={`relative z-10 h-[60%] aspect-square w-auto object-contain transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 ${isFinal ? 'opacity-70 saturate-[0.7]' : ''}`}
-        />
-      ) : (
-        <span
-          className={`relative z-10 text-base font-extrabold ${pillTx} ${isFinal ? 'opacity-70' : ''}`}
-        >
-          {abbr}
-        </span>
-      )}
+      <TeamMark
+        logoUrl={opp?.logoUrl}
+        alt=""
+        plate
+        className={`relative z-10 h-[60%] aspect-square w-auto object-contain transition-transform duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] group-hover:scale-110 ${isFinal ? 'opacity-70 saturate-[0.7]' : ''}`}
+      />
       <span
         className={`relative z-10 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-widest ring-1 ring-inset ${ring} ${pillBg} ${pillTx}`}
       >
@@ -165,7 +146,6 @@ function AgendaRow({
     isHome,
     oppName,
     opp,
-    abbr,
     isPreseason,
     isPlayoffs,
     isFinal,
@@ -193,18 +173,7 @@ function AgendaRow({
             {d.getDate()}
           </span>
         </span>
-        {opp?.logoUrl ? (
-          <img
-            src={opp.logoUrl}
-            alt=""
-            aria-hidden="true"
-            className="h-8 w-8 shrink-0 object-contain"
-          />
-        ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[11px] font-bold text-stone-600">
-            {abbr}
-          </span>
-        )}
+        <TeamMark logoUrl={opp?.logoUrl} alt="" plate className="h-8 w-8 shrink-0 object-contain" />
         <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
           <span className="w-full truncate text-sm font-semibold text-brand-ink">
             <span className="mr-1 text-stone-400">{isHome ? 'vs' : '@'}</span>

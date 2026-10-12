@@ -14,6 +14,7 @@ import {
   MATCHUP_LOGO_SHADOW,
   MATCHUP_NAME_SHADOW,
 } from '../dashboard/MatchupBackdrop';
+import { TeamMark } from '../TeamMark';
 import type { GamePicks, SavedPrediction } from './predictions';
 import { formatPoints, picksOf } from './predictions';
 
@@ -112,22 +113,21 @@ function TeamHalf({
         />
       )}
 
-      {logoUrl && !logoFailed ? (
-        <img
-          src={logoUrl}
-          alt=""
-          className="h-16 w-16 object-contain sm:h-20 sm:w-20"
-          style={{ filter: `drop-shadow(${MATCHUP_LOGO_SHADOW})` }}
-          loading="lazy"
-          onError={() => setLogoFailed(true)}
-        />
-      ) : (
+      {logoFailed ? (
         <span
           className="font-heading text-4xl font-black tracking-tighter text-white"
           style={{ WebkitTextStroke: '1px rgba(0,0,0,0.45)' }}
         >
           {abbr}
         </span>
+      ) : (
+        <TeamMark
+          logoUrl={logoUrl}
+          alt=""
+          className="h-16 w-16 object-contain sm:h-20 sm:w-20"
+          style={{ filter: `drop-shadow(${MATCHUP_LOGO_SHADOW})` }}
+          onError={() => setLogoFailed(true)}
+        />
       )}
 
       <span

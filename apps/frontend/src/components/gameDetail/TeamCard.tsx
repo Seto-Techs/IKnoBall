@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { PlayerStat, TeamRecord } from '../../lib/api';
 import type { TeamIdentity } from '../../lib/game-utils';
 import { hexLuminance } from '../dashboard/shared';
+import { TeamMark } from '../TeamMark';
 
 /** Identity colour for a side whose own colour we do not know. */
 const UNKNOWN_COLOR = '#2B2B2B';
@@ -96,16 +97,11 @@ export function TeamCard({
     <div className="overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm">
       {/* Identity header */}
       <div className="flex items-center gap-3 px-5 py-4" style={{ backgroundColor: color }}>
-        {team.logoUrl ? (
-          <img
-            src={team.logoUrl}
-            alt={team.fullName}
-            className="h-12 w-12 shrink-0 object-contain drop-shadow"
-            loading="lazy"
-          />
-        ) : (
-          <span className={`font-heading text-2xl font-black ${tx}`}>{team.abbreviation}</span>
-        )}
+        <TeamMark
+          logoUrl={team.logoUrl}
+          alt={team.fullName}
+          className="h-12 w-12 shrink-0 object-contain drop-shadow"
+        />
         <div className="min-w-0">
           <p className={`text-xs font-bold uppercase tracking-widest ${txMuted}`}>
             {side === 'away' ? 'Away' : 'Home'}
