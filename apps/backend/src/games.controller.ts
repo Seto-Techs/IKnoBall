@@ -53,9 +53,37 @@ function previousSeason(season: string): string {
     .padStart(2, '0')}`;
 }
 
-function teamName(tricode: string | null, byAbbr: Map<string, string>): string {
+function teamName(
+  tricode: string | null,
+  byAbbr: Map<string, string>,
+  scheduleLabel?: string | null,
+): string {
   const abbr = ABBR_MAP[tricode ?? ''] ?? tricode ?? '';
-  return byAbbr.get(abbr) ?? abbr;
+  return byAbbr.get(abbr) ?? scheduleLabel ?? abbr;
+}
+
+/**
+ * The schedule's own name for a side, used when it has no `teams` row. It has to
+ * come from the row rather than from a tricode lookup: a tricode is not unique
+ * among the clubs outside `teams` (MEL is both Melbourne United and Team Melo).
+ */
+function scheduleTeamLabel(city: string | null, name: string | null): string | null {
+  const label = [city, name].filter(Boolean).join(' ').trim();
+  return label || null;
+}
+
+/**
+ * The schedule columns these helpers read: both tricodes plus the feed's own
+ * name for each side. The names are the only record of opponents that are not in
+ * `teams`, which is how a preseason tour or an All-Star squad keeps a name.
+ */
+interface GameTeamRow {
+  homeTricode: string | null;
+  awayTricode: string | null;
+  homeTeamCity: string | null;
+  homeTeamName: string | null;
+  awayTeamCity: string | null;
+  awayTeamName: string | null;
 }
 
 class GameResponse {
@@ -338,7 +366,7 @@ class SeasonResponse {
 export class GamesController {
   constructor(private readonly db: DatabaseService) {}
 
-  private async mapNames(rows: { homeTricode: string | null; awayTricode: string | null }[]) {
+  private async mapNames(rows: GameTeamRow[]) {
     const abbrs = Array.from(
       new Set(
         rows
@@ -356,10 +384,8 @@ export class GamesController {
   }
 
   private toResponse(
-    g: {
+    g: GameTeamRow & {
       id: string;
-      homeTricode: string | null;
-      awayTricode: string | null;
       homeScore: number | null;
       awayScore: number | null;
       gameDateTime: Date | null;
@@ -376,8 +402,16 @@ export class GamesController {
   ): GameResponse {
     return {
       id: g.id,
-      homeTeam: teamName(g.homeTricode, nameByAbbr),
-      awayTeam: teamName(g.awayTricode, nameByAbbr),
+      homeTeam: teamName(
+        g.homeTricode,
+        nameByAbbr,
+        scheduleTeamLabel(g.homeTeamCity, g.homeTeamName),
+      ),
+      awayTeam: teamName(
+        g.awayTricode,
+        nameByAbbr,
+        scheduleTeamLabel(g.awayTeamCity, g.awayTeamName),
+      ),
       homeScore: g.homeScore,
       awayScore: g.awayScore,
       gameDateTime: g.gameDateTime?.toISOString() ?? '',
@@ -427,6 +461,10 @@ export class GamesController {
         id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         homeScore: scheduleGames.homeTeamScore,
         awayScore: scheduleGames.awayTeamScore,
         gameDateTime: scheduleGames.gameDateTimeUTC,
@@ -512,6 +550,10 @@ export class GamesController {
         id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         homeScore: scheduleGames.homeTeamScore,
         awayScore: scheduleGames.awayTeamScore,
         gameDateTime: scheduleGames.gameDateTimeUTC,
@@ -559,6 +601,10 @@ export class GamesController {
         id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         homeScore: scheduleGames.homeTeamScore,
         awayScore: scheduleGames.awayTeamScore,
         gameDateTime: scheduleGames.gameDateTimeUTC,
@@ -624,6 +670,10 @@ export class GamesController {
         id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         homeScore: scheduleGames.homeTeamScore,
         awayScore: scheduleGames.awayTeamScore,
         gameDateTime: scheduleGames.gameDateTimeUTC,
@@ -702,6 +752,10 @@ export class GamesController {
       .select({
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         seasonYear: scheduleDays.seasonYear,
       })
       .from(scheduleGames)
@@ -714,6 +768,8 @@ export class GamesController {
     }
 
     const { homeTricode, awayTricode, seasonYear } = gameRows[0];
+    const homeLabel = scheduleTeamLabel(gameRows[0].homeTeamCity, gameRows[0].homeTeamName);
+    const awayLabel = scheduleTeamLabel(gameRows[0].awayTeamCity, gameRows[0].awayTeamName);
     const season = previousSeason(seasonYear);
 
     // Regular season only: gameLabel '' excludes preseason and All-Star, and
@@ -723,6 +779,10 @@ export class GamesController {
         id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         homeScore: scheduleGames.homeTeamScore,
         awayScore: scheduleGames.awayTeamScore,
         gameDate: scheduleGames.gameDate,
@@ -762,20 +822,20 @@ export class GamesController {
       else awayWins += 1;
     }
 
-    const nameByAbbr = await this.mapNames(rows);
+    const nameByAbbr = await this.mapNames([...gameRows, ...rows]);
     const canonical = (t: string | null) => (t ? (ABBR_MAP[t] ?? t) : '');
 
     return response(true, 'Head to head fetched.', {
       season,
       home: {
         tricode: canonical(homeTricode),
-        team: teamName(homeTricode, nameByAbbr),
+        team: teamName(homeTricode, nameByAbbr, homeLabel),
         wins: homeWins,
         losses: awayWins,
       },
       away: {
         tricode: canonical(awayTricode),
-        team: teamName(awayTricode, nameByAbbr),
+        team: teamName(awayTricode, nameByAbbr, awayLabel),
         wins: awayWins,
         losses: homeWins,
       },
@@ -784,8 +844,16 @@ export class GamesController {
         gameDate: g.gameDate,
         homeTricode: g.homeTricode ? canonical(g.homeTricode) : null,
         awayTricode: g.awayTricode ? canonical(g.awayTricode) : null,
-        homeTeam: teamName(g.homeTricode, nameByAbbr),
-        awayTeam: teamName(g.awayTricode, nameByAbbr),
+        homeTeam: teamName(
+          g.homeTricode,
+          nameByAbbr,
+          scheduleTeamLabel(g.homeTeamCity, g.homeTeamName),
+        ),
+        awayTeam: teamName(
+          g.awayTricode,
+          nameByAbbr,
+          scheduleTeamLabel(g.awayTeamCity, g.awayTeamName),
+        ),
         homeScore: g.homeScore,
         awayScore: g.awayScore,
       })),
@@ -862,6 +930,10 @@ export class GamesController {
         scheduleGameId: scheduleGames.id,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
       })
       .from(scheduleGames)
       .where(eq(scheduleGames.gameId, id))
@@ -954,7 +1026,14 @@ export class GamesController {
 
     const teamBySide = new Map(teamRows.map((row) => [row.side, row]));
     const nameByAbbr = await this.mapNames([
-      { homeTricode: game.homeTricode, awayTricode: game.awayTricode },
+      {
+        homeTricode: game.homeTricode,
+        awayTricode: game.awayTricode,
+        homeTeamCity: game.homeTeamCity,
+        homeTeamName: game.homeTeamName,
+        awayTeamCity: game.awayTeamCity,
+        awayTeamName: game.awayTeamName,
+      },
     ]);
     const canonical = (t: string | null) => (t ? (ABBR_MAP[t] ?? t) : '');
 
@@ -967,7 +1046,13 @@ export class GamesController {
     ): BoxScoreSideResponse => ({
       teamId,
       tricode: canonical(tricode),
-      teamName: teamName(tricode, nameByAbbr),
+      teamName: teamName(
+        tricode,
+        nameByAbbr,
+        which === 'home'
+          ? scheduleTeamLabel(game.homeTeamCity, game.homeTeamName)
+          : scheduleTeamLabel(game.awayTeamCity, game.awayTeamName),
+      ),
       score,
       periods: this.mapPeriods(periods),
       stats: this.mapBoxStats(teamBySide.get(which) ?? {}),
@@ -1008,6 +1093,10 @@ export class GamesController {
         id: scheduleGames.gameId,
         homeTricode: scheduleGames.homeTeamTricode,
         awayTricode: scheduleGames.awayTeamTricode,
+        homeTeamCity: scheduleGames.homeTeamCity,
+        homeTeamName: scheduleGames.homeTeamName,
+        awayTeamCity: scheduleGames.awayTeamCity,
+        awayTeamName: scheduleGames.awayTeamName,
         homeScore: scheduleGames.homeTeamScore,
         awayScore: scheduleGames.awayTeamScore,
         gameDateTime: scheduleGames.gameDateTimeUTC,

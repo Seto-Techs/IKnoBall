@@ -115,6 +115,31 @@ describe('GamesController.getById', () => {
     expect(res.data?.awayTeam).toBe('New York Knicks');
   });
 
+  it('names an opponent that has no teams row from the schedule', async () => {
+    // Preseason tours and exhibition games are played against clubs that are not
+    // in `teams`, so the name has to come from the schedule row.
+    const controller = makeController([
+      [
+        {
+          ...gameRow,
+          id: '0012600042',
+          homeTricode: 'POR',
+          awayTricode: 'LON',
+          homeTeamCity: 'Portland',
+          homeTeamName: 'Trail Blazers',
+          awayTeamCity: 'London',
+          awayTeamName: 'Lions',
+        },
+      ],
+      [{ abbreviation: 'POR', fullName: 'Portland Trail Blazers' }],
+    ]);
+
+    const res = await controller.getById('0012600042');
+
+    expect(res.data?.awayTeam).toBe('London Lions');
+    expect(res.data?.homeTeam).toBe('Portland Trail Blazers');
+  });
+
   it('returns null data when the id is unknown', async () => {
     const controller = makeController([[]]);
 

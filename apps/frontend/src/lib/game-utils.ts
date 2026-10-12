@@ -63,6 +63,46 @@ export function resolveGameTeams(
   };
 }
 
+/**
+ * The identity a team summary renders. A `teams` row fills every field; a side
+ * that only exists on the schedule carries the name and code the schedule gives
+ * it and nothing else.
+ */
+export interface TeamIdentity {
+  abbreviation: string;
+  teamName: string;
+  fullName: string;
+  conference: string | null;
+  division: string | null;
+  logoUrl: string | null;
+  arena: string | null;
+  headCoach: string | null;
+  primaryColor: string | null;
+}
+
+/**
+ * Identity for a side that has no `teams` row, so a game against an opponent we
+ * do not track (preseason tours and exhibition sides) still gets a team summary
+ * instead of an empty column. Null when the schedule has no name for the side
+ * either, which is a game whose participants are still to be decided.
+ */
+export function scheduleTeamIdentity(g: Game, side: 'home' | 'away'): TeamIdentity | null {
+  const tricode = (side === 'home' ? g.homeTricode : g.awayTricode) ?? '';
+  const name = (side === 'home' ? g.homeTeam : g.awayTeam).trim();
+  if (!name) return null;
+  return {
+    abbreviation: tricode || name.slice(0, 3).toUpperCase(),
+    teamName: name,
+    fullName: name,
+    conference: null,
+    division: null,
+    logoUrl: null,
+    arena: null,
+    headCoach: null,
+    primaryColor: null,
+  };
+}
+
 export interface SeasonBadge {
   label: string;
   detail?: string;
