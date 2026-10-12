@@ -36,8 +36,9 @@ function ResultBadge({ won }: { won: boolean | null }) {
 }
 
 /**
- * A player's game log, newest first, ten games to a page, each row linking to its
- * game detail page. Games the player did not appear in are excluded by the API,
+ * A player's game log for the season the page leads with, newest first, ten games
+ * to a page, each row linking to its game detail page. Earlier seasons are the
+ * career table's job. Games the player did not appear in are excluded by the API,
  * so every row has a line to show.
  */
 export function GameLogPanel({ playerId }: { playerId: string }) {
@@ -59,6 +60,7 @@ export function GameLogPanel({ playerId }: { playerId: string }) {
   }, [pageCount]);
 
   const games = data?.games ?? [];
+  const season = data?.season ?? '';
   const first = total === 0 ? 0 : page * PLAYER_GAME_LOG_PAGE_SIZE + 1;
   const last = page * PLAYER_GAME_LOG_PAGE_SIZE + games.length;
 
@@ -66,14 +68,19 @@ export function GameLogPanel({ playerId }: { playerId: string }) {
 
   return (
     <Panel title="Game Log">
-      {games.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-stone-400">No games played on file yet.</p>
+      {!data ? (
+        <p className="px-5 py-4 text-sm text-stone-400">Loading game log…</p>
+      ) : games.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-stone-400">No games played in {season} yet.</p>
       ) : (
         <>
           <div className="flex items-center gap-3 border-b border-brand-line px-5 pb-2 pt-3 text-[10px] font-bold uppercase tracking-widest text-stone-500">
             <span className="w-6 shrink-0" aria-hidden="true" />
             <span className="w-6 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1">Game</span>
+            <span className="min-w-0 flex-1">
+              Game
+              <span className="ml-2 font-semibold text-stone-400">{season}</span>
+            </span>
             <span className="flex shrink-0 gap-3">
               {STAT_COLUMNS.map((column) => (
                 <span key={column.label} className={`${column.width} text-right`}>

@@ -322,6 +322,11 @@ export class PlayerSeasonProcessor implements OnModuleInit {
         'ByYear-regular',
       );
       await this.syncDashboardByYear(player.id, playerExternalId, 'Playoffs', 'ByYear-playoffs');
+      // 'Pre Season' is the feed's own spelling for this season type — the
+      // endpoint accepts Regular Season | Pre Season | Playoffs, and not
+      // "Preseason". It returns one row per season like the other two, so
+      // preseason flows through the same collapse and split as the rest.
+      await this.syncDashboardByYear(player.id, playerExternalId, 'Pre Season', 'ByYear-preseason');
       const spanSeconds = ((Date.now() - startedAt) / 1000).toFixed(2);
       this.logger.log(`crawlPlayerCareer done player=${playerExternalId} span=${spanSeconds}s`);
     } catch (error) {

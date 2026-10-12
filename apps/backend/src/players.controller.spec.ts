@@ -26,6 +26,7 @@ function createDb(responses: Row[][]) {
     from: vi.fn(() => chain),
     innerJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
+    groupBy: vi.fn(() => chain),
     orderBy: vi.fn(() => chain),
     limit: vi.fn(() => chain),
     offset: vi.fn(() => chain),
@@ -244,13 +245,14 @@ const playerQuery: Row[][] = [[playerRow]];
 const detailFixture = (
   over: {
     player?: Row[];
+    seasons?: Row[];
     splits?: Row[];
     nextGame?: Row[];
   } = {},
 ): Row[][] => [
   over.player ?? [playerRow],
   teamRows,
-  seasonRows,
+  over.seasons ?? seasonRows,
   over.splits ?? [],
   over.nextGame ?? [nextGameRow],
 ];
@@ -335,6 +337,82 @@ describe('PlayersController.getById', () => {
     const res = await controller.getById('p-1');
 
     expect(res.data?.seasons.every((season) => season.teams.length === 0)).toBe(true);
+  });
+
+  it('reports no preseason row when the player has none on file', async () => {
+    const controller = makeController(detailFixture());
+
+    const res = await controller.getById('p-1');
+
+    expect(res.data?.seasons.some((season) => season.seasonType === 'preseason')).toBe(false);
+  });
+
+  it('surfaces a ByYear-preseason feed row as a preseason season', async () => {
+    const controller = makeController(
+      detailFixture({
+        seasons: [
+          ...seasonRows,
+          {
+            season: '2026-27',
+            statsTimeframe: 'ByYear-preseason',
+            gp: 4,
+            wins: 3,
+            losses: 1,
+            points: 15,
+            rebounds: 5,
+            assists: 3,
+            steals: 1,
+            blocks: 0.5,
+            fgPct: 0.5,
+            fg3Pct: 0.4,
+            ftPct: 0.75,
+            pointsTotal: 60,
+            reboundsTotal: 20,
+            assistsTotal: 12,
+            stealsTotal: 4,
+            blocksTotal: 2,
+          },
+        ],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+    const preseason = res.data?.seasons.find((season) => season.seasonType === 'preseason');
+
+    expect(preseason).toMatchObject({
+      season: '2026-27',
+      seasonType: 'preseason',
+      gp: 4,
+      wins: 3,
+      losses: 1,
+      points: 15,
+      rebounds: 5,
+      assists: 3,
+      blocks: 0.5,
+      fgPct: 0.5,
+      pointsTotal: 60,
+    });
+  });
+
+  it('does not let a preseason row stand in as the current season', async () => {
+    const controller = makeController(
+      detailFixture({
+        seasons: [
+          { season: '2026-27', statsTimeframe: 'ByYear-preseason', gp: 4, points: 15 },
+          {
+            season: '2024-25',
+            statsTimeframe: 'ByYear-regular',
+            gp: 46,
+            points: 24.26086956521739,
+          },
+        ],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+
+    // Only a regular-season row describes a season's averages.
+    expect(res.data?.currentSeason).toMatchObject({ season: '2024-25', seasonType: 'regular' });
   });
 
   it('attaches each per-team split to its season, with the team identity', async () => {
@@ -444,6 +522,9 @@ describe('PlayersController.getGames', () => {
     expect(res.data?.limit).toBe(10);
     expect(res.data?.offset).toBe(20);
     expect(res.data?.games).toHaveLength(2);
+    // The log is pinned to one season, and says which, so the client can label it
+    // without keeping its own idea of the current season.
+    expect(res.data?.season).toBe('2025-26');
   });
 
   it('defaults to the first page of ten', async () => {

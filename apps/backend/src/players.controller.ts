@@ -8,6 +8,7 @@ import {
   playerSeasonStats,
   playerSeasonTeamStats,
   teams,
+  scheduleDays,
   scheduleGames,
   scheduleBoxscorePlayers,
 } from '@iknoball/database';
@@ -24,8 +25,9 @@ const GAME_LOG_PAGE_MAX = 50;
  * page offsets and the total count honest.
  */
 const ZERO_MINUTES_PATTERN = '^PT0*M0*([.][0-9]+)?S?$';
+const MINUTES_PLAYED = sql`${scheduleBoxscorePlayers.minutes} is not null and ${scheduleBoxscorePlayers.minutes} !~ ${ZERO_MINUTES_PATTERN}`;
 const EXCLUDED_GAME_LABELS = ['All-Star', 'All-Star Championship'];
-/** The season the summary panel shows, matching the other player endpoints. */
+/** The season the page leads with, matching the other player endpoints. */
 const CURRENT_SEASON = process.env.NBA_CURRENT_SEASON ?? '2025-26';
 
 /**
@@ -42,9 +44,11 @@ function minutesLabel(value: string | null): string | null {
   return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-/** `ByYear-regular` / `ByYear-playoffs` as the season type the client renders. */
+/** The feed's `statsTimeframe` values as the season type the client renders. */
 function seasonType(timeframe: string | null): string {
-  return timeframe === 'ByYear-playoffs' ? 'playoffs' : 'regular';
+  if (timeframe === 'ByYear-playoffs') return 'playoffs';
+  if (timeframe === 'ByYear-preseason') return 'preseason';
+  return 'regular';
 }
 
 const round1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
@@ -182,7 +186,7 @@ class PlayerSeasonResponse extends PlayerSeasonStatsResponse {
   @ApiProperty({ example: '2025-26' })
   season!: string;
 
-  @ApiProperty({ example: 'regular', enum: ['regular', 'playoffs'] })
+  @ApiProperty({ example: 'regular', enum: ['regular', 'playoffs', 'preseason'] })
   seasonType!: string;
 
   @ApiProperty({
@@ -335,9 +339,12 @@ class PlayerDetailResponse {
 }
 
 class PlayerGameLogPageResponse {
+  @ApiProperty({ example: '2026-27', description: 'The season every page of this log covers.' })
+  season!: string;
+
   @ApiProperty({
     example: 115,
-    description: 'Games the player has appeared in, across every season.',
+    description: 'Games the player appeared in that season.',
   })
   total!: number;
 
@@ -380,18 +387,18 @@ export class PlayersController {
   }
 
   /**
-   * A player's games: finals only, and only the side the player actually turned
-   * out for, so `isHome` — and therefore the result — is definite for a player
-   * who has been traded, whose box-score rows carry the team they played for
-   * that night. Rows without minutes are games the feed listed them as not
-   * playing in.
+   * A player's games in one season: finals only, and only the side the player
+   * actually turned out for, so `isHome` — and therefore the result — is definite
+   * for a player who has been traded, whose box-score rows carry the team they
+   * played for that night. Rows without minutes are games the feed listed them as
+   * not playing in.
    */
-  private gameLogWhere(playerId: string) {
+  private gameLogWhere(playerId: string, season: string) {
     return and(
       eq(scheduleBoxscorePlayers.playerId, playerId),
       eq(scheduleGames.gameStatus, 3),
-      sql`${scheduleBoxscorePlayers.minutes} is not null`,
-      sql`${scheduleBoxscorePlayers.minutes} !~ ${ZERO_MINUTES_PATTERN}`,
+      eq(scheduleDays.seasonYear, season),
+      MINUTES_PLAYED,
     );
   }
 
@@ -415,12 +422,15 @@ export class PlayersController {
 
     const pageSize = parsePageParam(limit, GAME_LOG_PAGE_SIZE, GAME_LOG_PAGE_MAX, 'limit');
     const start = parsePageParam(offset, 0, Number.MAX_SAFE_INTEGER, 'offset');
-    const where = this.gameLogWhere(player.id);
+    // The log covers the season the page leads with. A player's earlier seasons
+    // are the career table's job, and mixing them here reads as one long run.
+    const where = this.gameLogWhere(player.id, CURRENT_SEASON);
 
     const [counted] = await this.db.db
       .select({ total: count() })
       .from(scheduleBoxscorePlayers)
       .innerJoin(scheduleGames, GAME_LOG_JOIN)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
       .where(where);
 
     const rows = await this.db.db
@@ -443,6 +453,7 @@ export class PlayersController {
       })
       .from(scheduleBoxscorePlayers)
       .innerJoin(scheduleGames, GAME_LOG_JOIN)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
       .where(where)
       // `gameDate` is enough on its own for one player, but the timestamp keeps
       // the order — and so the page boundaries — stable.
@@ -456,6 +467,7 @@ export class PlayersController {
       teamId == null ? undefined : teamById.get(String(teamId));
 
     return response(true, 'Game log fetched.', {
+      season: CURRENT_SEASON,
       // `count()` comes back as a bigint string from pg.
       total: Number(counted?.total ?? 0),
       limit: pageSize,

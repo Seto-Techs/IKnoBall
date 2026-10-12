@@ -426,7 +426,7 @@ export interface PlayerTeamRef {
   primaryColor: string;
 }
 
-export type PlayerSeasonType = 'regular' | 'playoffs';
+export type PlayerSeasonType = 'regular' | 'playoffs' | 'preseason';
 
 export interface PlayerSeasonStats {
   season: string;
@@ -492,7 +492,9 @@ export interface PlayerNextGame {
 }
 
 export interface PlayerGameLogPage {
-  /** Games the player has appeared in, across every season. */
+  /** The season every page of this log covers. */
+  season: string;
+  /** Games the player appeared in that season. */
   total: number;
   limit: number;
   offset: number;
