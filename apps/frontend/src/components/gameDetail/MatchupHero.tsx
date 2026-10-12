@@ -133,14 +133,19 @@ export function MatchupHero({
               loading="lazy"
             />
           ) : (
-            <span
-              className="font-heading text-5xl font-black tracking-tighter text-white sm:text-6xl"
-              style={{
-                WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-              }}
-            >
-              {awayAbbr}
+            // Same box as the logo it stands in for. A bare text span is only as
+            // tall as its line box, and the shorter stack shifts this side's name
+            // off the other side's line.
+            <span className="flex h-20 w-20 items-center justify-center sm:h-36 sm:w-36">
+              <span
+                className="font-heading text-5xl font-black tracking-tighter text-white sm:text-6xl"
+                style={{
+                  WebkitTextStroke: '1px rgba(0,0,0,0.45)',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                }}
+              >
+                {awayAbbr}
+              </span>
             </span>
           )}
           <span
@@ -200,14 +205,16 @@ export function MatchupHero({
               loading="lazy"
             />
           ) : (
-            <span
-              className="font-heading text-5xl font-black tracking-tighter text-white sm:text-6xl"
-              style={{
-                WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                textShadow: '0 2px 12px rgba(0,0,0,0.5)',
-              }}
-            >
-              {homeAbbr}
+            <span className="flex h-20 w-20 items-center justify-center sm:h-36 sm:w-36">
+              <span
+                className="font-heading text-5xl font-black tracking-tighter text-white sm:text-6xl"
+                style={{
+                  WebkitTextStroke: '1px rgba(0,0,0,0.45)',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                }}
+              >
+                {homeAbbr}
+              </span>
             </span>
           )}
           <span

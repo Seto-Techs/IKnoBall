@@ -105,11 +105,14 @@ function HeroSlide({
   const awayFullName = away?.fullName ?? g.awayTeam ?? awayAbbr;
   const homeFullName = home?.fullName ?? g.homeTeam ?? homeAbbr;
 
+  // Only ask for leaders of sides we track: `/teams/:abbr/players` 404s for an
+  // opponent that has no `teams` row (preseason tours, exhibition squads), and the
+  // slide renders its own empty state instead.
   const { data: awayPlayers, isLoading: awayLoading } = useTopPlayers(
-    showTopPlayer ? awayAbbr : undefined,
+    showTopPlayer && away ? awayAbbr : undefined,
   );
   const { data: homePlayers, isLoading: homeLoading } = useTopPlayers(
-    showTopPlayer ? homeAbbr : undefined,
+    showTopPlayer && home ? homeAbbr : undefined,
   );
   const awayTop = awayPlayers?.[0] ?? null;
   const homeTop = homePlayers?.[0] ?? null;
@@ -148,22 +151,32 @@ function HeroSlide({
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6">
           {logo ? (
             <img
+              // Distinct key from the headshot below: both are the first child of
+              // an identical wrapper, so React would otherwise reuse one DOM node
+              // and carry the headshot's `display: none` (set on load failure)
+              // onto the logo.
+              key="logo"
               src={logo}
               alt={fullName}
               className="h-24 w-24 object-contain drop-shadow-[0_6px_16px_rgba(0,0,0,0.4)] sm:h-36 sm:w-36"
               loading="lazy"
             />
           ) : (
-            <span
-              className="font-heading text-3xl font-black tracking-tighter text-white"
-              style={
-                {
-                  WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                  textShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                } as React.CSSProperties
-              }
-            >
-              {abbr}
+            // Same box as the logo it stands in for. A bare text span is only as
+            // tall as its line box, and the shorter stack shifts this side's name
+            // off the other side's line.
+            <span className="flex h-24 w-24 items-center justify-center sm:h-36 sm:w-36">
+              <span
+                className="font-heading text-3xl font-black tracking-tighter text-white"
+                style={
+                  {
+                    WebkitTextStroke: '1px rgba(0,0,0,0.45)',
+                    textShadow: '0 2px 10px rgba(0,0,0,0.45)',
+                  } as React.CSSProperties
+                }
+              >
+                {abbr}
+              </span>
             </span>
           )}
           <span
@@ -203,7 +216,19 @@ function HeroSlide({
               className="h-16 w-16 object-contain opacity-60 sm:h-20 sm:w-20"
               loading="lazy"
             />
-          ) : null}
+          ) : (
+            <span className="flex h-16 w-16 items-center justify-center sm:h-20 sm:w-20">
+              <span className="font-heading text-2xl font-black tracking-tighter text-white/70">
+                {abbr}
+              </span>
+            </span>
+          )}
+          <span
+            className="font-heading text-center text-base font-black leading-tight tracking-wide text-white sm:text-xl"
+            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' } as React.CSSProperties}
+          >
+            {fullName}
+          </span>
           <span className="text-xs italic text-white/60">No player data</span>
         </div>
       );
@@ -212,6 +237,7 @@ function HeroSlide({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6">
         <img
+          key="top-player"
           src={topPlayer.headshotUrl}
           alt={topPlayer.name}
           className="h-24 w-24 rounded-full border-[3px] border-white/90 object-cover shadow-xl sm:h-32 sm:w-32"
