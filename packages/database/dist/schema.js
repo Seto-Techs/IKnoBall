@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
+exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
 const better_auth_schema_js_1 = require("./better-auth.schema.js");
 var better_auth_schema_js_2 = require("./better-auth.schema.js");
@@ -103,6 +103,45 @@ exports.playerSeasonStats = (0, pg_core_1.pgTable)('player_season_stats', {
 }, (table) => [
     (0, pg_core_1.unique)('player_season_stats_playerId_season_statsTimeframe_key').on(table.playerId, table.season, table.statsTimeframe),
     (0, pg_core_1.index)('player_season_stats_playerId_idx').on(table.playerId),
+]);
+/**
+ * The per-team split of a season for a player who was on more than one team.
+ *
+ * `player_season_stats` keeps one combined row per player/season, which is what
+ * every leaderboard query reads. NBA's ByYear dashboard also reports one row per
+ * team for a player who moved mid-season; those splits live here so a career row
+ * can be opened up. A season the player spent on a single team has no rows here.
+ */
+exports.playerSeasonTeamStats = (0, pg_core_1.pgTable)('player_season_team_stats', {
+    id: id(),
+    playerId: (0, pg_core_1.text)('playerId')
+        .notNull()
+        .references(() => exports.players.id),
+    season: (0, pg_core_1.text)('season').notNull(),
+    statsTimeframe: (0, pg_core_1.text)('statsTimeframe').notNull(),
+    /** The feed's own abbreviation for this split (BKN, not the teams table's). */
+    teamAbbr: (0, pg_core_1.text)('teamAbbr').notNull(),
+    gp: (0, pg_core_1.integer)('gp'),
+    wins: (0, pg_core_1.integer)('wins'),
+    losses: (0, pg_core_1.integer)('losses'),
+    fgPct: (0, pg_core_1.doublePrecision)('fgPct'),
+    fg3Pct: (0, pg_core_1.doublePrecision)('fg3Pct'),
+    ftPct: (0, pg_core_1.doublePrecision)('ftPct'),
+    ptsTotal: (0, pg_core_1.doublePrecision)('ptsTotal'),
+    rebTotal: (0, pg_core_1.doublePrecision)('rebTotal'),
+    astTotal: (0, pg_core_1.doublePrecision)('astTotal'),
+    ptsPerGame: (0, pg_core_1.doublePrecision)('ptsPerGame'),
+    rebPerGame: (0, pg_core_1.doublePrecision)('rebPerGame'),
+    astPerGame: (0, pg_core_1.doublePrecision)('astPerGame'),
+    stlTotal: (0, pg_core_1.doublePrecision)('stlTotal'),
+    blkTotal: (0, pg_core_1.doublePrecision)('blkTotal'),
+    stlPerGame: (0, pg_core_1.doublePrecision)('stlPerGame'),
+    blkPerGame: (0, pg_core_1.doublePrecision)('blkPerGame'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('player_season_team_stats_playerId_season_timeframe_team_key').on(table.playerId, table.season, table.statsTimeframe, table.teamAbbr),
+    (0, pg_core_1.index)('player_season_team_stats_playerId_idx').on(table.playerId),
 ]);
 exports.scheduleDays = (0, pg_core_1.pgTable)('schedule_days', {
     id: id(),

@@ -50,6 +50,13 @@
       "when": 1791454736697,
       "tag": "0006_tricky_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791774073639,
+      "tag": "0007_lush_violations",
+      "breakpoints": true
     }
   ]
 }

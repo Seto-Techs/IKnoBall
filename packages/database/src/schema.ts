@@ -129,6 +129,55 @@ export const playerSeasonStats = pgTable(
   ],
 );
 
+/**
+ * The per-team split of a season for a player who was on more than one team.
+ *
+ * `player_season_stats` keeps one combined row per player/season, which is what
+ * every leaderboard query reads. NBA's ByYear dashboard also reports one row per
+ * team for a player who moved mid-season; those splits live here so a career row
+ * can be opened up. A season the player spent on a single team has no rows here.
+ */
+export const playerSeasonTeamStats = pgTable(
+  'player_season_team_stats',
+  {
+    id: id(),
+    playerId: text('playerId')
+      .notNull()
+      .references(() => players.id),
+    season: text('season').notNull(),
+    statsTimeframe: text('statsTimeframe').notNull(),
+    /** The feed's own abbreviation for this split (BKN, not the teams table's). */
+    teamAbbr: text('teamAbbr').notNull(),
+    gp: integer('gp'),
+    wins: integer('wins'),
+    losses: integer('losses'),
+    fgPct: doublePrecision('fgPct'),
+    fg3Pct: doublePrecision('fg3Pct'),
+    ftPct: doublePrecision('ftPct'),
+    ptsTotal: doublePrecision('ptsTotal'),
+    rebTotal: doublePrecision('rebTotal'),
+    astTotal: doublePrecision('astTotal'),
+    ptsPerGame: doublePrecision('ptsPerGame'),
+    rebPerGame: doublePrecision('rebPerGame'),
+    astPerGame: doublePrecision('astPerGame'),
+    stlTotal: doublePrecision('stlTotal'),
+    blkTotal: doublePrecision('blkTotal'),
+    stlPerGame: doublePrecision('stlPerGame'),
+    blkPerGame: doublePrecision('blkPerGame'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('player_season_team_stats_playerId_season_timeframe_team_key').on(
+      table.playerId,
+      table.season,
+      table.statsTimeframe,
+      table.teamAbbr,
+    ),
+    index('player_season_team_stats_playerId_idx').on(table.playerId),
+  ],
+);
+
 export const scheduleDays = pgTable(
   'schedule_days',
   {
