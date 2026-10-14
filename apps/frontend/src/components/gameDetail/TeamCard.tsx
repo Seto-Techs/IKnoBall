@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { PlayerStat, TeamRecord } from '../../lib/api';
 import type { TeamIdentity } from '../../lib/game-utils';
@@ -55,7 +56,13 @@ function PlayerRow({ p }: { p: PlayerStat }) {
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-brand-ink">{p.name}</p>
+        <Link
+          to="/player/$playerId"
+          params={{ playerId: p.id }}
+          className="block truncate rounded-sm text-sm font-semibold text-brand-ink hover:text-brand-navy hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+        >
+          {p.name}
+        </Link>
         <p className="text-xs font-bold uppercase tracking-widest text-stone-500">{p.position}</p>
       </div>
       <div className="flex shrink-0 gap-3">

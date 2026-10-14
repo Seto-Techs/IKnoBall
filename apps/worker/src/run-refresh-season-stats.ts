@@ -65,6 +65,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const SEASON_TYPES = [
   { seasonType: 'Regular Season', statsTimeframe: 'ByYear-regular' },
   { seasonType: 'Playoffs', statsTimeframe: 'ByYear-playoffs' },
+  // 'Pre Season' is the feed's spelling; it is an accepted SeasonType here, and
+  // the payload simply has no wins/losses for it, which preseason never reports.
+  { seasonType: 'Pre Season', statsTimeframe: 'ByYear-preseason' },
 ] as const;
 
 /** LeagueLeaders row -> SeasonTotals (no wins/losses in that payload). */

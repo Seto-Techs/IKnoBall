@@ -1,4 +1,4 @@
-import { playerSeasonStats, players } from '@iknoball/database';
+import { playerSeasonStats, playerSeasonTeamStats, players } from '@iknoball/database';
 import { and, eq } from 'drizzle-orm';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Worker } from 'bullmq';
@@ -160,6 +160,73 @@ export function collapseDashboardRowsBySeason(
 export type UpsertSeasonTotalsOutcome = 'inserted' | 'updated' | 'skipped';
 
 /**
+ * The per-team split of each season the player spent on more than one team.
+ *
+ * The ByYear dashboard's non-`TOT` rows carry the same totals shape for a single
+ * team, so they are stored as-is rather than derived by subtraction — the feed's
+ * own splits are the published numbers, and they include games a box-score crawl
+ * may have missed. A season spent on one team is left out entirely: the combined
+ * row in `player_season_stats` already describes it, and nothing would open up.
+ */
+export function splitDashboardRowsBySeason(
+  rows: PlayerDashboardRow[],
+): { season: string; teams: { teamAbbr: string; totals: SeasonTotals }[] }[] {
+  const bySeason = new Map<string, Map<string, SeasonTotals>>();
+  for (const row of rows) {
+    if (!row.GROUP_VALUE) continue;
+    const teamAbbr = row.TEAM_ABBREVIATION;
+    // 'TOT' is the combined row, which the collapse above already stores.
+    if (!teamAbbr || teamAbbr === 'TOT') continue;
+    const totals = toSeasonTotals(row);
+    if (!totals) continue;
+    const byTeam = bySeason.get(row.GROUP_VALUE) ?? new Map<string, SeasonTotals>();
+    byTeam.set(teamAbbr, totals);
+    bySeason.set(row.GROUP_VALUE, byTeam);
+  }
+  return Array.from(bySeason, ([season, byTeam]) => ({
+    season,
+    teams: Array.from(byTeam, ([teamAbbr, totals]) => ({ teamAbbr, totals })),
+  })).filter((entry) => entry.teams.length > 1);
+}
+
+/**
+ * Write one player_season_team_stats row.
+ *
+ * Unlike the combined row, a split is always written: splits only exist for a
+ * season the player moved during, so there are a handful per career, and
+ * overwriting unconditionally makes the table self-healing. The combined row's
+ * games-played guard would instead freeze a stale split for a finished season,
+ * because a corrected split usually arrives with the same games played.
+ */
+export async function upsertSeasonTeamTotals(
+  db: DatabaseService['db'],
+  params: { playerId: string; season: string; statsTimeframe: string; teamAbbr: string },
+  totals: SeasonTotals,
+): Promise<UpsertSeasonTotalsOutcome> {
+  const key = and(
+    eq(playerSeasonTeamStats.playerId, params.playerId),
+    eq(playerSeasonTeamStats.season, params.season),
+    eq(playerSeasonTeamStats.statsTimeframe, params.statsTimeframe),
+    eq(playerSeasonTeamStats.teamAbbr, params.teamAbbr),
+  );
+  const [existing] = await db
+    .select({ id: playerSeasonTeamStats.id })
+    .from(playerSeasonTeamStats)
+    .where(key);
+
+  if (!existing) {
+    await db.insert(playerSeasonTeamStats).values({ ...params, ...totals });
+    return 'inserted';
+  }
+
+  await db
+    .update(playerSeasonTeamStats)
+    .set({ ...totals, updatedAt: new Date() })
+    .where(key);
+  return 'updated';
+}
+
+/**
  * Write one player_season_stats row from a totals snapshot. Missing keys in
  * `totals` (e.g. wins/losses when the source is the leagueleaders API) are
  * left untouched on update.
@@ -255,6 +322,11 @@ export class PlayerSeasonProcessor implements OnModuleInit {
         'ByYear-regular',
       );
       await this.syncDashboardByYear(player.id, playerExternalId, 'Playoffs', 'ByYear-playoffs');
+      // 'Pre Season' is the feed's own spelling for this season type — the
+      // endpoint accepts Regular Season | Pre Season | Playoffs, and not
+      // "Preseason". It returns one row per season like the other two, so
+      // preseason flows through the same collapse and split as the rest.
+      await this.syncDashboardByYear(player.id, playerExternalId, 'Pre Season', 'ByYear-preseason');
       const spanSeconds = ((Date.now() - startedAt) / 1000).toFixed(2);
       this.logger.log(`crawlPlayerCareer done player=${playerExternalId} span=${spanSeconds}s`);
     } catch (error) {
@@ -314,6 +386,17 @@ export class PlayerSeasonProcessor implements OnModuleInit {
       await upsertSeasonTotals(this.database.db, { playerId, season, statsTimeframe }, totals, {
         alwaysRefresh: season === currentSeason,
       });
+    }
+    // Seasons the player spent on more than one team also keep their per-team
+    // splits, which is what lets a career row open up.
+    for (const { season, teams } of splitDashboardRowsBySeason(rows)) {
+      for (const team of teams) {
+        await upsertSeasonTeamTotals(
+          this.database.db,
+          { playerId, season, statsTimeframe, teamAbbr: team.teamAbbr },
+          team.totals,
+        );
+      }
     }
   }
 

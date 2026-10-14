@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
+exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
 const better_auth_schema_js_1 = require("./better-auth.schema.js");
 var better_auth_schema_js_2 = require("./better-auth.schema.js");
@@ -104,6 +104,45 @@ exports.playerSeasonStats = (0, pg_core_1.pgTable)('player_season_stats', {
     (0, pg_core_1.unique)('player_season_stats_playerId_season_statsTimeframe_key').on(table.playerId, table.season, table.statsTimeframe),
     (0, pg_core_1.index)('player_season_stats_playerId_idx').on(table.playerId),
 ]);
+/**
+ * The per-team split of a season for a player who was on more than one team.
+ *
+ * `player_season_stats` keeps one combined row per player/season, which is what
+ * every leaderboard query reads. NBA's ByYear dashboard also reports one row per
+ * team for a player who moved mid-season; those splits live here so a career row
+ * can be opened up. A season the player spent on a single team has no rows here.
+ */
+exports.playerSeasonTeamStats = (0, pg_core_1.pgTable)('player_season_team_stats', {
+    id: id(),
+    playerId: (0, pg_core_1.text)('playerId')
+        .notNull()
+        .references(() => exports.players.id),
+    season: (0, pg_core_1.text)('season').notNull(),
+    statsTimeframe: (0, pg_core_1.text)('statsTimeframe').notNull(),
+    /** The feed's own abbreviation for this split (BKN, not the teams table's). */
+    teamAbbr: (0, pg_core_1.text)('teamAbbr').notNull(),
+    gp: (0, pg_core_1.integer)('gp'),
+    wins: (0, pg_core_1.integer)('wins'),
+    losses: (0, pg_core_1.integer)('losses'),
+    fgPct: (0, pg_core_1.doublePrecision)('fgPct'),
+    fg3Pct: (0, pg_core_1.doublePrecision)('fg3Pct'),
+    ftPct: (0, pg_core_1.doublePrecision)('ftPct'),
+    ptsTotal: (0, pg_core_1.doublePrecision)('ptsTotal'),
+    rebTotal: (0, pg_core_1.doublePrecision)('rebTotal'),
+    astTotal: (0, pg_core_1.doublePrecision)('astTotal'),
+    ptsPerGame: (0, pg_core_1.doublePrecision)('ptsPerGame'),
+    rebPerGame: (0, pg_core_1.doublePrecision)('rebPerGame'),
+    astPerGame: (0, pg_core_1.doublePrecision)('astPerGame'),
+    stlTotal: (0, pg_core_1.doublePrecision)('stlTotal'),
+    blkTotal: (0, pg_core_1.doublePrecision)('blkTotal'),
+    stlPerGame: (0, pg_core_1.doublePrecision)('stlPerGame'),
+    blkPerGame: (0, pg_core_1.doublePrecision)('blkPerGame'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('player_season_team_stats_playerId_season_timeframe_team_key').on(table.playerId, table.season, table.statsTimeframe, table.teamAbbr),
+    (0, pg_core_1.index)('player_season_team_stats_playerId_idx').on(table.playerId),
+]);
 exports.scheduleDays = (0, pg_core_1.pgTable)('schedule_days', {
     id: id(),
     gameDate: (0, pg_core_1.date)('gameDate', { mode: 'string' }).notNull(),
@@ -178,6 +217,70 @@ exports.scheduleGames = (0, pg_core_1.pgTable)('schedule_games', {
     (0, pg_core_1.index)('schedule_games_gameDate_idx').on(table.gameDate),
     (0, pg_core_1.index)('schedule_games_scheduleDayId_idx').on(table.scheduleDayId),
 ]);
+/**
+ * Per-zone shooting tallies for one player in one game.
+ *
+ * Stored per game rather than per season because the sync runs per game: a game
+ * going final is what triggers it, so the game is the natural unit and the
+ * primary key makes the write idempotent. A season's totals are a `sum` over
+ * these rows, which keeps one source of truth instead of a rollup that can drift
+ * from the games it was built from.
+ *
+ * The play-by-play that produces these is fetched and thrown away: a whole
+ * league season is ~520 MB of JSON to download and a few MB of tallies to keep,
+ * so there is nothing to gain by persisting every shot.
+ *
+ * `zoneId` is one of the ids in `@iknoball/shot-zones`. Storing the id rather
+ * than an index means a zone can be renamed or a chart restyled without a
+ * migration, and every game can be re-synced from the same play-by-play if a
+ * boundary moves — which is why the raw shots are not kept.
+ */
+exports.playerGameShotZones = (0, pg_core_1.pgTable)('player_game_shot_zones', {
+    id: id(),
+    scheduleGameId: (0, pg_core_1.text)('scheduleGameId')
+        .notNull()
+        .references(() => exports.scheduleGames.id),
+    playerId: (0, pg_core_1.text)('playerId')
+        .notNull()
+        .references(() => exports.players.id),
+    /** Denormalised from the game's schedule day so a season read needs no join. */
+    season: (0, pg_core_1.text)('season').notNull(),
+    /** Matches the season types the other player tables use. */
+    statsTimeframe: (0, pg_core_1.text)('statsTimeframe').notNull(),
+    zoneId: (0, pg_core_1.text)('zoneId').notNull(),
+    fga: (0, pg_core_1.integer)('fga').notNull(),
+    fgm: (0, pg_core_1.integer)('fgm').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('player_game_shot_zones_game_player_zone_key').on(table.scheduleGameId, table.playerId, table.zoneId),
+    (0, pg_core_1.index)('player_game_shot_zones_player_season_idx').on(table.playerId, table.season, table.statsTimeframe),
+]);
+/**
+ * One row per game whose play-by-play has been classified.
+ *
+ * This is what makes the sync safe to re-run: a game with a row here is skipped,
+ * so a cron tick overlapping a manual backfill, or a retry after a crash, cannot
+ * double-count a game. It is also how the sync finds its work — final games with
+ * no row are the ones still to do — which means a game that finished while the
+ * worker was down is picked up on the next tick rather than lost.
+ *
+ * The counts are recorded so a game that synced to something implausible is
+ * visible without re-fetching it.
+ */
+exports.shotZoneGameSyncs = (0, pg_core_1.pgTable)('shot_zone_game_syncs', {
+    id: id(),
+    scheduleGameId: (0, pg_core_1.text)('scheduleGameId')
+        .notNull()
+        .unique()
+        .references(() => exports.scheduleGames.id),
+    /** Field-goal attempts the feed carried for this game. */
+    attemptCount: (0, pg_core_1.integer)('attemptCount').notNull(),
+    /** Players those attempts were attributed to. */
+    playerCount: (0, pg_core_1.integer)('playerCount').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [(0, pg_core_1.index)('shot_zone_game_syncs_scheduleGameId_idx').on(table.scheduleGameId)]);
 exports.schedulePointsLeaders = (0, pg_core_1.pgTable)('schedule_points_leaders', {
     id: id(),
     scheduleGameId: (0, pg_core_1.text)('scheduleGameId')

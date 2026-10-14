@@ -13,6 +13,7 @@ import { PredictionsService } from './predictions.service';
 import { OddsService } from './odds.service';
 import { LeadersController } from './leaders.controller';
 import { SearchController } from './search.controller';
+import { PlayersController } from './players.controller';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { emailConfig } from './infrastructure/email/email.config';
@@ -55,6 +56,7 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
     PredictionsController,
     LeadersController,
     SearchController,
+    PlayersController,
   ],
   providers: [
     AppService,
