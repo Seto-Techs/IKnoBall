@@ -7,6 +7,7 @@ import { CareerPanel } from '../components/playerDetail/CareerTable';
 import { GameLogPanel } from '../components/playerDetail/GameLog';
 import { PlayerHero } from '../components/playerDetail/PlayerHero';
 import { NextGamePanel, TeamInfoPanel } from '../components/playerDetail/PlayerRail';
+import { ShotZonePanel } from '../components/playerDetail/ShotZonePanel';
 import { usePlayer } from '../lib/api';
 import { useSession, useSignOut } from '../lib/use-auth';
 
@@ -72,10 +73,12 @@ function PlayerDetailPage() {
             <PlayerHero player={player} onBack={goHome} />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-              {/* Left: the player's own numbers. The Career table carries the
-                  season-by-season stats, so there is no separate summary card. */}
+              {/* Left: the player's own numbers. The Career table leads with the
+                  season-by-season stats, the shot-zone chart then shows where
+                  those numbers come from, and the game log is the detail. */}
               <div className="flex min-w-0 flex-col gap-6">
                 <CareerPanel seasons={player.seasons} />
+                <ShotZonePanel playerId={player.id} />
                 <GameLogPanel playerId={player.id} />
               </div>
 

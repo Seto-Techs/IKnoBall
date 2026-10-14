@@ -603,6 +603,70 @@ export function usePlayerGames(playerId?: string, page = 0) {
   });
 }
 
+/** One zone's shooting, as the shot-zone endpoint reports it. */
+export interface PlayerShotZoneEntry {
+  /** A zone id from the shared taxonomy, e.g. `topOfKeyThree`. */
+  zoneId: string;
+  fga: number;
+  fgm: number;
+  /** Null when the player has not attempted a shot from the zone. */
+  fgPct: number | null;
+}
+
+export interface PlayerShotZones {
+  season: string;
+  seasonType: PlayerSeasonType;
+  /**
+   * Every season and season type this player has attempts in, newest season
+   * first. This is what the picker lists, so a season missing from it has
+   * nothing on file.
+   */
+  available: {
+    season: string;
+    seasonType: PlayerSeasonType;
+    fga: number;
+    /** Games played, from the same season row the career table reads. */
+    gp: number | null;
+  }[];
+  totalFga: number;
+  totalFgm: number;
+  fgPct: number | null;
+  /** Every zone in taxonomy order, including any the player has not shot from. */
+  zones: PlayerShotZoneEntry[];
+}
+
+/**
+ * A player's shooting by shot zone, for one season and season type.
+ *
+ * Both are optional: with neither, the API answers for the season the player's
+ * page leads with, which is what the first render wants. Null rather than an
+ * empty set when the sync has not covered the player at all — a chart of nothing
+ * and a player who has taken no shots are different facts, and only one of them
+ * is worth drawing. A season and type the player has no attempts in still
+ * returns a payload, so the caller keeps the options it was choosing between.
+ */
+export function usePlayerShotZones(
+  playerId?: string,
+  seasonType?: PlayerSeasonType,
+  season?: string,
+) {
+  const params = new URLSearchParams();
+  if (seasonType) params.set('seasonType', seasonType);
+  if (season) params.set('season', season);
+  const qs = params.size ? `?${params.toString()}` : '';
+  return useQuery({
+    queryKey: ['player-shot-zones', playerId, season ?? 'lead', seasonType ?? 'lead'],
+    queryFn: async (): Promise<PlayerShotZones | null> => {
+      const res = await fetchJson<{ data: PlayerShotZones | null }>(
+        `/players/${encodeURIComponent(playerId ?? '')}/shot-zones${qs}`,
+      );
+      return res.data;
+    },
+    enabled: !!playerId,
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
 export function useLeagueLeaders(season?: string) {
   return useQuery({
     queryKey: ['league-leaders', season ?? 'current'],
