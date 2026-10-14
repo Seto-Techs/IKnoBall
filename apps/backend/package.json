@@ -27,6 +27,7 @@
     "@iknoball/database": "workspace:*",
     "@iknoball/predictions": "workspace:*",
     "@iknoball/schema": "workspace:*",
+    "@iknoball/shot-zones": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.0.1",

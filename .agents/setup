@@ -26,7 +26,8 @@ step "Building shared workspace packages"
 bunx turbo run build \
   --filter='@iknoball/database' \
   --filter='@iknoball/schema' \
-  --filter='@iknoball/predictions'
+  --filter='@iknoball/predictions' \
+  --filter='@iknoball/shot-zones'
 
 step "Preparing local .env"
 if [ -f .env ]; then
