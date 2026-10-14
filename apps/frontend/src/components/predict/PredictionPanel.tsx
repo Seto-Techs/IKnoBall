@@ -9,6 +9,7 @@ import {
   resolveGameTeams,
 } from '../../lib/game-utils';
 import { hexLuminance } from '../dashboard/shared';
+import { TeamMark } from '../TeamMark';
 import { formatPoints, picksOf, usePredictions, type SavedPrediction } from './predictions';
 
 function ConfettiMark() {
@@ -194,16 +195,11 @@ export function PredictionPanel({
                           <Check className="h-3.5 w-3.5" aria-hidden="true" />
                         </span>
                       )}
-                      {team?.logoUrl ? (
-                        <img
-                          src={team.logoUrl}
-                          alt={isAway ? awayName : homeName}
-                          className="h-12 w-12 object-contain drop-shadow"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <span className={`font-heading text-3xl font-black ${tx}`}>{abbr}</span>
-                      )}
+                      <TeamMark
+                        logoUrl={team?.logoUrl}
+                        alt={isAway ? awayName : homeName}
+                        className="h-12 w-12 object-contain drop-shadow"
+                      />
                       <span className={`text-xs font-bold uppercase tracking-wide ${tx}`}>
                         {abbr}
                       </span>

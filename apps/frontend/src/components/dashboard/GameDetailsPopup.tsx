@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from '@tanstack/react-router';
 import { Clock, MapPin, X } from 'lucide-react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
+import { TeamMark } from '../TeamMark';
 import { formatGameDate } from './shared';
 function opponentOf(game: Game, team: TeamWithLeaders, teams?: TeamWithLeaders[] | null) {
   const isHome = game.homeTeam === team.fullName || game.homeTeam === team.teamName;
@@ -292,29 +293,12 @@ export function GameDetailsPopup({
           <div className="relative z-10 flex min-h-[224px] flex-1 items-stretch">
             {/* AWAY — left */}
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 pb-6 pt-12 sm:px-6">
-              {(isHome ? opp?.logoUrl : team.logoUrl) ? (
-                <img
-                  src={isHome ? (opp?.logoUrl ?? '') : team.logoUrl}
-                  alt={isHome ? (opp?.fullName ?? oppName) : team.fullName}
-                  className="h-[84px] w-[84px] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.38)] sm:h-[102px] sm:w-[102px]"
-                  loading="lazy"
-                  style={{ willChange: 'transform' } as React.CSSProperties}
-                />
-              ) : (
-                <span
-                  className="font-heading text-3xl font-black tracking-tighter text-white sm:text-4xl"
-                  style={
-                    {
-                      WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                      textShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                    } as React.CSSProperties
-                  }
-                >
-                  {isHome
-                    ? (opp?.abbreviation ?? oppName.slice(0, 3).toUpperCase())
-                    : team.abbreviation}
-                </span>
-              )}
+              <TeamMark
+                logoUrl={isHome ? opp?.logoUrl : team.logoUrl}
+                alt={isHome ? (opp?.fullName ?? oppName) : team.fullName}
+                className="h-[84px] w-[84px] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.38)] sm:h-[102px] sm:w-[102px]"
+                style={{ willChange: 'transform' } as React.CSSProperties}
+              />
               <span
                 className="max-w-[14ch] text-center font-heading text-[11px] font-bold uppercase tracking-wide text-white/95 sm:text-xs"
                 style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' } as React.CSSProperties}
@@ -334,29 +318,12 @@ export function GameDetailsPopup({
             </div>
             {/* HOME — right */}
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 pb-6 pt-12 sm:px-6">
-              {(isHome ? team.logoUrl : opp?.logoUrl) ? (
-                <img
-                  src={isHome ? team.logoUrl : (opp?.logoUrl ?? '')}
-                  alt={isHome ? team.fullName : (opp?.fullName ?? oppName)}
-                  className="h-[84px] w-[84px] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.38)] sm:h-[102px] sm:w-[102px]"
-                  loading="lazy"
-                  style={{ willChange: 'transform' } as React.CSSProperties}
-                />
-              ) : (
-                <span
-                  className="font-heading text-3xl font-black tracking-tighter text-white sm:text-4xl"
-                  style={
-                    {
-                      WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                      textShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                    } as React.CSSProperties
-                  }
-                >
-                  {isHome
-                    ? team.abbreviation
-                    : (opp?.abbreviation ?? oppName.slice(0, 3).toUpperCase())}
-                </span>
-              )}
+              <TeamMark
+                logoUrl={isHome ? team.logoUrl : opp?.logoUrl}
+                alt={isHome ? team.fullName : (opp?.fullName ?? oppName)}
+                className="h-[84px] w-[84px] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.38)] sm:h-[102px] sm:w-[102px]"
+                style={{ willChange: 'transform' } as React.CSSProperties}
+              />
               <span
                 className="max-w-[14ch] text-center font-heading text-[11px] font-bold uppercase tracking-wide text-white/95 sm:text-xs"
                 style={{ textShadow: '0 1px 6px rgba(0,0,0,0.6)' } as React.CSSProperties}

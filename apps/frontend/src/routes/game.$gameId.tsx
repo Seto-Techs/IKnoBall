@@ -9,7 +9,12 @@ import { MatchupHero } from '../components/gameDetail/MatchupHero';
 import { TeamCard } from '../components/gameDetail/TeamCard';
 import { PredictionPanel } from '../components/predict/PredictionPanel';
 import { useGameBoxscore, useTeamRecord, useTeams, useTopPlayers } from '../lib/api';
-import { buildTeamLookup, getGameStatus, resolveGameTeams } from '../lib/game-utils';
+import {
+  buildTeamLookup,
+  getGameStatus,
+  resolveGameTeams,
+  scheduleTeamIdentity,
+} from '../lib/game-utils';
 import { useGameById } from '../lib/use-game';
 import { useSession, useSignOut } from '../lib/use-auth';
 
@@ -34,6 +39,12 @@ function GameDetailPage() {
     [game, lookup],
   );
 
+  // Sides we track come from `teams`; preseason tours and exhibition games are
+  // played against clubs that are not in it, so the schedule's own name for the
+  // side keeps the team summaries two-up instead of dropping a column.
+  const awaySide = away ?? (game ? scheduleTeamIdentity(game, 'away') : null);
+  const homeSide = home ?? (game ? scheduleTeamIdentity(game, 'home') : null);
+
   const awayRecord = useTeamRecord(away?.abbreviation);
   const homeRecord = useTeamRecord(home?.abbreviation);
 
@@ -52,7 +63,7 @@ function GameDetailPage() {
   if (sessionLoading || sessionFetching) return null;
   if (!user) return null;
 
-  const accentColor = home?.primaryColor ?? '#1C4188';
+  const accentColor = homeSide?.primaryColor ?? '#1C4188';
 
   const handleSignOut = () => {
     signOut.mutate(undefined, { onSuccess: () => navigate({ to: '/' }) });
@@ -107,25 +118,27 @@ function GameDetailPage() {
                 ) : null}
 
                 {showTeamPreview && (
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {away ? (
+                  // items-start keeps each summary its own height: a side we do
+                  // not track carries no record, coach or players, and stretching
+                  // it to the other card's height leaves its accent footer
+                  // floating mid-card.
+                  <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+                    {awaySide ? (
                       <TeamCard
-                        team={away}
+                        team={awaySide}
                         record={awayRecord.data}
                         players={awayPlayers}
                         loading={awayPlayersLoading || awayRecord.isLoading}
                         side="away"
-                        accentColor={away.primaryColor}
                       />
                     ) : null}
-                    {home ? (
+                    {homeSide ? (
                       <TeamCard
-                        team={home}
+                        team={homeSide}
                         record={homeRecord.data}
                         players={homePlayers}
                         loading={homePlayersLoading || homeRecord.isLoading}
                         side="home"
-                        accentColor={home.primaryColor}
                       />
                     ) : null}
                   </div>
@@ -141,13 +154,13 @@ function GameDetailPage() {
                       Venue
                     </p>
                     <p className="text-sm font-semibold text-brand-ink">
-                      {game.arenaName ?? `${away?.arena ?? 'TBD'} `}
+                      {game.arenaName ?? `${awaySide?.arena ?? 'TBD'} `}
                       {game.arenaCity ? `• ${game.arenaCity}` : ''}
                       {game.arenaState ? `, ${game.arenaState}` : ''}
                     </p>
-                    {away && home && (
+                    {awaySide && homeSide && (
                       <p className="mt-1 text-xs text-stone-500">
-                        {away.fullName} vs {home.fullName}
+                        {awaySide.fullName} vs {homeSide.fullName}
                       </p>
                     )}
                   </div>

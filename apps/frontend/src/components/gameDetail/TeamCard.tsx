@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { PlayerStat, TeamRecord, TeamWithLeaders } from '../../lib/api';
+import type { PlayerStat, TeamRecord } from '../../lib/api';
+import type { TeamIdentity } from '../../lib/game-utils';
 import { hexLuminance } from '../dashboard/shared';
+import { TeamMark } from '../TeamMark';
+
+/** Identity colour for a side whose own colour we do not know. */
+const UNKNOWN_COLOR = '#2B2B2B';
 
 function FormDots({ record }: { record?: TeamRecord | null }) {
   if (!record || record.lastGames.length === 0) {
@@ -82,37 +87,28 @@ export function TeamCard({
   players,
   loading,
   side,
-  accentColor,
 }: {
-  team: TeamWithLeaders;
+  team: TeamIdentity;
   record?: TeamRecord | null;
   players?: PlayerStat[];
   loading?: boolean;
   side: 'away' | 'home';
-  accentColor: string;
 }) {
   const [open, setOpen] = useState(true);
-  const isBright = hexLuminance(team.primaryColor) > 0.45;
+  const color = team.primaryColor ?? UNKNOWN_COLOR;
+  const isBright = hexLuminance(color) > 0.45;
   const tx = isBright ? 'text-brand-ink' : 'text-white';
   const txMuted = isBright ? 'text-brand-ink/75' : 'text-white/75';
 
   return (
     <div className="overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm">
       {/* Identity header */}
-      <div
-        className="flex items-center gap-3 px-5 py-4"
-        style={{ backgroundColor: team.primaryColor }}
-      >
-        {team.logoUrl ? (
-          <img
-            src={team.logoUrl}
-            alt={team.fullName}
-            className="h-12 w-12 shrink-0 object-contain drop-shadow"
-            loading="lazy"
-          />
-        ) : (
-          <span className={`font-heading text-2xl font-black ${tx}`}>{team.abbreviation}</span>
-        )}
+      <div className="flex items-center gap-3 px-5 py-4" style={{ backgroundColor: color }}>
+        <TeamMark
+          logoUrl={team.logoUrl}
+          alt={team.fullName}
+          className="h-12 w-12 shrink-0 object-contain drop-shadow"
+        />
         <div className="min-w-0">
           <p className={`text-xs font-bold uppercase tracking-widest ${txMuted}`}>
             {side === 'away' ? 'Away' : 'Home'}
@@ -121,7 +117,9 @@ export function TeamCard({
             {team.teamName}
           </h3>
           <p className={`text-xs font-semibold ${txMuted}`}>
-            {team.conference === 'East' ? 'Eastern' : 'Western'} · {team.division}
+            {team.conference && team.division
+              ? `${team.conference === 'East' ? 'Eastern' : 'Western'} · ${team.division}`
+              : 'Non-NBA opponent'}
           </p>
         </div>
       </div>
@@ -141,7 +139,7 @@ export function TeamCard({
           </div>
         </div>
         <div className="text-right text-xs text-stone-500">
-          <p className="font-semibold text-brand-ink">{team.headCoach}</p>
+          <p className="font-semibold text-brand-ink">{team.headCoach ?? '—'}</p>
           <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Head Coach</p>
         </div>
       </div>
@@ -150,7 +148,7 @@ export function TeamCard({
       <div className="grid grid-cols-2 gap-px border-b border-brand-line bg-brand-line">
         <div className="bg-white px-5 py-3">
           <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Arena</p>
-          <p className="truncate text-sm font-semibold text-brand-ink">{team.arena}</p>
+          <p className="truncate text-sm font-semibold text-brand-ink">{team.arena ?? '—'}</p>
         </div>
         <div className="bg-white px-5 py-3">
           <p className="text-xs font-bold uppercase tracking-widest text-stone-500">Logo / Code</p>
@@ -199,7 +197,7 @@ export function TeamCard({
       </div>
 
       {/* Accent footer */}
-      <div className="h-1.5 w-full" style={{ backgroundColor: accentColor }} />
+      <div className="h-1.5 w-full" style={{ backgroundColor: color }} />
     </div>
   );
 }

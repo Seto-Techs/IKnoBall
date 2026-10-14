@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { TeamRecord, TeamWithLeaders } from '../../lib/api';
+import { TeamMark } from '../TeamMark';
 import { formatGameDate, hexLuminance } from './shared';
 
 export function HeroBanner({
@@ -111,14 +112,12 @@ export function HeroBanner({
                     : 'border-white/20 hover:border-white/45 hover:bg-white/10'
                 }`}
               >
-                {opponent?.logoUrl && (
-                  <img
-                    src={opponent.logoUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="h-14 w-14 shrink-0 object-contain"
-                  />
-                )}
+                <TeamMark
+                  logoUrl={opponent?.logoUrl}
+                  alt=""
+                  plate
+                  className="h-14 w-14 shrink-0 object-contain"
+                />
                 <div className="min-w-0">
                   <p className={`truncate font-heading text-xl font-semibold uppercase ${tx}`}>
                     {opponent?.abbreviation ?? opponentName ?? '—'}

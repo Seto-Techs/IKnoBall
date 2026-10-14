@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import type { Game, TeamWithLeaders } from '../../lib/api';
 import { canonicalAbbr } from '../../lib/game-utils';
 import { buildPages } from '../../lib/pagination';
+import { TeamMark } from '../TeamMark';
 
 function abbrFromFallback(tricode: string | null | undefined, fallback: string): string {
   if (tricode) return canonicalAbbr(tricode);
@@ -245,26 +246,11 @@ export function PreviousGameDayCard({
           {/* split content — vertical: LOGO / name / away-home (same as hero banner) */}
           <div className="relative z-10 flex flex-1 items-stretch">
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-3 pb-4 pt-8">
-              {awayLogo ? (
-                <img
-                  src={awayLogo}
-                  alt={awayTeam?.fullName ?? awayAbbr}
-                  className="h-[56px] w-[56px] object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.35)]"
-                  loading="lazy"
-                />
-              ) : (
-                <span
-                  className="font-heading text-2xl font-black tracking-tighter text-white"
-                  style={
-                    {
-                      WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                      textShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                    } as React.CSSProperties
-                  }
-                >
-                  {awayAbbr}
-                </span>
-              )}
+              <TeamMark
+                logoUrl={awayLogo}
+                alt={awayTeam?.fullName ?? awayAbbr}
+                className="h-[56px] w-[56px] object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.35)]"
+              />
               <span
                 className="max-w-[12ch] text-center font-heading text-sm font-black leading-tight tracking-wide text-white"
                 style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' } as React.CSSProperties}
@@ -279,26 +265,11 @@ export function PreviousGameDayCard({
               </span>
             </div>
             <div className="flex flex-1 flex-col items-center justify-center gap-2 px-3 pb-4 pt-8">
-              {homeLogo ? (
-                <img
-                  src={homeLogo}
-                  alt={homeTeam?.fullName ?? homeAbbr}
-                  className="h-[56px] w-[56px] object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.35)]"
-                  loading="lazy"
-                />
-              ) : (
-                <span
-                  className="font-heading text-2xl font-black tracking-tighter text-white"
-                  style={
-                    {
-                      WebkitTextStroke: '1px rgba(0,0,0,0.45)',
-                      textShadow: '0 2px 10px rgba(0,0,0,0.45)',
-                    } as React.CSSProperties
-                  }
-                >
-                  {homeAbbr}
-                </span>
-              )}
+              <TeamMark
+                logoUrl={homeLogo}
+                alt={homeTeam?.fullName ?? homeAbbr}
+                className="h-[56px] w-[56px] object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.35)]"
+              />
               <span
                 className="max-w-[12ch] text-center font-heading text-sm font-black leading-tight tracking-wide text-white"
                 style={{ textShadow: '0 2px 8px rgba(0,0,0,0.6)' } as React.CSSProperties}
