@@ -1,5 +1,5 @@
 import { scheduleDays, scheduleGames, schedulePointsLeaders } from '@iknoball/database';
-import { and, eq, ne, notInArray } from 'drizzle-orm';
+import { and, eq, ne, notInArray, sql } from 'drizzle-orm';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { createHash } from 'crypto';
@@ -92,8 +92,55 @@ export class ScheduleSyncService {
     );
   }
 
-  async syncScheduleAll() {
-    const season = resolveCurrentSeason();
+  /**
+   * Seeds a season's schedule when the local copy is short of what the feed lists.
+   *
+   * A season that was only half-seeded still has rows, so "any rows at all" is
+   * not enough to tell whether it is complete — and a half-seeded season syncs
+   * quietly, covering the games it knows about and reporting success. Comparing
+   * against the feed's own game count is the only way to catch that.
+   *
+   * Returns what it found either way, so a caller can report coverage rather than
+   * assume it.
+   */
+  async ensureScheduleForSeason(
+    season: string,
+  ): Promise<{ expected: number; onFile: number; seeded: boolean }> {
+    const leagueId = process.env.NBA_LEAGUE_ID || '00';
+    const response = await this.nbaScheduleClient.fetchLeagueSchedule(season, leagueId);
+    const expected = response.leagueSchedule.gameDates.reduce(
+      (total, day) => total + day.games.length,
+      0,
+    );
+
+    const [counted] = await this.database.db
+      .select({ onFile: sql<number>`count(*)::int` })
+      .from(scheduleGames)
+      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
+      .where(eq(scheduleDays.seasonYear, season));
+    const onFile = Number(counted?.onFile ?? 0);
+
+    if (onFile >= expected) {
+      return { expected, onFile, seeded: false };
+    }
+
+    this.logger.log(
+      `schedule short for season=${season} onFile=${onFile} expected=${expected}; seeding`,
+    );
+    await this.syncScheduleAll(season);
+    return { expected, onFile, seeded: true };
+  }
+
+  /**
+   * Seeds every day of a season's schedule.
+   *
+   * `season` defaults to the current one; a historical season can be passed to
+   * seed the years before this feature existed, which is what a shot-zone
+   * backfill needs — the sync walks games from this table, so a season with no
+   * rows here has nothing to walk.
+   */
+  async syncScheduleAll(seasonOverride?: string) {
+    const season = seasonOverride?.trim() || resolveCurrentSeason();
     const leagueId = process.env.NBA_LEAGUE_ID || '00';
 
     const startedAt = Date.now();
