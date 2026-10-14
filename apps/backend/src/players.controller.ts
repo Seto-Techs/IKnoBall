@@ -7,12 +7,14 @@ import {
   players,
   playerSeasonStats,
   playerSeasonTeamStats,
+  playerGameShotZones,
   teams,
   scheduleDays,
   scheduleGames,
   scheduleBoxscorePlayers,
 } from '@iknoball/database';
-import { and, asc, count, desc, eq, gte, notInArray, or, sql } from 'drizzle-orm';
+import { SHOT_ZONE_IDS } from '@iknoball/shot-zones';
+import { and, asc, count, desc, eq, gte, notInArray, or, sql, sum } from 'drizzle-orm';
 
 /** Games per page of the game log. */
 const GAME_LOG_PAGE_SIZE = 10;
@@ -29,6 +31,16 @@ const MINUTES_PLAYED = sql`${scheduleBoxscorePlayers.minutes} is not null and ${
 const EXCLUDED_GAME_LABELS = ['All-Star', 'All-Star Championship'];
 /** The season the page leads with, matching the other player endpoints. */
 const CURRENT_SEASON = process.env.NBA_CURRENT_SEASON ?? '2025-26';
+/**
+ * The season types the shot-zone endpoint accepts, mapped to the timeframe the
+ * refresh writes. Anything unrecognised falls back to the regular season, so a
+ * typo in a query string cannot silently return the playoffs.
+ */
+const SHOT_ZONE_TIMEFRAMES: Readonly<Record<string, string>> = {
+  regular: 'ByYear-regular',
+  playoffs: 'ByYear-playoffs',
+  preseason: 'ByYear-preseason',
+};
 
 /**
  * The feed reports minutes as an ISO-8601 duration ("PT34M21.00S"), so a game
@@ -52,6 +64,22 @@ function seasonType(timeframe: string | null): string {
 }
 
 const round1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
+
+/**
+ * The season a player's page leads with: the current season when they have a row
+ * for it, otherwise the most recent one they do. Used by the detail endpoint, so
+ * the hero's averages and the career table agree on which year is current.
+ */
+function leadSeason(seasonsNewestFirst: readonly string[], current: string): string {
+  return seasonsNewestFirst.includes(current) ? current : (seasonsNewestFirst[0] ?? current);
+}
+
+/**
+ * The order season types are listed in within a season, most significant first.
+ * Not alphabetical: a reader looking for a season's numbers wants the regular
+ * season, not the preseason.
+ */
+const SEASON_TYPE_ORDER: readonly string[] = ['regular', 'playoffs', 'preseason'];
 
 /**
  * Join a box-score row to its game, on the side the player turned out for. Both
@@ -268,6 +296,71 @@ class PlayerNextGameResponse {
   arenaCity!: string | null;
 }
 
+class PlayerShotZoneEntryResponse {
+  @ApiProperty({
+    example: 'topOfKeyThree',
+    description: 'Zone id, from the shared shot-zone taxonomy.',
+  })
+  zoneId!: string;
+
+  @ApiProperty({ example: 135, description: 'Attempts from the zone.' })
+  fga!: number;
+
+  @ApiProperty({ example: 40, description: 'Makes from the zone.' })
+  fgm!: number;
+
+  @ApiProperty({ example: 29.6, nullable: true, description: 'Null with no attempts.' })
+  fgPct!: number | null;
+}
+
+class PlayerShotZoneOptionResponse {
+  @ApiProperty({ example: '2025-26' })
+  season!: string;
+
+  @ApiProperty({ example: 'playoffs', description: 'regular | playoffs | preseason' })
+  seasonType!: string;
+
+  @ApiProperty({ example: 379, description: 'Attempts this player took in that season and type.' })
+  fga!: number;
+
+  @ApiProperty({
+    example: 18,
+    nullable: true,
+    description: 'Games played, from the same season row the career table reads.',
+  })
+  gp!: number | null;
+}
+
+class PlayerShotZonesResponse {
+  @ApiProperty({ example: '2025-26' })
+  season!: string;
+
+  @ApiProperty({ example: 'regular', description: 'regular | playoffs | preseason' })
+  seasonType!: string;
+
+  @ApiProperty({
+    type: [PlayerShotZoneOptionResponse],
+    description:
+      'Every season and season type this player has attempts in, newest season first. What the picker lists.',
+  })
+  available!: PlayerShotZoneOptionResponse[];
+
+  @ApiProperty({ example: 1403 })
+  totalFga!: number;
+
+  @ApiProperty({ example: 678 })
+  totalFgm!: number;
+
+  @ApiProperty({ example: 48.3, nullable: true })
+  fgPct!: number | null;
+
+  @ApiProperty({
+    type: [PlayerShotZoneEntryResponse],
+    description: 'Every zone, in taxonomy order, including any with no attempts.',
+  })
+  zones!: PlayerShotZoneEntryResponse[];
+}
+
 class PlayerDetailResponse {
   @ApiProperty({ example: '73360bcb-a8af-40cb-98ed-e920b48dfe8b' })
   id!: string;
@@ -400,6 +493,179 @@ export class PlayersController {
       eq(scheduleDays.seasonYear, season),
       MINUTES_PLAYED,
     );
+  }
+
+  @Get(':id/shot-zones')
+  @ApiOperation({ summary: "A player's shooting by shot zone, for one season and season type" })
+  @ApiDataResponse(PlayerShotZonesResponse, HttpStatus.OK, 'Shot zones.', 'Shot zones.')
+  async getShotZones(
+    @Param('id') id: string,
+    @Query('seasonType') seasonTypeParam?: string,
+    @Query('season') seasonParam?: string,
+  ): Promise<ApiResponse<PlayerShotZonesResponse>> {
+    const [player] = await this.db.db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.id, id))
+      .limit(1);
+
+    if (!player) {
+      return response<PlayerShotZonesResponse>(true, 'Player not found.', null);
+    }
+
+    // Every season and season type this player has attempts in, which is what the
+    // client's picker lists. It spans seasons, not just the one being shown,
+    // because choosing a year is the point of the picker.
+    const availableRows = await this.db.db
+      .select({
+        season: playerGameShotZones.season,
+        statsTimeframe: playerGameShotZones.statsTimeframe,
+        fga: sum(playerGameShotZones.fga),
+      })
+      .from(playerGameShotZones)
+      .where(eq(playerGameShotZones.playerId, player.id))
+      .groupBy(playerGameShotZones.season, playerGameShotZones.statsTimeframe);
+
+    // Games played comes from the same per-season rows the career table reads, so
+    // the two cannot disagree: counting games out of the shot-zone table would
+    // instead be capped by however much of the schedule has been seeded, and
+    // would miss a game a player appeared in without shooting.
+    const gpRows = await this.db.db
+      .select({
+        season: playerSeasonStats.season,
+        statsTimeframe: playerSeasonStats.statsTimeframe,
+        gp: playerSeasonStats.gp,
+      })
+      .from(playerSeasonStats)
+      .where(eq(playerSeasonStats.playerId, player.id));
+    const gpFor = new Map(gpRows.map((row) => [`${row.season}:${row.statsTimeframe}`, row.gp]));
+
+    const available = availableRows
+      .map((row) => ({
+        season: row.season,
+        seasonType: seasonType(row.statsTimeframe),
+        fga: Number(row.fga ?? 0),
+        gp: gpFor.get(`${row.season}:${row.statsTimeframe}`) ?? null,
+      }))
+      .filter((entry) => entry.fga > 0)
+      .sort(
+        (a, b) =>
+          // Newest season first, and within a season the types in the order a
+          // reader expects rather than alphabetically.
+          b.season.localeCompare(a.season) ||
+          SEASON_TYPE_ORDER.indexOf(a.seasonType) - SEASON_TYPE_ORDER.indexOf(b.seasonType),
+      );
+
+    if (!available.length) {
+      // Nothing at all for this player means the sync has not covered them, which
+      // is not the same as a player who took no shots. Null lets the client say
+      // "not yet" instead of drawing a chart of nothing.
+      return response<PlayerShotZonesResponse>(
+        true,
+        'No shot-zone breakdown for this player yet.',
+        null,
+      );
+    }
+
+    // The season and type to answer for, resolved against what the player
+    // actually has rather than trusted as given, so a partial request lands on
+    // real data instead of an empty chart:
+    //
+    //   both named  - the season if it is on file, otherwise the newest, and the
+    //                 type as asked. A season the player has no data in is a
+    //                 typo, so it falls back; a type with nothing in a season
+    //                 they did play is a real answer, and reads as zeroes.
+    //   season only - that season's leading type.
+    //   type only   - the newest season holding that type, so asking for the
+    //                 regular season is not answered from a year with only a
+    //                 preseason.
+    //   neither     - the player's flagship sample, below.
+    const requestedType = SHOT_ZONE_TIMEFRAMES[seasonTypeParam ?? '']
+      ? seasonType(SHOT_ZONE_TIMEFRAMES[seasonTypeParam!])
+      : undefined;
+
+    // What a reader sees before choosing anything. The current season's regular
+    // season when there is one, otherwise the newest season that has one, and
+    // otherwise whatever there is. Deliberately not simply the newest season:
+    // in October that is a handful of preseason attempts, which draws a mostly
+    // empty chart and reads as a broken page rather than a quiet one.
+    const flagship =
+      available.find(
+        (entry) => entry.season === CURRENT_SEASON && entry.seasonType === 'regular',
+      ) ??
+      // `available` is newest season first, so this is the newest regular season.
+      available.find((entry) => entry.seasonType === 'regular') ??
+      available[0];
+
+    const seasonOnFile = available.some((entry) => entry.season === seasonParam);
+    let chosen: { season: string; seasonType: string };
+    if (seasonParam && requestedType) {
+      chosen = {
+        season: seasonOnFile ? seasonParam : available[0].season,
+        seasonType: requestedType,
+      };
+    } else if (seasonParam) {
+      chosen = available.find((entry) => entry.season === seasonParam) ?? {
+        season: available[0].season,
+        seasonType: available[0].seasonType,
+      };
+    } else if (requestedType) {
+      chosen = available.find((entry) => entry.seasonType === requestedType) ?? {
+        season: available[0].season,
+        seasonType: requestedType,
+      };
+    } else {
+      chosen = flagship;
+    }
+
+    const season = chosen.season;
+    const statsTimeframe = SHOT_ZONE_TIMEFRAMES[chosen.seasonType] ?? SHOT_ZONE_TIMEFRAMES.regular;
+
+    const rows = await this.db.db
+      .select({
+        zoneId: playerGameShotZones.zoneId,
+        fga: sum(playerGameShotZones.fga),
+        fgm: sum(playerGameShotZones.fgm),
+      })
+      .from(playerGameShotZones)
+      .where(
+        and(
+          eq(playerGameShotZones.playerId, player.id),
+          eq(playerGameShotZones.season, season),
+          eq(playerGameShotZones.statsTimeframe, statsTimeframe),
+        ),
+      )
+      .groupBy(playerGameShotZones.zoneId);
+
+    const byZone = new Map(rows.map((row) => [row.zoneId, row]));
+    // Emitted in taxonomy order, with a zeroed entry for any zone missing a row,
+    // so the client always receives the full partition and never has to reason
+    // about which zones are absent. `sum()` comes back from pg as a bigint
+    // string, so each total is coerced on the way out.
+    const zones = SHOT_ZONE_IDS.map((zoneId) => {
+      const row = byZone.get(zoneId);
+      const fga = Number(row?.fga ?? 0);
+      const fgm = Number(row?.fgm ?? 0);
+      return {
+        zoneId,
+        fga,
+        fgm,
+        fgPct: fga > 0 ? round1((fgm / fga) * 100) : null,
+      };
+    });
+
+    const totalFga = zones.reduce((sum, zone) => sum + zone.fga, 0);
+    const totalFgm = zones.reduce((sum, zone) => sum + zone.fgm, 0);
+
+    return response(true, 'Shot zones fetched.', {
+      season,
+      seasonType: chosen.seasonType,
+      available,
+      totalFga,
+      totalFgm,
+      fgPct: totalFga > 0 ? round1((totalFgm / totalFga) * 100) : null,
+      zones,
+    });
   }
 
   @Get(':id/games')
@@ -672,7 +938,14 @@ export class PlayersController {
     // one the player has on file — used when the current season has no row yet.
     const regularSeasons = seasons.filter((s) => s.seasonType === 'regular');
     const currentSeason =
-      regularSeasons.find((s) => s.season === CURRENT_SEASON) ?? regularSeasons[0] ?? null;
+      regularSeasons.find(
+        (s) =>
+          s.season ===
+          leadSeason(
+            regularSeasons.map((r) => r.season),
+            CURRENT_SEASON,
+          ),
+      ) ?? null;
 
     // The player's own tricode comes from the same feed as the schedule's, so
     // this matches directly where the teams table would need the id.

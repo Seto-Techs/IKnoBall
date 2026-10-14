@@ -5,6 +5,7 @@ import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { PlayersController } from './players.controller';
 import { DatabaseService } from './infrastructure/database/database.service';
+import { SHOT_ZONE_IDS } from '@iknoball/shot-zones';
 
 // vitest transpiles with esbuild, which does not emit decorator metadata, so the
 // Nest testing module cannot infer the controller's constructor dependency.
@@ -602,6 +603,253 @@ describe('PlayersController.getGames', () => {
   });
 });
 
+describe('PlayersController.getShotZones', () => {
+  /**
+   * The three queries the endpoint runs, in call order: the player, every season
+   * and type they have attempts in, then the zone rows.
+   */
+  const zoneFixture = (
+    zoneRows: Row[],
+    available: Row[] = [{ season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '100' }],
+    gpRows: Row[] = [{ season: '2025-26', statsTimeframe: 'ByYear-regular', gp: 70 }],
+  ): Row[][] => [[{ id: 'p-1' }], available, gpRows, zoneRows];
+
+  const allZones: Row[] = SHOT_ZONE_IDS.map((zoneId, index) => ({
+    zoneId,
+    // Distinct numbers per zone, so a mis-ordered response cannot pass.
+    fga: 10 + index,
+    fgm: 5,
+  }));
+
+  it('reports every zone in taxonomy order, including one with no rows', async () => {
+    const withoutPaint = allZones.filter((row) => row.zoneId !== 'paint');
+    const controller = makeController(zoneFixture(withoutPaint));
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.is_success).toBe(true);
+    expect(res.data?.zones).toHaveLength(SHOT_ZONE_IDS.length);
+    // Order comes from the taxonomy, not from the rows.
+    expect(res.data?.zones.map((z) => z.zoneId)).toEqual([...SHOT_ZONE_IDS]);
+    // A zone with no row is reported as zeroed, not omitted, so the client always
+    // receives the full partition. The worker only writes zones a player actually
+    // shot from, so this is the normal case rather than an edge.
+    const paint = res.data?.zones.find((z) => z.zoneId === 'paint');
+    expect(paint).toEqual({ zoneId: 'paint', fga: 0, fgm: 0, fgPct: null });
+  });
+
+  it('computes each zone percentage and the totals', async () => {
+    const controller = makeController(zoneFixture(allZones));
+
+    const res = await controller.getShotZones('p-1');
+
+    const restricted = res.data?.zones.find((z) => z.zoneId === 'restrictedArea');
+    expect(restricted?.fga).toBe(10);
+    expect(restricted?.fgm).toBe(5);
+    expect(restricted?.fgPct).toBe(50);
+    expect(res.data?.totalFga).toBe(allZones.reduce((n, row) => n + Number(row.fga), 0));
+    expect(res.data?.totalFgm).toBe(allZones.length * 5);
+  });
+
+  it('lists every season and type with attempts, newest season first', async () => {
+    // Within a season the types come in reading order rather than by volume, so
+    // the regular season leads even when the playoffs outdrew it.
+    const controller = makeController(
+      zoneFixture(
+        allZones,
+        [
+          { season: '2024-25', statsTimeframe: 'ByYear-regular', fga: '1200' },
+          { season: '2025-26', statsTimeframe: 'ByYear-preseason', fga: '32' },
+          { season: '2025-26', statsTimeframe: 'ByYear-playoffs', fga: '379' },
+          { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+        ],
+        [
+          { season: '2024-25', statsTimeframe: 'ByYear-regular', gp: 71 },
+          { season: '2025-26', statsTimeframe: 'ByYear-preseason', gp: 3 },
+          { season: '2025-26', statsTimeframe: 'ByYear-playoffs', gp: 18 },
+          { season: '2025-26', statsTimeframe: 'ByYear-regular', gp: 70 },
+        ],
+      ),
+    );
+
+    const res = await controller.getShotZones('p-1');
+
+    // Games is matched per season and type, so each entry carries its own.
+    expect(res.data?.available).toEqual([
+      { season: '2025-26', seasonType: 'regular', fga: 1403, gp: 70 },
+      { season: '2025-26', seasonType: 'playoffs', fga: 379, gp: 18 },
+      { season: '2025-26', seasonType: 'preseason', fga: 32, gp: 3 },
+      { season: '2024-25', seasonType: 'regular', fga: 1200, gp: 71 },
+    ]);
+  });
+
+  it('reports games played from the season row, not from the games on file', async () => {
+    // Games comes from the same per-season row the career table reads, so a
+    // season whose schedule is only partly seeded still reports the real figure
+    // rather than however many games the sync happened to cover.
+    const controller = makeController(
+      zoneFixture(
+        allZones,
+        [{ season: '2024-25', statsTimeframe: 'ByYear-regular', fga: '515' }],
+        [{ season: '2024-25', statsTimeframe: 'ByYear-regular', gp: 71 }],
+      ),
+    );
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data?.available[0]).toEqual({
+      season: '2024-25',
+      seasonType: 'regular',
+      fga: 515,
+      gp: 71,
+    });
+  });
+
+  it('leaves games null when no season row carries it', async () => {
+    const controller = makeController(zoneFixture(allZones, undefined, []));
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data?.available[0].gp).toBeNull();
+  });
+
+  it('drops a season and type that has no attempts', async () => {
+    // A zeroed rollup is not an option worth offering.
+    const controller = makeController(
+      zoneFixture(allZones, [
+        { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+        { season: '2025-26', statsTimeframe: 'ByYear-playoffs', fga: '0' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data?.available).toEqual([
+      { season: '2025-26', seasonType: 'regular', fga: 1403, gp: 70 },
+    ]);
+  });
+
+  it('answers for the requested season when the player has data in it', async () => {
+    const controller = makeController(
+      zoneFixture(allZones, [
+        { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+        { season: '2024-25', statsTimeframe: 'ByYear-regular', fga: '1200' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1', 'regular', '2024-25');
+
+    expect(res.data?.season).toBe('2024-25');
+  });
+
+  it('ignores an unknown season and leads with the newest on file', async () => {
+    // A hand-typed season is a client bug rather than a valid empty page, so it
+    // falls back instead of answering with nothing.
+    const controller = makeController(
+      zoneFixture(allZones, [
+        { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+        { season: '2024-25', statsTimeframe: 'ByYear-regular', fga: '1200' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1', 'regular', '1999-00');
+
+    expect(res.data?.season).toBe('2025-26');
+  });
+
+  it('leads with the newest season even when it holds only a preseason', async () => {
+    // Asking for the regular season with no season named must not answer from a
+    // season that has no regular-season shots: the pair is matched together, so
+    // this lands on the newest regular season rather than an empty newest year.
+    const controller = makeController(
+      zoneFixture(allZones, [
+        { season: '2026-27', statsTimeframe: 'ByYear-preseason', fga: '17' },
+        { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1', 'regular');
+
+    expect(res.data?.season).toBe('2025-26');
+    expect(res.data?.totalFga).toBeGreaterThan(0);
+  });
+
+  it('leads with the current season regular season when there is one', async () => {
+    const controller = makeController(
+      zoneFixture(allZones, [
+        { season: '2025-26', statsTimeframe: 'ByYear-preseason', fga: '17' },
+        { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data?.season).toBe('2025-26');
+    expect(res.data?.seasonType).toBe('regular');
+  });
+
+  it('skips a thin newest season when leading, rather than drawing an empty chart', async () => {
+    // The current season is a few weeks old, so the newest entry is a preseason
+    // with a handful of attempts. Leading with that would render a mostly empty
+    // court, which reads as broken rather than quiet.
+    const controller = makeController(
+      zoneFixture(allZones, [
+        { season: '2026-27', statsTimeframe: 'ByYear-preseason', fga: '17' },
+        { season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data?.season).toBe('2025-26');
+    expect(res.data?.seasonType).toBe('regular');
+  });
+
+  it('returns null data when the sync has not covered the player at all', async () => {
+    const controller = makeController(zoneFixture([], []));
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data).toBeNull();
+    expect(res.message).toBe('No shot-zone breakdown for this player yet.');
+  });
+
+  it('still answers for a season type the player has no attempts in', async () => {
+    // The reader picked Playoffs but this player never played one. The payload
+    // still comes back, every zone zeroed, so the client keeps the options it was
+    // choosing between instead of losing them to a null.
+    const controller = makeController(
+      zoneFixture([], [{ season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '1403' }]),
+    );
+
+    const res = await controller.getShotZones('p-1', 'playoffs');
+
+    expect(res.data).not.toBeNull();
+    expect(res.data?.seasonType).toBe('playoffs');
+    expect(res.data?.totalFga).toBe(0);
+    expect(res.data?.zones).toHaveLength(SHOT_ZONE_IDS.length);
+    expect(res.data?.zones.every((z) => z.fga === 0 && z.fgPct === null)).toBe(true);
+  });
+
+  it('falls back to the regular season for an unrecognised season type', async () => {
+    const controller = makeController(zoneFixture(allZones));
+
+    const res = await controller.getShotZones('p-1', 'nonsense');
+
+    expect(res.is_success).toBe(true);
+    expect(res.data?.seasonType).toBe('regular');
+  });
+
+  it('returns null data when the player id is unknown', async () => {
+    const controller = makeController([[]]);
+
+    const res = await controller.getShotZones('nope');
+
+    expect(res.data).toBeNull();
+    expect(res.message).toBe('Player not found.');
+  });
+});
+
 describe('PlayersController routing', () => {
   it('serves a player by id over HTTP', async () => {
     const app = await makeApp(detailFixture());
@@ -630,6 +878,26 @@ describe('PlayersController routing', () => {
     const app = await makeApp([[{ id: 'p-1' }]]);
 
     await request(app.getHttpServer()).get('/api/players/p-1/games?limit=ten').expect(400);
+    await app.close();
+  });
+
+  it('serves shot zones over HTTP without shadowing the :id route', async () => {
+    const app = await makeApp([
+      [{ id: 'p-1' }],
+      [{ season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '20' }],
+      [{ season: '2025-26', statsTimeframe: 'ByYear-regular', gp: 70 }],
+      [{ zoneId: 'restrictedArea', fga: 20, fgm: 13 }],
+    ]);
+
+    const res = await request(app.getHttpServer()).get('/api/players/p-1/shot-zones').expect(200);
+
+    expect(res.body.data.zones).toHaveLength(SHOT_ZONE_IDS.length);
+    expect(res.body.data.zones[0]).toEqual({
+      zoneId: 'restrictedArea',
+      fga: 20,
+      fgm: 13,
+      fgPct: 65,
+    });
     await app.close();
   });
 
