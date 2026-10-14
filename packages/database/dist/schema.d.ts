@@ -2729,6 +2729,322 @@ export declare const scheduleGames: import("drizzle-orm/pg-core").PgTableWithCol
     };
     dialect: "pg";
 }>;
+/**
+ * Per-zone shooting tallies for one player in one game.
+ *
+ * Stored per game rather than per season because the sync runs per game: a game
+ * going final is what triggers it, so the game is the natural unit and the
+ * primary key makes the write idempotent. A season's totals are a `sum` over
+ * these rows, which keeps one source of truth instead of a rollup that can drift
+ * from the games it was built from.
+ *
+ * The play-by-play that produces these is fetched and thrown away: a whole
+ * league season is ~520 MB of JSON to download and a few MB of tallies to keep,
+ * so there is nothing to gain by persisting every shot.
+ *
+ * `zoneId` is one of the ids in `@iknoball/shot-zones`. Storing the id rather
+ * than an index means a zone can be renamed or a chart restyled without a
+ * migration, and every game can be re-synced from the same play-by-play if a
+ * boundary moves — which is why the raw shots are not kept.
+ */
+export declare const playerGameShotZones: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "player_game_shot_zones";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "player_game_shot_zones";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        scheduleGameId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "scheduleGameId";
+            tableName: "player_game_shot_zones";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        playerId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "playerId";
+            tableName: "player_game_shot_zones";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        season: import("drizzle-orm/pg-core").PgColumn<{
+            name: "season";
+            tableName: "player_game_shot_zones";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        statsTimeframe: import("drizzle-orm/pg-core").PgColumn<{
+            name: "statsTimeframe";
+            tableName: "player_game_shot_zones";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        zoneId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "zoneId";
+            tableName: "player_game_shot_zones";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        fga: import("drizzle-orm/pg-core").PgColumn<{
+            name: "fga";
+            tableName: "player_game_shot_zones";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        fgm: import("drizzle-orm/pg-core").PgColumn<{
+            name: "fgm";
+            tableName: "player_game_shot_zones";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "createdAt";
+            tableName: "player_game_shot_zones";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updatedAt";
+            tableName: "player_game_shot_zones";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * One row per game whose play-by-play has been classified.
+ *
+ * This is what makes the sync safe to re-run: a game with a row here is skipped,
+ * so a cron tick overlapping a manual backfill, or a retry after a crash, cannot
+ * double-count a game. It is also how the sync finds its work — final games with
+ * no row are the ones still to do — which means a game that finished while the
+ * worker was down is picked up on the next tick rather than lost.
+ *
+ * The counts are recorded so a game that synced to something implausible is
+ * visible without re-fetching it.
+ */
+export declare const shotZoneGameSyncs: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "shot_zone_game_syncs";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "shot_zone_game_syncs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        scheduleGameId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "scheduleGameId";
+            tableName: "shot_zone_game_syncs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        attemptCount: import("drizzle-orm/pg-core").PgColumn<{
+            name: "attemptCount";
+            tableName: "shot_zone_game_syncs";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        playerCount: import("drizzle-orm/pg-core").PgColumn<{
+            name: "playerCount";
+            tableName: "shot_zone_game_syncs";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "createdAt";
+            tableName: "shot_zone_game_syncs";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updatedAt";
+            tableName: "shot_zone_game_syncs";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
 export declare const schedulePointsLeaders: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "schedule_points_leaders";
     schema: undefined;

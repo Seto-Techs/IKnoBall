@@ -266,6 +266,88 @@ export const scheduleGames = pgTable(
   ],
 );
 
+/**
+ * Per-zone shooting tallies for one player in one game.
+ *
+ * Stored per game rather than per season because the sync runs per game: a game
+ * going final is what triggers it, so the game is the natural unit and the
+ * primary key makes the write idempotent. A season's totals are a `sum` over
+ * these rows, which keeps one source of truth instead of a rollup that can drift
+ * from the games it was built from.
+ *
+ * The play-by-play that produces these is fetched and thrown away: a whole
+ * league season is ~520 MB of JSON to download and a few MB of tallies to keep,
+ * so there is nothing to gain by persisting every shot.
+ *
+ * `zoneId` is one of the ids in `@iknoball/shot-zones`. Storing the id rather
+ * than an index means a zone can be renamed or a chart restyled without a
+ * migration, and every game can be re-synced from the same play-by-play if a
+ * boundary moves — which is why the raw shots are not kept.
+ */
+export const playerGameShotZones = pgTable(
+  'player_game_shot_zones',
+  {
+    id: id(),
+    scheduleGameId: text('scheduleGameId')
+      .notNull()
+      .references(() => scheduleGames.id),
+    playerId: text('playerId')
+      .notNull()
+      .references(() => players.id),
+    /** Denormalised from the game's schedule day so a season read needs no join. */
+    season: text('season').notNull(),
+    /** Matches the season types the other player tables use. */
+    statsTimeframe: text('statsTimeframe').notNull(),
+    zoneId: text('zoneId').notNull(),
+    fga: integer('fga').notNull(),
+    fgm: integer('fgm').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('player_game_shot_zones_game_player_zone_key').on(
+      table.scheduleGameId,
+      table.playerId,
+      table.zoneId,
+    ),
+    index('player_game_shot_zones_player_season_idx').on(
+      table.playerId,
+      table.season,
+      table.statsTimeframe,
+    ),
+  ],
+);
+
+/**
+ * One row per game whose play-by-play has been classified.
+ *
+ * This is what makes the sync safe to re-run: a game with a row here is skipped,
+ * so a cron tick overlapping a manual backfill, or a retry after a crash, cannot
+ * double-count a game. It is also how the sync finds its work — final games with
+ * no row are the ones still to do — which means a game that finished while the
+ * worker was down is picked up on the next tick rather than lost.
+ *
+ * The counts are recorded so a game that synced to something implausible is
+ * visible without re-fetching it.
+ */
+export const shotZoneGameSyncs = pgTable(
+  'shot_zone_game_syncs',
+  {
+    id: id(),
+    scheduleGameId: text('scheduleGameId')
+      .notNull()
+      .unique()
+      .references(() => scheduleGames.id),
+    /** Field-goal attempts the feed carried for this game. */
+    attemptCount: integer('attemptCount').notNull(),
+    /** Players those attempts were attributed to. */
+    playerCount: integer('playerCount').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('shot_zone_game_syncs_scheduleGameId_idx').on(table.scheduleGameId)],
+);
+
 export const schedulePointsLeaders = pgTable(
   'schedule_points_leaders',
   {
