@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Bell, ChevronDown, LogOut, User, UserRound } from 'lucide-react';
 import { hexLuminance } from './shared';
+import { BrandMark } from '../BrandMark';
 import { GlobalSearchField, GlobalSearchTrigger } from './GlobalSearch';
 
 export type NavKey = 'dashboard' | 'predict' | 'profile' | 'game' | 'player' | undefined;
@@ -107,9 +108,14 @@ export function DashboardHeader({
           <Link
             to="/dashboard"
             search={{ tab: 'team' }}
-            className="rounded-md font-heading text-2xl font-semibold uppercase tracking-wide text-brand-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+            aria-label="IKnoBall dashboard"
+            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
           >
-            IKnoBall
+            <BrandMark
+              className="gap-2.5"
+              tileClassName="h-9 w-9 rounded-lg bg-brand-red text-base font-black"
+              wordmarkClassName="font-heading text-2xl font-semibold uppercase tracking-wide text-brand-red"
+            />
           </Link>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">

@@ -13,6 +13,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useSession } from '../../lib/use-auth';
+import { BrandMark } from '../BrandMark';
 
 /*
  * Public marketing page for logged-out visitors.
@@ -90,8 +91,6 @@ const LEADERS = [
   { rank: 5, name: 'postupszn', flat: '364', weighted: '1,042.5' },
 ];
 
-const WORDMARK = 'IKnoBall';
-
 /** Real team marks, bundled locally: the NBA CDN is IPv4-only, and a broken
  *  logo is worse than none, so these never depend on a third-party host. */
 function TeamLogo({ src, alt, abbr }: { src: string; alt: string; abbr: string }) {
@@ -118,16 +117,13 @@ function TeamLogo({ src, alt, abbr }: { src: string; alt: string; abbr: string }
 
 function Logo({ className }: { className?: string }) {
   return (
-    <span className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-basketball-500 font-heading text-base font-black text-white">
-        IK
-      </span>
-      <span
-        className={`font-heading text-lg font-bold uppercase tracking-wide sm:text-2xl ${className ?? ''}`}
-      >
-        {WORDMARK}
-      </span>
-    </span>
+    <BrandMark
+      className="gap-2.5"
+      tileClassName="h-9 w-9 rounded-lg bg-basketball-500 text-base font-black"
+      wordmarkClassName={`font-heading text-lg font-bold uppercase tracking-wide sm:text-2xl ${
+        className ?? ''
+      }`}
+    />
   );
 }
 

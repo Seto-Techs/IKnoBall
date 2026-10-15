@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="IKnoBall">
+  <rect width="32" height="32" rx="7" fill="#882233" />
+  <text
+    x="16"
+    y="16"
+    fill="#FFFFFF"
+    font-family="Oswald, Poppins, system-ui, sans-serif"
+    font-size="16"
+    font-weight="700"
+    text-anchor="middle"
+    dominant-baseline="central"
+  >IK</text>
+</svg>
