@@ -1,4 +1,5 @@
 import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
+import { BrandMark } from '../components/BrandMark';
 import { useSession } from '../lib/use-auth';
 
 function Header() {
@@ -9,10 +10,11 @@ function Header() {
     <header className="border-b border-court-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
         <Link to="/" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-basketball-500 text-sm font-bold text-white shadow-sm">
-            IK
-          </div>
-          <span className="text-lg font-semibold tracking-tight text-stone-800">IKnoBall</span>
+          <BrandMark
+            className="gap-3"
+            tileClassName="h-8 w-8 rounded-md bg-basketball-500 text-sm font-bold shadow-sm"
+            wordmarkClassName="text-lg font-semibold tracking-tight text-stone-800"
+          />
         </Link>
 
         <div className="ml-auto flex items-center gap-3">

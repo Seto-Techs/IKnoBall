@@ -16,6 +16,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useSession } from '../../lib/use-auth';
+import { BrandMark } from '../BrandMark';
 
 /*
  * Public marketing page for logged-out visitors.
@@ -91,20 +92,15 @@ const LEADERS = [
   { rank: 5, name: 'postupszn', flat: '364', weighted: '1,042.5' },
 ];
 
-const WORDMARK = 'IKnoBall';
-
 function Logo({ className }: { className?: string }) {
   return (
-    <span className="flex items-center gap-1.5 sm:gap-2.5">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-red font-heading text-base font-black text-white shadow-sm ring-1 ring-white/10 sm:h-9 sm:w-9">
-        IK
-      </span>
-      <span
-        className={`font-heading text-lg font-bold uppercase tracking-wide sm:text-2xl ${className ?? ''}`}
-      >
-        {WORDMARK}
-      </span>
-    </span>
+    <BrandMark
+      className="gap-1.5 sm:gap-2.5"
+      tileClassName="h-8 w-8 rounded-lg bg-brand-red text-base font-black shadow-sm ring-1 ring-white/10 sm:h-9 sm:w-9"
+      wordmarkClassName={`font-heading text-lg font-bold uppercase tracking-wide sm:text-2xl ${
+        className ?? ''
+      }`}
+    />
   );
 }
 
