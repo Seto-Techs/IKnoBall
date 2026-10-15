@@ -255,6 +255,14 @@ exports.playerGameShotZones = (0, pg_core_1.pgTable)('player_game_shot_zones', {
 }, (table) => [
     (0, pg_core_1.unique)('player_game_shot_zones_game_player_zone_key').on(table.scheduleGameId, table.playerId, table.zoneId),
     (0, pg_core_1.index)('player_game_shot_zones_player_season_idx').on(table.playerId, table.season, table.statsTimeframe),
+    /**
+     * For the league-wide read that produces a season's per-zone baseline, which
+     * has no player to filter on and so cannot use the index above. Carrying the
+     * tallies makes it a covering index, so a season aggregates from the index
+     * alone rather than fetching the whole season's rows from the heap — 450ms
+     * and a disk sort becomes tens of milliseconds.
+     */
+    (0, pg_core_1.index)('player_game_shot_zones_season_zone_idx').on(table.season, table.statsTimeframe, table.zoneId, table.fga, table.fgm),
 ]);
 /**
  * One row per game whose play-by-play has been classified.

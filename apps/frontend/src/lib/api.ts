@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ShotZoneId } from '@iknoball/shot-zones';
 import type { AuthSession } from './use-auth';
 
 /* ── Types matching backend API responses ── */
@@ -606,7 +607,7 @@ export function usePlayerGames(playerId?: string, page = 0) {
 /** One zone's shooting, as the shot-zone endpoint reports it. */
 export interface PlayerShotZoneEntry {
   /** A zone id from the shared taxonomy, e.g. `topOfKeyThree`. */
-  zoneId: string;
+  zoneId: ShotZoneId;
   fga: number;
   fgm: number;
   /** Null when the player has not attempted a shot from the zone. */
@@ -633,6 +634,14 @@ export interface PlayerShotZones {
   fgPct: number | null;
   /** Every zone in taxonomy order, including any the player has not shot from. */
   zones: PlayerShotZoneEntry[];
+  /**
+   * The league's field-goal percentage from each zone over the same season and
+   * type, keyed by zone id. This is the baseline the chart colours against, and
+   * it is per season and type rather than one figure for all time, because the
+   * league shoots differently from a spot in different years. Null for a zone
+   * the league has no attempts in.
+   */
+  leagueFgPct: Record<ShotZoneId, number | null>;
 }
 
 /**

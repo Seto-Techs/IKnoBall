@@ -143,7 +143,13 @@ export function ShotZonePanel({ playerId }: ShotZonePanelProps) {
             No {data.seasonType} shots on file for this player in {data.season}.
           </p>
         ) : (
-          <ShotZoneChart stats={stats} className="mx-auto max-w-[620px]" />
+          // Held to 85% of the panel: at full width on a wide screen the court
+          // and its labels read larger than the rest of the page's type.
+          <ShotZoneChart
+            stats={stats}
+            leagueFgPct={data.leagueFgPct}
+            className="mx-auto max-w-[85%]"
+          />
         )}
       </div>
     </Panel>

@@ -71,6 +71,13 @@
       "when": 1791914818036,
       "tag": "0009_amusing_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791968348683,
+      "tag": "0010_ambitious_wrecker",
+      "breakpoints": true
     }
   ]
 }

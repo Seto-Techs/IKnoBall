@@ -359,6 +359,15 @@ class PlayerShotZonesResponse {
     description: 'Every zone, in taxonomy order, including any with no attempts.',
   })
   zones!: PlayerShotZoneEntryResponse[];
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'number', nullable: true },
+    example: { restrictedArea: 67.1, deepThree: 29.1 },
+    description:
+      'League field-goal percentage from each zone over the same season and type, keyed by zone id. Null for a zone the league has no attempts in. What the chart colours against.',
+  })
+  leagueFgPct!: Record<string, number | null>;
 }
 
 class PlayerDetailResponse {
@@ -621,21 +630,50 @@ export class PlayersController {
     const season = chosen.season;
     const statsTimeframe = SHOT_ZONE_TIMEFRAMES[chosen.seasonType] ?? SHOT_ZONE_TIMEFRAMES.regular;
 
-    const rows = await this.db.db
-      .select({
-        zoneId: playerGameShotZones.zoneId,
-        fga: sum(playerGameShotZones.fga),
-        fgm: sum(playerGameShotZones.fgm),
-      })
-      .from(playerGameShotZones)
-      .where(
-        and(
-          eq(playerGameShotZones.playerId, player.id),
-          eq(playerGameShotZones.season, season),
-          eq(playerGameShotZones.statsTimeframe, statsTimeframe),
-        ),
-      )
-      .groupBy(playerGameShotZones.zoneId);
+    // The player's tallies and the league's baseline for the same season and type
+    // are read together rather than one after the other: the database is remote,
+    // so each query is a round trip the page waits on.
+    //
+    // The baseline comes from the same table the player's tallies do, so the two
+    // are classified by the same rules — and because the player's rows are a
+    // subset of the league's, a season and type with anything to show always has
+    // a baseline to show it against. It is measured per season and type rather
+    // than once for all time, because the league genuinely shoots differently
+    // from a spot in different years: deep threes are 21.3% of the league's
+    // attempts in 2023-24 and 29.1% in 2025-26, and a single pooled average would
+    // mark a whole season's shooters as cold or hot against a league they never
+    // played in.
+    const [rows, leagueRows] = await Promise.all([
+      this.db.db
+        .select({
+          zoneId: playerGameShotZones.zoneId,
+          fga: sum(playerGameShotZones.fga),
+          fgm: sum(playerGameShotZones.fgm),
+        })
+        .from(playerGameShotZones)
+        .where(
+          and(
+            eq(playerGameShotZones.playerId, player.id),
+            eq(playerGameShotZones.season, season),
+            eq(playerGameShotZones.statsTimeframe, statsTimeframe),
+          ),
+        )
+        .groupBy(playerGameShotZones.zoneId),
+      this.db.db
+        .select({
+          zoneId: playerGameShotZones.zoneId,
+          fga: sum(playerGameShotZones.fga),
+          fgm: sum(playerGameShotZones.fgm),
+        })
+        .from(playerGameShotZones)
+        .where(
+          and(
+            eq(playerGameShotZones.season, season),
+            eq(playerGameShotZones.statsTimeframe, statsTimeframe),
+          ),
+        )
+        .groupBy(playerGameShotZones.zoneId),
+    ]);
 
     const byZone = new Map(rows.map((row) => [row.zoneId, row]));
     // Emitted in taxonomy order, with a zeroed entry for any zone missing a row,
@@ -654,6 +692,17 @@ export class PlayersController {
       };
     });
 
+    const leagueByZone = new Map(leagueRows.map((row) => [row.zoneId, row]));
+    // Same taxonomy order as `zones`, and null rather than zero for a zone the
+    // league has no attempts in, so "no data" cannot be read as a real value.
+    const leagueFgPct: Record<string, number | null> = {};
+    for (const zoneId of SHOT_ZONE_IDS) {
+      const row = leagueByZone.get(zoneId);
+      const fga = Number(row?.fga ?? 0);
+      const fgm = Number(row?.fgm ?? 0);
+      leagueFgPct[zoneId] = fga > 0 ? round1((fgm / fga) * 100) : null;
+    }
+
     const totalFga = zones.reduce((sum, zone) => sum + zone.fga, 0);
     const totalFgm = zones.reduce((sum, zone) => sum + zone.fgm, 0);
 
@@ -665,6 +714,7 @@ export class PlayersController {
       totalFgm,
       fgPct: totalFga > 0 ? round1((totalFgm / totalFga) * 100) : null,
       zones,
+      leagueFgPct,
     });
   }
 

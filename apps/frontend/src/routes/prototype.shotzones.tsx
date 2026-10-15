@@ -2,7 +2,36 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { ShotZoneChart } from '../components/playerDetail/ShotZoneChart';
 import { SAMPLE_ATTEMPTS } from '../components/playerDetail/shotZoneSample';
-import { ZONES, ZONE_RULES, tallyByZone } from '../components/playerDetail/shotZones';
+import {
+  ZONES,
+  ZONE_RULES,
+  tallyByZone,
+  type ShotZoneId,
+} from '../components/playerDetail/shotZones';
+
+/**
+ * The dev preview's stand-in for the league baseline.
+ *
+ * The real page is handed this by the shot-zone endpoint, which measures it per
+ * season and season type from the same table the tallies come from. This route
+ * has no player and makes no API call, so it carries the 2025-26 regular
+ * season's measured figures instead — sample shots read against a sample
+ * baseline, which is all a boundary preview needs.
+ */
+const SAMPLE_LEAGUE_FG_PCT: Record<ShotZoneId, number> = {
+  restrictedArea: 67.1,
+  paint: 44.6,
+  baselineMidLeft: 40.7,
+  baselineMidRight: 43.2,
+  elbowMidLeft: 40.9,
+  elbowMidRight: 41.3,
+  cornerThreeLeft: 38.7,
+  cornerThreeRight: 38.6,
+  wingThreeLeft: 35.5,
+  wingThreeRight: 35.0,
+  topOfKeyThree: 35.0,
+  deepThree: 29.1,
+};
 
 /**
  * Dev-only preview of the shot-zone chart. The real player page draws the chart
@@ -33,7 +62,12 @@ function PrototypeShotZones() {
       </div>
 
       <div className="rounded-xl border border-brand-line bg-white p-4">
-        <ShotZoneChart stats={stats} attempts={SAMPLE_ATTEMPTS} className="mx-auto max-w-[720px]" />
+        <ShotZoneChart
+          stats={stats}
+          leagueFgPct={SAMPLE_LEAGUE_FG_PCT}
+          attempts={SAMPLE_ATTEMPTS}
+          className="mx-auto max-w-[720px]"
+        />
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-brand-line bg-white">

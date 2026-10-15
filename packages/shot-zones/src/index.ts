@@ -268,29 +268,3 @@ export function tallyByZone(attempts: readonly Attempt[]): ZoneTally[] {
     };
   });
 }
-
-/**
- * League field-goal percentage by zone, which is what a hot-zone chart should be
- * read against: "is this player good from here" only means something relative to
- * what everyone else does from here. A raw percentage is not comparable across
- * zones — 40% from the restricted area is dreadful and 40% from the top of the
- * key is excellent.
- *
- * Measured over 5,358 attempts by all 325 players in a 30-game league-wide
- * sample of the 2025-26 season, classified with `zoneFor`. Every zone is
- * populated, so no zone falls back to a player's own average.
- */
-export const LEAGUE_ZONE_FG_PCT: Readonly<Record<ShotZoneId, number>> = {
-  restrictedArea: 66.1,
-  paint: 44.7,
-  baselineMidLeft: 40.6,
-  baselineMidRight: 39.9,
-  elbowMidLeft: 46.5,
-  elbowMidRight: 38.1,
-  cornerThreeLeft: 38.0,
-  cornerThreeRight: 30.7,
-  wingThreeLeft: 34.3,
-  wingThreeRight: 35.6,
-  topOfKeyThree: 37.7,
-  deepThree: 36.7,
-};

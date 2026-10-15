@@ -23,7 +23,6 @@ import {
 export {
   COURT,
   CORNER_JOIN_Y,
-  LEAGUE_ZONE_FG_PCT,
   SHOT_ZONE_DEFINITIONS,
   SHOT_ZONE_IDS,
   tallyByZone,
@@ -179,23 +178,27 @@ const DEEP_THREE_RING: Point[] = [
 ];
 
 /**
- * How to draw each zone. The restricted area's label sits above the backboard
- * and inside the 4 ft circle on one line, because the circle is only 8 ft across
- * and the backboard and rim occupy its lower half; the paint's sits below the
- * free-throw circle so its arc does not run through the numbers; and the wing
- * labels are pushed out past the three-point arc, which otherwise cuts through
- * the inner corner of the text.
+ * How to draw each zone. The restricted area's label is stacked like every other
+ * zone but set smaller, because the circle is only 8 ft across and three numbers
+ * on one line would run edge to edge through its arc. The paint's label sits high
+ * in the lane and the wings' out past the three-point arc, both so the numbers
+ * clear the painted arcs that cut across those zones.
  */
 const ZONE_GEOMETRY: Readonly<Record<ShotZoneId, ZoneGeometry>> = {
   restrictedArea: {
     outline: [arc(COURT.restrictedRadius, -180, 180, 6)],
-    labelAt: [[0, 24]],
-    labelScale: 0.72,
-    labelLayout: 'inline',
+    // Centred in the free space inside the circle: the rim and backboard take
+    // the bottom of it, so the block sits above them and clears the arc above.
+    labelAt: [[0, 23]],
+    // Smaller than the other zones' type: the circle is only 8 ft across, and
+    // the widest line is the made/attempted, which the stack keeps off the arc.
+    labelScale: 0.56,
   },
   paint: {
     outline: PAINT_OUTLINE,
-    labelAt: [[0, 100]],
+    // High in the lane: the free-throw circle's lower arc cuts across the lane
+    // at this height, and the block's bottom line has to stay clear of it.
+    labelAt: [[0, 103]],
   },
   baselineMidLeft: {
     outline: [mirror(BASELINE_MID_RIGHT)],
@@ -227,12 +230,13 @@ const ZONE_GEOMETRY: Readonly<Record<ShotZoneId, ZoneGeometry>> = {
   },
   wingThreeLeft: {
     outline: [mirror(WING_THREE_RIGHT)],
-    labelAt: [[-184, 192]],
+    // Pushed out past the arc, which otherwise cuts through the numbers.
+    labelAt: [[-184, 195]],
     labelScale: 0.92,
   },
   wingThreeRight: {
     outline: [WING_THREE_RIGHT],
-    labelAt: [[184, 192]],
+    labelAt: [[184, 195]],
     labelScale: 0.92,
   },
   topOfKeyThree: {

@@ -1,0 +1,1 @@
+CREATE INDEX "player_game_shot_zones_season_zone_idx" ON "player_game_shot_zones" USING btree ("season","statsTimeframe","zoneId","fga","fgm");

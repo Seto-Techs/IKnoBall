@@ -2,11 +2,11 @@ import { useId, useMemo, useRef, useState } from 'react';
 import {
   COURT,
   COURT_MARKINGS,
-  LEAGUE_ZONE_FG_PCT,
   ZONES,
   zoneFor,
   zonePath,
   type Attempt,
+  type ShotZoneId,
   type ZoneStat,
 } from './shotZones';
 
@@ -30,6 +30,23 @@ const EFFICIENCY_STOPS = ['#A01C33', '#D08C92', '#F5F2EC', '#9BCF94', '#4CAF50']
 /** Percentage points either side of the league average that span the ramp. */
 const SPREAD = 10;
 
+/**
+ * The rule drawn along each zone boundary, over a white halo.
+ *
+ * The near-white this replaced cleared only 1.24:1 against the ramp's pale green
+ * — less contrast than the two fills on either side have with each other, so a
+ * boundary could disappear entirely. No single grey fixes that, because the fills
+ * run from cream to dark red: the grey that reads on cream is invisible on the
+ * red end, and vice versa. Hence the halo, which is what shows against a dark
+ * fill, under this, which is what shows against a light one. Together the pair
+ * clears at least 3.4:1 against every stop in the ramp.
+ */
+const ZONE_BORDER = '#4A443E';
+
+/** The halo behind the boundary rule, and its width. See `ZONE_BORDER`. */
+const ZONE_BORDER_HALO = '#FFFFFF';
+const ZONE_BORDER_HALO_WIDTH = 3;
+
 function rampColor(stops: readonly string[], t: number): string {
   const clamped = Math.min(1, Math.max(0, t));
   const span = (stops.length - 1) * clamped;
@@ -44,6 +61,15 @@ function rampColor(stops: readonly string[], t: number): string {
 export interface ShotZoneChartProps {
   /** One entry per zone, as `tallyByZone` returns them. */
   stats: readonly ZoneStat[];
+  /**
+   * The league's field-goal percentage from each zone, over the same season and
+   * season type `stats` covers. This is the baseline the colours mean, and it is
+   * supplied by the caller rather than fixed here because the league shoots
+   * differently from a spot in different years — a single all-time figure would
+   * mark a whole season's shooters as cold against a league they never played in.
+   * Null for a zone the league has no attempts in, which is drawn as no data.
+   */
+  leagueFgPct: Readonly<Record<ShotZoneId, number | null>>;
   /**
    * Raw shot coordinates, when the source has them. Passing them enables the
    * optional dot overlay; the chart needs only the tallies to work.
@@ -63,9 +89,9 @@ export interface ShotZoneChartProps {
  * same predicates that tally the attempts, so the colour and the printed numbers
  * cannot disagree.
  */
-export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps) {
+export function ShotZoneChart({ stats, leagueFgPct, attempts, className }: ShotZoneChartProps) {
   const [showDots, setShowDots] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<ShotZoneId | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const hatchId = useId();
 
@@ -74,16 +100,28 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
   const totalFga = stats.reduce((n, s) => n + s.fga, 0);
   const made = stats.reduce((n, s) => n + s.fgm, 0);
 
-  /** How far a zone's rate sits from the league's from the same spot. */
-  const versusLeague = (stat: ZoneStat): number => stat.fgPct! - LEAGUE_ZONE_FG_PCT[stat.id];
+  /**
+   * How far a zone's rate sits from the league's from the same spot, in that
+   * season and season type. Null when either side has nothing to compare: the
+   * player has not shot from the zone, or the league has no attempts there.
+   */
+  const versusLeague = (stat: ZoneStat): number | null => {
+    const league = leagueFgPct[stat.id];
+    if (stat.fgPct === null || league == null) return null;
+    return stat.fgPct - league;
+  };
 
-  const fillFor = (id: string): string => {
-    const stat = statById.get(id as ZoneStat['id']);
+  const fillFor = (id: ShotZoneId): string => {
+    const stat = statById.get(id);
     // No attempts is drawn as hatching, not as a mid-ramp colour: the ramp's
     // neutral midpoint is a real value (exactly league average), and conflating
-    // the two would read an empty zone as an average one.
+    // the two would read an empty zone as an average one. A zone the league has
+    // no baseline for is drawn the same way, because there is nothing to be
+    // above or below.
     if (!stat || stat.fga === 0 || stat.fgPct === null) return `url(#${hatchId})`;
-    return rampColor(EFFICIENCY_STOPS, 0.5 + versusLeague(stat) / (2 * SPREAD));
+    const delta = versusLeague(stat);
+    if (delta === null) return `url(#${hatchId})`;
+    return rampColor(EFFICIENCY_STOPS, 0.5 + delta / (2 * SPREAD));
   };
 
   /** Where the pointer is, in court coordinates, or null when it is off-court. */
@@ -97,10 +135,14 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
     return { x, y };
   };
 
-  const hoveredStat = hovered ? statById.get(hovered as ZoneStat['id']) : undefined;
+  const hoveredStat = hovered ? statById.get(hovered) : undefined;
+  const hoveredDelta = hoveredStat ? versusLeague(hoveredStat) : null;
 
   return (
-    <div className={className}>
+    // The chart fills its container instead of sizing to its own content. The
+    // info line below the court changes length as zones are hovered, and a
+    // shrink-to-fit box would resize the whole court on every hover.
+    <div className={`w-full ${className ?? ''}`}>
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2">
         <p className="text-[11px] font-bold uppercase tracking-widest text-stone-500">
           FG% vs league average, by zone
@@ -144,8 +186,10 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
           </pattern>
         </defs>
 
-        {/* The zone partition. The boundary stroke keeps the tiling readable
-            even where a zone is unfilled for want of attempts. */}
+        {/* The zone partition. Each boundary is drawn as a light halo with a
+            dark rule over it, the same trick the labels use: a single stroke
+            cannot clear both ends of the ramp, because the fills run from near
+            white to dark red and any one grey disappears against one of them. */}
         <g>
           {ZONES.map((zone) => (
             <path
@@ -153,7 +197,19 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
               d={zonePath(zone)}
               fill={fillFor(zone.id)}
               fillRule="evenodd"
-              stroke="#DCD6CF"
+              stroke={ZONE_BORDER_HALO}
+              strokeWidth={ZONE_BORDER_HALO_WIDTH}
+              opacity={hovered && hovered !== zone.id ? 0.75 : 1}
+              className="transition-opacity"
+            />
+          ))}
+          {ZONES.map((zone) => (
+            <path
+              key={`${zone.id}-border`}
+              d={zonePath(zone)}
+              fill="none"
+              fillRule="evenodd"
+              stroke={ZONE_BORDER}
               strokeWidth={1}
               opacity={hovered && hovered !== zone.id ? 0.75 : 1}
               className="transition-opacity"
@@ -185,8 +241,8 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
           ))}
         </g>
 
-        {/* Each zone's made/attempted and percentage. The white outline keeps
-            the numbers legible on any fill. */}
+        {/* Each zone's made/attempted, percentage and share of the player's
+            attempts. The white outline keeps the numbers legible on any fill. */}
         {ZONES.flatMap((zone) =>
           zone.labelAt.map((point, index) => {
             const stat = statById.get(zone.id);
@@ -195,6 +251,11 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
             const pct = stat?.fgPct ?? null;
             const attemptsLabel = `${fgm}/${fga}`;
             const percentage = pct === null ? '—' : `${pct.toFixed(0)}%`;
+            // How much of the season's shot diet came from here. A zone's rate
+            // only means as much as the volume behind it, and the share is what
+            // says how much that is — a 3-of-5 zone and a 260-of-365 zone cannot
+            // read alike.
+            const share = totalFga > 0 && fga > 0 ? `${((fga / totalFga) * 100).toFixed(1)}%` : '—';
             const inline = zone.labelLayout === 'inline';
             return (
               <g
@@ -216,14 +277,20 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
                     <tspan dx={5} fill="#4A443E">
                       {percentage}
                     </tspan>
+                    <tspan dx={5} fill="#6E6862">
+                      {share}
+                    </tspan>
                   </text>
                 ) : (
                   <>
-                    <text y={-4} fontSize={11} fontWeight={700} fill="#2A2622" strokeWidth={3.5}>
+                    <text y={-11} fontSize={11} fontWeight={700} fill="#2A2622" strokeWidth={3.5}>
                       {attemptsLabel}
                     </text>
-                    <text y={10} fontSize={9} fontWeight={700} fill="#4A443E" strokeWidth={3}>
+                    <text y={1} fontSize={9} fontWeight={700} fill="#4A443E" strokeWidth={3}>
                       {percentage}
+                    </text>
+                    <text y={13} fontSize={9} fontWeight={700} fill="#6E6862" strokeWidth={2.6}>
+                      {share}
                     </text>
                   </>
                 )}
@@ -251,6 +318,12 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
           </svg>
           <span className="font-bold uppercase tracking-widest text-stone-500">No attempts</span>
         </span>
+        {/* Each zone carries three numbers, in this order. Named rather than
+            left to be inferred, because the third one is a proportion of the
+            whole season and a bare percentage reads as another rate. */}
+        <span className="font-bold uppercase tracking-widest text-stone-500">
+          Made/att · FG% · share of attempts
+        </span>
       </div>
 
       <div className="mt-1.5 flex min-h-[20px] flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-stone-600">
@@ -265,12 +338,10 @@ export function ShotZoneChart({ stats, attempts, className }: ShotZoneChartProps
             <span className="font-bold">
               {hoveredStat.fgPct === null ? '—' : `${hoveredStat.fgPct.toFixed(1)}%`}
             </span>
-            {hoveredStat.fgPct !== null && (
-              <span
-                className={versusLeague(hoveredStat) >= 0 ? 'text-[#2E7D32]' : 'text-[#A01C33]'}
-              >
-                {versusLeague(hoveredStat) >= 0 ? '+' : ''}
-                {versusLeague(hoveredStat).toFixed(1)} vs league
+            {hoveredDelta !== null && (
+              <span className={hoveredDelta >= 0 ? 'text-[#2E7D32]' : 'text-[#A01C33]'}>
+                {hoveredDelta >= 0 ? '+' : ''}
+                {hoveredDelta.toFixed(1)} vs league
               </span>
             )}
             <span className="text-stone-400">

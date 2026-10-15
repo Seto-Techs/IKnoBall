@@ -605,14 +605,24 @@ describe('PlayersController.getGames', () => {
 
 describe('PlayersController.getShotZones', () => {
   /**
-   * The three queries the endpoint runs, in call order: the player, every season
-   * and type they have attempts in, then the zone rows.
+   * The five queries the endpoint runs, in call order: the player, every season
+   * and type they have attempts in, the games-played rows, the player's zone
+   * rows, then the league's zone rows for the chosen season and type.
    */
+  const leagueRows: Row[] = SHOT_ZONE_IDS.map((zoneId, index) => ({
+    zoneId,
+    // Distinct from the player's numbers below, so a response that echoed the
+    // player back as the league would not pass.
+    fga: 1000 + index,
+    fgm: 100 + index,
+  }));
+
   const zoneFixture = (
     zoneRows: Row[],
     available: Row[] = [{ season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '100' }],
     gpRows: Row[] = [{ season: '2025-26', statsTimeframe: 'ByYear-regular', gp: 70 }],
-  ): Row[][] => [[{ id: 'p-1' }], available, gpRows, zoneRows];
+    league: Row[] = leagueRows,
+  ): Row[][] => [[{ id: 'p-1' }], available, gpRows, zoneRows, league];
 
   const allZones: Row[] = SHOT_ZONE_IDS.map((zoneId, index) => ({
     zoneId,
@@ -636,6 +646,38 @@ describe('PlayersController.getShotZones', () => {
     // shot from, so this is the normal case rather than an edge.
     const paint = res.data?.zones.find((z) => z.zoneId === 'paint');
     expect(paint).toEqual({ zoneId: 'paint', fga: 0, fgm: 0, fgPct: null });
+  });
+
+  it('reports the league baseline per zone, keyed by every zone in the taxonomy', async () => {
+    const controller = makeController(zoneFixture(allZones));
+
+    const res = await controller.getShotZones('p-1');
+
+    // The full partition, so the chart never has to reason about a missing key.
+    expect(Object.keys(res.data?.leagueFgPct ?? {})).toEqual([...SHOT_ZONE_IDS]);
+    // The league's figures, not the player's — the two are given different
+    // numbers by the fixture precisely so this cannot pass by accident.
+    expect(res.data?.leagueFgPct.restrictedArea).toBe(10);
+    // Rounded to one decimal like every other percentage the endpoint reports.
+    expect(res.data?.leagueFgPct.deepThree).toBe(11);
+    expect(res.data?.zones.find((z) => z.zoneId === 'restrictedArea')?.fgPct).toBe(50);
+  });
+
+  it('leaves the league baseline null for a zone the league has no attempts in', async () => {
+    // Null rather than zero: a zone nobody has shot from has no baseline, and
+    // zero would read as a real one and paint every shooter as hot.
+    const controller = makeController(
+      zoneFixture(allZones, undefined, undefined, [
+        { zoneId: 'restrictedArea', fga: '62278', fgm: '41784' },
+        { zoneId: 'deepThree', fga: '0', fgm: '0' },
+      ]),
+    );
+
+    const res = await controller.getShotZones('p-1');
+
+    expect(res.data?.leagueFgPct.restrictedArea).toBe(67.1);
+    expect(res.data?.leagueFgPct.deepThree).toBeNull();
+    expect(res.data?.leagueFgPct.paint).toBeNull();
   });
 
   it('computes each zone percentage and the totals', async () => {
@@ -887,6 +929,7 @@ describe('PlayersController routing', () => {
       [{ season: '2025-26', statsTimeframe: 'ByYear-regular', fga: '20' }],
       [{ season: '2025-26', statsTimeframe: 'ByYear-regular', gp: 70 }],
       [{ zoneId: 'restrictedArea', fga: 20, fgm: 13 }],
+      [{ zoneId: 'restrictedArea', fga: 62278, fgm: '41784' }],
     ]);
 
     const res = await request(app.getHttpServer()).get('/api/players/p-1/shot-zones').expect(200);
@@ -898,6 +941,8 @@ describe('PlayersController routing', () => {
       fgm: 13,
       fgPct: 65,
     });
+    // The baseline rides along, so the chart can colour without a second request.
+    expect(res.body.data.leagueFgPct.restrictedArea).toBe(67.1);
     await app.close();
   });
 
