@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="IKnoBall">
+<rect width="64" height="64" rx="14" fill="#1C4188"/><circle cx="32" cy="32" r="25" fill="#FCF3DC"/><defs><clipPath id="ikb-ball-10"><circle cx="32" cy="32" r="25"/></clipPath></defs><g fill="none" stroke="#1C4188" stroke-width="7" stroke-linecap="round" clip-path="url(#ikb-ball-10)"><path d="M7 32H57"/><path d="M32 7C14 14.5 14 49.5 32 57"/><path d="M32 7C50 14.5 50 49.5 32 57"/></g>
+</svg>

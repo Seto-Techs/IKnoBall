@@ -44,6 +44,10 @@ export default {
         brand: {
           navy: '#1C4188',
           navyDark: '#0A2250',
+          // Seam colour of the logo mark. The nav underline uses it so the
+          // active tab and the logo share one accent.
+          orange: '#C4502F',
+          cream: '#FCF3DC',
           gold: '#FDB927',
           red: '#882233',
           ink: '#20201E',

@@ -13,7 +13,8 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useSession } from '../../lib/use-auth';
-import { BrandMark } from '../BrandMark';
+import { Logo as BrandLogo } from '../brand/Logo';
+import { navLinkClass } from '../brand/nav';
 
 /*
  * Public marketing page for logged-out visitors.
@@ -115,16 +116,10 @@ function TeamLogo({ src, alt, abbr }: { src: string; alt: string; abbr: string }
   );
 }
 
+// `className` only adds colour; sizing stays fixed so the nav, footer and hero
+// marks are identical.
 function Logo({ className }: { className?: string }) {
-  return (
-    <BrandMark
-      className="gap-2.5"
-      tileClassName="h-9 w-9 rounded-lg bg-basketball-500 text-base font-black"
-      wordmarkClassName={`font-heading text-lg font-bold uppercase tracking-wide sm:text-2xl ${
-        className ?? ''
-      }`}
-    />
-  );
+  return <BrandLogo className={`h-7 w-auto ${className ?? ''}`} />;
 }
 
 function LandingNav() {
@@ -140,11 +135,7 @@ function LandingNav() {
 
         <nav aria-label="Primary" className="ml-2 hidden items-center gap-6 lg:flex">
           {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55 transition-colors hover:text-white"
-            >
+            <a key={link.href} href={link.href} className={navLinkClass(false, 'dark')}>
               {link.label}
             </a>
           ))}

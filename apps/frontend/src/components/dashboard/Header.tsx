@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Bell, ChevronDown, LogOut, User, UserRound } from 'lucide-react';
 import { hexLuminance } from './shared';
-import { BrandMark } from '../BrandMark';
 import { GlobalSearchField, GlobalSearchTrigger } from './GlobalSearch';
+import { Logo } from '../brand/Logo';
+import { navLinkClass } from '../brand/nav';
 
 export type NavKey = 'dashboard' | 'predict' | 'profile' | 'game' | 'player' | undefined;
 
@@ -19,18 +20,18 @@ function resolveNavKey(active?: NavKey): NavKey {
   return active === 'game' ? 'predict' : active;
 }
 
+// Nav type comes from the shared brand module so the root shell, landing and
+// dashboard headers stay identical.
 function navClass(on: boolean): string {
-  return `rounded-sm px-1 py-2 text-sm font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 ${
-    on
-      ? 'text-brand-navyDark underline decoration-2 underline-offset-[10px]'
-      : 'text-stone-500 hover:text-brand-ink'
-  }`;
+  return navLinkClass(on, 'light', 'rounded-sm px-1 py-2');
 }
 
 function mobileNavClass(on: boolean): string {
-  return `flex min-h-[44px] flex-1 items-center justify-center px-1 py-3 text-sm font-bold uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 ${
-    on ? 'text-brand-navyDark underline decoration-[3px] underline-offset-[10px]' : 'text-stone-500'
-  }`;
+  return navLinkClass(
+    on,
+    'light',
+    'flex min-h-[44px] flex-1 items-center justify-center px-1 py-3',
+  );
 }
 
 export function DashboardHeader({
@@ -108,14 +109,10 @@ export function DashboardHeader({
           <Link
             to="/dashboard"
             search={{ tab: 'team' }}
-            aria-label="IKnoBall dashboard"
-            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+            className="rounded-md text-brand-navy transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+            aria-label="IKnoBall home"
           >
-            <BrandMark
-              className="gap-2.5"
-              tileClassName="h-9 w-9 rounded-lg bg-brand-red text-base font-black"
-              wordmarkClassName="font-heading text-2xl font-semibold uppercase tracking-wide text-brand-red"
-            />
+            <Logo className="h-7 w-auto" />
           </Link>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">

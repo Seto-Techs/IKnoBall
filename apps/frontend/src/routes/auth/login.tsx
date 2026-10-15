@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useSignIn, AuthError, useDiscordSignIn, useSession } from '../../lib/use-auth';
 import { useState, useEffect } from 'react';
 import { FaDiscord } from 'react-icons/fa';
+import { LogoMark } from '../../components/brand/Logo';
 
 export const Route = createFileRoute('/auth/login')({
   component: LoginPage,
@@ -55,9 +56,7 @@ function LoginPage() {
     <div className="flex min-h-[70vh] items-center justify-center px-4">
       <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-brand-line bg-white shadow-xl">
         <div className="bg-brand-navyDark px-8 py-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-brand-red font-heading text-xl font-black text-white shadow-md">
-            IK
-          </div>
+          <LogoMark className="mx-auto mb-3 h-12 w-12 text-brand-cream" />
           <h1 className="font-heading text-2xl font-black uppercase tracking-wide text-white">
             Sign in
           </h1>

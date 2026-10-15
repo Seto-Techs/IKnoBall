@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="../public/brand/iknoball-icon.svg" />
+    <title>IKnoBall — logo &amp; usage</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f6f4f0;
+        color: #20201e;
+        font:
+          15px/1.6 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      .wrap {
+        max-width: 940px;
+        margin: 0 auto;
+        padding: 48px 24px 80px;
+      }
+      h1 {
+        font-size: 30px;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+      }
+      .lede {
+        margin: 0 0 36px;
+        color: #6b6862;
+        max-width: 62ch;
+      }
+      h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: #8c8880;
+        margin: 44px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e0dbd3;
+      }
+      .hero {
+        background: #fff;
+        border: 1px solid #e0dbd3;
+        border-radius: 16px;
+        padding: 56px 32px;
+        display: flex;
+        justify-content: center;
+      }
+      .hero img {
+        height: 88px;
+      }
+      .hero-dark {
+        background: #1c4188;
+        border-color: #1c4188;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #e0dbd3;
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card.dark {
+        background: #1c4188;
+        border-color: #1c4188;
+      }
+      .card .stage {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 90px;
+      }
+      .card .stage img {
+        height: 40px;
+      }
+      .card .stage img.mark {
+        height: 64px;
+      }
+      .card .stage img.stacked {
+        height: 84px;
+      }
+      .card b {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .card span {
+        font-size: 12px;
+        color: #6b6862;
+      }
+      .card.dark b,
+      .card.dark span {
+        color: #fcf3dc;
+      }
+      .card.dark span {
+        opacity: 0.75;
+      }
+      .sizes {
+        display: flex;
+        align-items: flex-end;
+        gap: 26px;
+        flex-wrap: wrap;
+        background: #fff;
+        border: 1px solid #e0dbd3;
+        border-radius: 12px;
+        padding: 24px;
+      }
+      .sizes div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .sizes p {
+        margin: 0;
+        font-size: 11px;
+        color: #8c8880;
+        letter-spacing: 0.06em;
+      }
+      pre {
+        background: #20201e;
+        color: #f4f1ec;
+        padding: 18px 20px;
+        border-radius: 10px;
+        overflow-x: auto;
+        font-size: 12.5px;
+        line-height: 1.7;
+        margin: 0;
+      }
+      pre + pre {
+        margin-top: 12px;
+      }
+      code {
+        background: #eceae5;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      /* Undo the inline-code chip inside code blocks: it painted light bands
+         over the dark panel and washed the cream text out. */
+      pre code {
+        background: none;
+        padding: 0;
+        font-size: inherit;
+      }
+      ul {
+        margin: 10px 0 0;
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 7px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 9px 12px 9px 0;
+        border-bottom: 1px solid #e8e4dd;
+      }
+      th {
+        color: #6b6862;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      td:first-child {
+        white-space: nowrap;
+      }
+      a.dl {
+        color: #c4502f;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.dl:hover {
+        text-decoration: underline;
+      }
+      .swatches {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .sw {
+        width: 118px;
+        border: 1px solid #e0dbd3;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #fff;
+      }
+      .sw i {
+        display: block;
+        height: 54px;
+      }
+      .sw b {
+        display: block;
+        padding: 7px 9px;
+        font-size: 11.5px;
+      }
+      .sw em {
+        display: block;
+        padding: 0 9px 8px;
+        font-size: 10.5px;
+        font-style: normal;
+        color: #8c8880;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>IKnoBall</h1>
+      <p class="lede">
+        The word <strong>IKNOBALL</strong> with a basketball in place of the O. All caps, 12&deg;
+        forward lean, flat sheared terminals, navy body, orange seams. Every asset below is real
+        vector &mdash; scale it to any size.
+      </p>
+
+      <div class="hero">
+        <img src="../public/brand/iknoball-primary.svg" alt="IKnoBall" />
+      </div>
+      <div class="hero hero-dark" style="margin-top: 14px">
+        <img src="../public/brand/iknoball-white.svg" alt="IKnoBall" />
+      </div>
+
+      <h2>Files</h2>
+      <table>
+        <tr>
+          <th>File</th>
+          <th>Use it for</th>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-primary.svg" download
+              >iknoball-primary.svg</a
+            >
+          </td>
+          <td>Default. Navy on light backgrounds.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-white.svg" download>iknoball-white.svg</a>
+          </td>
+          <td>On navy, ink or photo backgrounds.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-cream.svg" download>iknoball-cream.svg</a>
+          </td>
+          <td>On navy when pure white is too cold.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-ink.svg" download>iknoball-ink.svg</a>
+          </td>
+          <td>One-colour print; seams knocked out to the background.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-upright.svg" download
+              >iknoball-upright.svg</a
+            >
+          </td>
+          <td>Documents and print, where an italic mark is wrong.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-stacked.svg" download
+              >iknoball-stacked.svg</a
+            >
+          </td>
+          <td>Splash screens and empty states.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-mark.svg" download>iknoball-mark.svg</a>
+          </td>
+          <td>The basketball alone. Anything under 36px.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-icon.svg" download>iknoball-icon.svg</a>
+          </td>
+          <td>Favicon. Seams thickened to survive 16px.</td>
+        </tr>
+        <tr>
+          <td>
+            <a class="dl" href="../public/brand/iknoball-app-icon.svg" download
+              >iknoball-app-icon.svg</a
+            >
+          </td>
+          <td>Home-screen icon: cream ball on a navy plate.</td>
+        </tr>
+      </table>
+
+      <h2>Variants</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="stage"><img src="../public/brand/iknoball-primary.svg" alt="" /></div>
+          <b>Navy</b><span>On white or light surfaces.</span>
+        </div>
+        <div class="card dark">
+          <div class="stage"><img src="../public/brand/iknoball-white.svg" alt="" /></div>
+          <b>White</b><span>On navy, ink or photo.</span>
+        </div>
+        <div class="card dark">
+          <div class="stage"><img src="../public/brand/iknoball-cream.svg" alt="" /></div>
+          <b>Cream</b><span>On navy. Never on white.</span>
+        </div>
+        <div class="card">
+          <div class="stage"><img src="../public/brand/iknoball-ink.svg" alt="" /></div>
+          <b>Ink</b><span>One colour, seams knocked out.</span>
+        </div>
+        <div class="card">
+          <div class="stage"><img src="../public/brand/iknoball-upright.svg" alt="" /></div>
+          <b>Upright</b><span>No lean, for documents.</span>
+        </div>
+        <div class="card">
+          <div class="stage">
+            <img class="stacked" src="../public/brand/iknoball-stacked.svg" alt="" />
+          </div>
+          <b>Stacked</b><span>Splash screens, empty states.</span>
+        </div>
+        <div class="card">
+          <div class="stage">
+            <img class="mark" src="../public/brand/iknoball-mark.svg" alt="" />
+          </div>
+          <b>Mark</b><span>Ball alone, from ~40px up.</span>
+        </div>
+        <div class="card">
+          <div class="stage">
+            <img class="mark" src="../public/brand/iknoball-app-icon.svg" alt="" />
+          </div>
+          <b>App icon</b><span>Cream ball on a navy plate.</span>
+        </div>
+      </div>
+
+      <h2>Minimum sizes</h2>
+      <div class="sizes">
+        <div>
+          <img src="../public/brand/iknoball-primary.svg" style="height: 96px" alt="" />
+          <p>96</p>
+        </div>
+        <div>
+          <img src="../public/brand/iknoball-primary.svg" style="height: 64px" alt="" />
+          <p>64</p>
+        </div>
+        <div>
+          <img src="../public/brand/iknoball-primary.svg" style="height: 48px" alt="" />
+          <p>48</p>
+        </div>
+        <div>
+          <img src="../public/brand/iknoball-primary.svg" style="height: 36px" alt="" />
+          <p>36 &mdash; floor</p>
+        </div>
+        <div>
+          <img src="../public/brand/iknoball-mark.svg" style="height: 32px" alt="" />
+          <p>32 &mdash; use the mark</p>
+        </div>
+        <div>
+          <img src="../public/brand/iknoball-icon.svg" style="height: 16px" alt="" />
+          <p>16 &mdash; favicon</p>
+        </div>
+      </div>
+      <p style="font-size: 13px; color: #6b6862; margin-top: 12px">
+        Below <strong>36px</strong> the counters close up. Switch to <code>iknoball-mark.svg</code>
+        rather than shrinking the lockup further.
+      </p>
+
+      <h2>How to use it &mdash; React</h2>
+      <pre><code>// Preferred in the app: inherits colour, no network request.
+import { Logo, LogoMark } from '../components/brand/Logo';
+
+// Nav / header — 28px, navy
+&lt;Logo className="h-7 w-auto text-brand-navy" /&gt;
+
+// Landing nav and footer — white on navy
+&lt;Logo className="h-7 w-auto text-white" /&gt;
+
+// Auth cards, and anything under 36px
+&lt;LogoMark className="h-12 w-12 text-brand-cream" /&gt;
+
+// Optional props
+&lt;Logo mono /&gt;      // seams in currentColor instead of orange
+&lt;Logo upright /&gt;   // drop the 12&deg; lean</code></pre>
+      <p style="font-size: 13px; color: #6b6862">
+        <code>currentColor</code> paints the letters and the ball body, so any text utility
+        recolours the whole mark. Keep <code>build.mjs</code> and <code>Logo.tsx</code> in sync
+        &mdash; both are generated from the same glyph table.
+      </p>
+
+      <h2>How to use it &mdash; plain HTML</h2>
+      <pre><code>&lt;!-- As an image: served at /brand/ from the frontend's public dir --&gt;
+&lt;img src="/brand/iknoball-primary.svg" alt="IKnoBall" height="28" /&gt;
+
+&lt;!-- Inline: lets CSS recolour the whole mark via currentColor --&gt;
+&lt;img src="/brand/iknoball-primary.svg" alt="IKnoBall"
+     style="height: 28px" /&gt;
+
+&lt;!-- Favicon (already wired in apps/frontend/index.html) --&gt;
+&lt;link rel="icon" type="image/svg+xml" href="/brand/iknoball-icon.svg" /&gt;
+&lt;link rel="apple-touch-icon" href="/brand/iknoball-app-icon.svg" /&gt;</code></pre>
+
+      <h2>Colours</h2>
+      <div class="swatches">
+        <div class="sw"><i style="background: #1c4188"></i><b>Navy</b><em>#1C4188</em></div>
+        <div class="sw"><i style="background: #c4502f"></i><b>Orange</b><em>#C4502F</em></div>
+        <div class="sw"><i style="background: #fcf3dc"></i><b>Cream</b><em>#FCF3DC</em></div>
+        <div class="sw"><i style="background: #20201e"></i><b>Ink</b><em>#20201E</em></div>
+      </div>
+      <p style="font-size: 13px; color: #6b6862">
+        All four live under <code>brand.*</code> in <code>tailwind.config.js</code>.
+      </p>
+
+      <h2>Rules</h2>
+      <ul>
+        <li>Minimum clear space equals the ball radius on every side.</li>
+        <li>
+          Navy on white, or white/cream on navy. <strong>Never cream on white</strong> &mdash; it is
+          about 1.1:1.
+        </li>
+        <li>Orange is for seams and the active nav underline only. It is not a text colour.</li>
+        <li>
+          Do not rotate, re-colour the seams separately, add a shadow, or set the wordmark in a
+          different typeface.
+        </li>
+        <li>Do not stretch it. Scale from the height and let the width follow.</li>
+      </ul>
+
+      <h2>Regenerate</h2>
+      <pre><code>cd apps/frontend/brand
+bun run build.mjs      # rewrites every SVG into ../public/brand</code></pre>
+    </div>
+  </body>
+</html>

@@ -1,38 +1,48 @@
 import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
-import { BrandMark } from '../components/BrandMark';
+import { Logo } from '../components/brand/Logo';
 import { useSession } from '../lib/use-auth';
 
 function Header() {
   const { data: session } = useSession();
   const user = session?.user;
 
+  // Same chrome as the dashboard nav — sticky, hairline, same wordmark height —
+  // and the same action buttons as the landing nav, so the shell, marketing and
+  // in-app headers all read as one brand bar.
   return (
-    <header className="border-b border-court-200 bg-white">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-        <Link to="/" className="flex items-center gap-3">
-          <BrandMark
-            className="gap-3"
-            tileClassName="h-8 w-8 rounded-md bg-basketball-500 text-sm font-bold shadow-sm"
-            wordmarkClassName="text-lg font-semibold tracking-tight text-stone-800"
-          />
+    <header className="sticky top-0 z-40 border-b border-brand-line bg-white/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3">
+        <Link
+          to="/"
+          className="rounded-md text-brand-navy transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+          aria-label="IKnoBall home"
+        >
+          <Logo className="h-7 w-auto" />
         </Link>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2">
           {user ? (
-            <span className="text-sm text-stone-600">{user.name}</span>
+            <Link
+              to="/dashboard"
+              search={{ tab: 'team' }}
+              className="whitespace-nowrap rounded-lg bg-basketball-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-basketball-600 sm:px-4"
+            >
+              Go to dashboard
+            </Link>
           ) : (
             <>
               <Link
                 to="/auth/login"
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-stone-700 transition-colors hover:bg-court-100"
+                className="whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-semibold text-stone-600 transition-colors hover:bg-stone-100 hover:text-brand-ink sm:px-3"
               >
                 Sign in
               </Link>
               <Link
                 to="/auth/register"
-                className="rounded-md bg-basketball-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-basketball-600"
+                className="whitespace-nowrap rounded-lg bg-basketball-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-basketball-600 sm:px-4"
               >
-                Sign up
+                <span className="sm:hidden">Sign up</span>
+                <span className="hidden sm:inline">Create account</span>
               </Link>
             </>
           )}
