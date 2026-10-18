@@ -36,11 +36,14 @@ function mobileNavClass(on: boolean): string {
 
 export function DashboardHeader({
   userName,
+  userImage,
   accentColor,
   onSignOut,
   active,
 }: {
   userName?: string;
+  /** The account avatar. Falls back to the name's initial when unset or broken. */
+  userImage?: string | null;
   accentColor?: string;
   onSignOut: () => void;
   active?: NavKey;
@@ -167,16 +170,12 @@ export function DashboardHeader({
                 onProfile ? 'ring-2 ring-brand-navy ring-offset-2' : ''
               }`}
             >
-              <span
-                className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${avatarTextClass}`}
-                style={{ backgroundColor: activeColor }}
-              >
-                {userName ? (
-                  userName.charAt(0).toUpperCase()
-                ) : (
-                  <User className="h-4 w-4" aria-hidden="true" />
-                )}
-              </span>
+              <HeaderAvatar
+                name={userName}
+                image={userImage}
+                color={activeColor}
+                textClass={avatarTextClass}
+              />
               <ChevronDown
                 className={`h-4 w-4 text-stone-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
                 aria-hidden="true"
@@ -247,5 +246,48 @@ export function DashboardHeader({
         )}
       </nav>
     </header>
+  );
+}
+
+/**
+ * The account avatar in the header.
+ *
+ * Uses the uploaded image when there is one and falls back to the name's initial
+ * on the team-coloured disc. The image can fail to load — a stale URL, or an orb
+ * that cannot reach the CDN — so a failure flips back to the initial rather than
+ * leaving a broken image in the nav.
+ */
+function HeaderAvatar({
+  name,
+  image,
+  color,
+  textClass,
+}: {
+  name?: string;
+  image?: string | null;
+  color: string;
+  textClass: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (image && !failed) {
+    return (
+      <img
+        src={image}
+        alt=""
+        onError={() => setFailed(true)}
+        className="h-9 w-9 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${textClass}`}
+      style={{ backgroundColor: color }}
+    >
+      {name ? name.charAt(0).toUpperCase() : <User className="h-4 w-4" aria-hidden="true" />}
+    </span>
   );
 }

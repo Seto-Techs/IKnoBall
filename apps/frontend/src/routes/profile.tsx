@@ -4,12 +4,7 @@ import { CalendarClock } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
 import { TeamRail } from '../components/profile/TeamRail';
 import { ConnectionsSection } from '../components/profile/ConnectionsSection';
-import {
-  DangerSection,
-  IdentitySection,
-  PasswordSection,
-  SessionsSection,
-} from '../components/profile/sections';
+import { IdentitySection, PasswordSection, SessionsSection } from '../components/profile/sections';
 import { Avatar } from '../components/profile/parts';
 import { useAccounts } from '../lib/use-account';
 import { useTeams } from '../lib/api';
@@ -29,9 +24,8 @@ export const Route = createFileRoute('/profile')({
  *
  * Every write goes through Better Auth: `update-user` persists the display name
  * and avatar, `change-password` and `list-sessions` back the security section,
- * and `list-accounts` backs the connected accounts. Two actions are shown as
- * unavailable because the server disables them — changing email
- * (`CHANGE_EMAIL_DISABLED`) and deleting the account.
+ * and `list-accounts` backs the connected accounts. Changing email is shown as
+ * unavailable because the server disables it (`CHANGE_EMAIL_DISABLED`).
  */
 function ProfilePage() {
   const navigate = useNavigate();
@@ -65,6 +59,7 @@ function ProfilePage() {
     <div className="min-h-screen bg-stone-200">
       <DashboardHeader
         userName={user.name}
+        userImage={user.image}
         accentColor={accentColor}
         onSignOut={handleSignOut}
         active="profile"
@@ -102,7 +97,6 @@ function ProfilePage() {
               <PasswordSection hasPassword={hasPassword} />
               <SessionsSection currentToken={session?.session.token} />
               <ConnectionsSection enabled={!!user} />
-              <DangerSection />
             </div>
           </div>
         </div>
