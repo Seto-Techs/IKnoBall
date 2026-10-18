@@ -46,6 +46,7 @@ function PlayerDetailPage() {
     <div className="min-h-screen bg-stone-200">
       <DashboardHeader
         userName={user.name}
+        userImage={user.image}
         accentColor={accentColor}
         onSignOut={handleSignOut}
         active="player"

@@ -13,26 +13,16 @@ export function SettingsCard({
   description,
   children,
   footer,
-  danger = false,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  danger?: boolean;
 }) {
   return (
-    <section
-      className={`rounded-lg border bg-white ${
-        danger ? 'border-brand-red/25' : 'border-brand-line'
-      }`}
-    >
+    <section className="rounded-lg border border-brand-line bg-white">
       <header className="border-b border-brand-line px-5 py-3.5">
-        <h2
-          className={`font-heading text-lg font-semibold uppercase tracking-wide ${
-            danger ? 'text-brand-red' : 'text-brand-ink'
-          }`}
-        >
+        <h2 className="font-heading text-lg font-semibold uppercase tracking-wide text-brand-ink">
           {title}
         </h2>
         {description && (
@@ -94,7 +84,7 @@ export function Button({
   children: ReactNode;
   onClick?: () => void;
   type?: 'button' | 'submit';
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost';
   disabled?: boolean;
   pending?: boolean;
   className?: string;
@@ -104,7 +94,6 @@ export function Button({
     secondary:
       'border border-brand-line bg-white text-brand-ink hover:border-stone-300 hover:bg-stone-50',
     ghost: 'text-stone-600 hover:bg-stone-100 hover:text-brand-ink',
-    danger: 'bg-brand-red text-white hover:bg-brand-red/90',
   };
 
   return (
