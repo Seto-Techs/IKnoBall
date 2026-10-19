@@ -22,6 +22,9 @@ describe('Better Auth email configuration', () => {
       clientId: 'discord-client-id',
       clientSecret: 'discord-client-secret',
       scope: ['identify', 'email'],
+      // Without this Better Auth sends prompt=none, which Discord rejects for a
+      // user who has not authorised the app before.
+      prompt: 'consent',
     });
 
     if (original.clientId === undefined) delete process.env.DISCORD_CLIENT_ID;
