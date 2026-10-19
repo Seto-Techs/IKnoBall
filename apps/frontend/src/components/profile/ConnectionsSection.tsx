@@ -12,9 +12,8 @@ import { Button, SaveHint, SettingsCard, type SaveState } from './parts';
  * instead of offering a button that always fails.
  *
  * Discord linking is real: `link-social` returns an authorise URL and this sends
- * the browser to it. It currently carries `prompt=none` (Better Auth hardcodes
- * it), which Discord rejects for a first-time authorisation — see the note under
- * the row. The bug is in `auth.config.ts`, not here.
+ * the browser to it. The provider sets `prompt: 'consent'`, so Discord shows its
+ * approval screen instead of rejecting a first-time authorisation.
  */
 export function ConnectionsSection({ enabled }: { enabled: boolean }) {
   const { data: accounts, isPending } = useAccounts(enabled);
@@ -117,17 +116,6 @@ export function ConnectionsSection({ enabled }: { enabled: boolean }) {
         <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700">
           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
           Connected
-        </p>
-      )}
-
-      {!discord && (
-        <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
-          <strong className="font-bold">Known issue:</strong> Discord sends
-          <code className="mx-1 rounded bg-amber-100 px-1 py-0.5">prompt=none</code>, which it
-          rejects for a first-time authorisation. Linking will fail until
-          <code className="mx-1 rounded bg-amber-100 px-1 py-0.5">prompt: 'consent'</code> is set on
-          the Discord provider in{' '}
-          <code className="rounded bg-amber-100 px-1 py-0.5">auth.config.ts</code>.
         </p>
       )}
     </SettingsCard>

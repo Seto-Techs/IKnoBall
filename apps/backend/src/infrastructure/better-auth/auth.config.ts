@@ -1,6 +1,7 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import { betterAuthSchema, createDatabase } from '@iknoball/database';
 import { betterAuth } from 'better-auth';
+import type { DiscordOptions } from 'better-auth/social-providers';
 import { bearer, admin } from 'better-auth/plugins';
 import { EmailService } from '../email/email.service';
 
@@ -13,11 +14,17 @@ export function createAuth(email: EmailService) {
   const socialProviders =
     discordClientId && discordClientSecret
       ? {
+          // Annotated so `prompt` keeps its literal type: left to inference it
+          // widens to `string`, which `SocialProviders` rejects.
           discord: {
             clientId: discordClientId,
             clientSecret: discordClientSecret,
             scope: ['identify', 'email'],
-          },
+            // Better Auth defaults this to "none", which Discord rejects unless the
+            // user has authorised the app before. "consent" shows the approval
+            // screen instead, so first-time sign-in and account linking both work.
+            prompt: 'consent',
+          } satisfies DiscordOptions,
         }
       : undefined;
 

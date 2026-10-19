@@ -88,7 +88,7 @@ Things worth knowing when working in an orb:
 
   `.agents/resume` attempts this automatically on activation and wake. The hostname stays registered when the thread is archived; `--take-over` moves it to the new orb.
 
-- **Discord sign-in needs `prompt: "consent"`.** Better Auth's Discord provider hard-codes `prompt=none`, which Discord rejects for a user who has not authorized the app before. `apps/backend/src/infrastructure/better-auth/auth.config.ts` does not set `prompt` yet.
+- **Discord sign-in and linking set `prompt: "consent"`.** Better Auth's Discord provider defaults to `prompt=none`, which Discord rejects for a user who has not authorized the app before. `apps/backend/src/infrastructure/better-auth/auth.config.ts` sets `prompt: 'consent'` so the approval screen appears; do not drop it.
 
 - **The route-tree codegen watcher does not run in orbs.** The `dev` script's nested `bun run router:watch` cannot resolve `node_modules/.bin` under a non-interactive login shell, so the frontend service runs `bun run vite` directly. Run `bun run router:gen` by hand after adding or renaming a route file.
 
