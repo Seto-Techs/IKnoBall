@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Camera, Mail, ShieldCheck, Upload } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Camera, ChevronRight, Mail, ShieldCheck, Upload } from 'lucide-react';
 import {
   fileToAvatarDataUrl,
   useChangePassword,
@@ -409,5 +410,38 @@ function SessionRow({ session, current }: { session: ActiveSession; current: boo
         </span>
       )}
     </li>
+  );
+}
+
+/* ── Legal ───────────────────────────────────────────────── */
+
+/**
+ * The two documents every user is bound by. Kept in settings rather than a page
+ * footer because the signed-in app has no footer, and a user looking for the
+ * terms is looking in their account.
+ */
+export function LegalSection() {
+  return (
+    <SettingsCard
+      title="Terms and privacy"
+      description="The rules for using IKnoBall, and what we do with your data."
+    >
+      <ul className="divide-y divide-brand-line text-sm">
+        {[
+          { to: '/terms', label: 'Terms of Service' },
+          { to: '/privacy', label: 'Privacy Policy' },
+        ].map((item) => (
+          <li key={item.to}>
+            <Link
+              to={item.to as never}
+              className="flex items-center justify-between gap-3 py-3 font-semibold text-brand-ink transition-colors hover:text-brand-navy"
+            >
+              {item.label}
+              <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </SettingsCard>
   );
 }

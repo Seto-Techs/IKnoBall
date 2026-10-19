@@ -1,0 +1,187 @@
+# IKnoBall Privacy Policy
+
+**Version 1.0 · Effective 21 October 2026**
+
+SETO Tech runs IKnoBall and decides how your personal data is used — which makes us the **data
+controller** for it under Indonesia's Personal Data Protection Law (UU 27/2022, **"PDP Law"**).
+
+Contact for anything in this policy: [rakaiseto@gmail.com](mailto:rakaiseto@gmail.com)
+
+## The short version
+
+- We collect what's needed to run an account and a prediction game: your name, email, password
+  hash (or Discord sign-in), favourite team, and your picks.
+- **We don't sell your data**, and there's no ad tracking or profiling.
+- We never take payment details — the app is free.
+- A handful of service providers help us run it, and section 6 names them.
+- You can ask for a copy of your data, fix it, or delete it. Section 9 says how.
+
+## 1. What we collect
+
+**What you give us:**
+
+| Data                     | Why                                                                                      | Required?                   |
+| ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------- |
+| **Display name**         | To identify you in the app and on leaderboards                                           | Yes                         |
+| **Email address**        | To create and verify your account, sign you in, and send security emails                 | Yes                         |
+| **Password**             | To sign you in. Stored only as a salted hash — we never see or store the password itself | Yes, unless you use Discord |
+| **Favourite team**       | To theme your dashboard                                                                  | Optional                    |
+| **Profile image**        | To show next to your name. If you sign in with Discord we may receive your avatar        | Optional                    |
+| **Messages you send us** | To answer support, privacy, and complaint requests                                       | Optional                    |
+
+**What we collect automatically:**
+
+| Data                                                                                                                      | Why                                               |
+| ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **Session data** — session token, expiry, and the IP address and browser user-agent recorded when the session was created | To keep you signed in and detect account takeover |
+| **Account and security events** — sign-up, sign-in, verification, password reset, admin actions, with timestamps          | To secure accounts and investigate abuse          |
+| **Your picks** — the game, your side, the mode, the price locked at submit, and the points or void reason                 | To run the game and build leaderboards            |
+| **Basic technical logs** — request paths, timestamps, status codes, errors                                                | To run, debug, and protect the service            |
+
+**What we don't collect:**
+
+- **No payment data.** No card, bank account, e-wallet, or crypto address, and no checkout anywhere.
+- **No precise location.** We never ask for device location. We may infer an approximate country
+  from your IP for security and legal-compliance purposes.
+- **No ad tracking.** No advertising pixels, no third-party analytics SDKs, no cross-site profiling.
+- **No sensitive data.** We don't ask for health, biometric, genetic, or criminal-record data, or
+  data about religion or political views. Please don't put any of that in a free-text field.
+
+## 2. Cookies
+
+We use only what's needed to keep you signed in:
+
+| Type            | Purpose                                         | Duration                         |
+| --------------- | ----------------------------------------------- | -------------------------------- |
+| Session cookie  | Stores your session token so you stay signed in | Until it expires or you sign out |
+| Browser storage | Holds interface state so the app loads faster   | Until cleared                    |
+
+These are **strictly necessary** — block them and you can't sign in. We set no advertising or
+analytics cookies.
+
+**One third-party request:** we load our web fonts from Google Fonts (`fonts.googleapis.com`), so
+your browser connects to Google to fetch them, which shares your IP address and browser details.
+You can block third-party font requests with a browser extension or setting; the app still works
+with fallback fonts.
+
+## 3. Why we use your data
+
+| Purpose                                                                                     | Legal basis                                                                            |
+| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Creating and running your account, signing you in, verifying email, resetting passwords     | **Contract** with you (the Terms of Service)                                           |
+| Recording picks, locking prices, settling points, building leaderboards                     | **Contract**                                                                           |
+| Keeping the service secure — sessions, IP and user-agent, abuse detection, rate limiting    | **Legitimate interest** in protecting the service and its users                        |
+| Service and security emails — verification, password reset, material changes to these terms | **Contract** and **legal obligation**                                                  |
+| Answering your support and privacy requests                                                 | **Legitimate interest**, and **legal obligation** for statutory rights requests        |
+| Complying with legal, tax, and regulatory obligations                                       | **Legal obligation**                                                                   |
+| Optional features — favourite team, profile image                                           | **Consent**, which you give by using the feature and can withdraw by removing the data |
+
+We don't use your data for automated decisions with legal or significant effects, and we don't
+profile you for advertising. We don't send marketing email — if we ever do, it'll be opt-in with an
+unsubscribe link on every message.
+
+## 4. Who can see it
+
+**Other users** see your display name, avatar if you set one, favourite team, and leaderboard
+position. They never see your email, IP address, or session data.
+
+**Our people** only access personal data where needed to run, secure, or support the app.
+
+**Authorities** get data only where the law requires it, or where it's needed to establish or
+defend a legal claim. Where we're allowed to, we'll tell you.
+
+## 5. How long we keep it
+
+| Data                                                              | Retention                                                                                    |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Account data — name, email, password hash, favourite team, avatar | While your account is open, then deleted or anonymised when you close it                     |
+| Picks, points, leaderboard history                                | While your account is open. Deleted or anonymised on closure unless needed for a legal claim |
+| Session records                                                   | Until the session expires or you sign out, then purged by routine cleanup                    |
+| Verification and reset tokens                                     | Until used or expired (verification tokens expire after 15 minutes)                          |
+| Security and activity logs                                        | As long as needed to investigate abuse, then deleted on a rolling basis                      |
+| Backups                                                           | Until the backup cycle rotates them out                                                      |
+| Records we must keep by law                                       | For the period the law requires                                                              |
+
+When we no longer need data, we delete it or irreversibly anonymise it.
+
+## 6. Who we share it with
+
+Each provider below processes data on our instructions and only for the purpose listed.
+
+| Provider                                           | What it gets                                                                                                                                                                                              | Purpose                            |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Discord** (optional sign-in)                     | Your Discord user ID, username, display name, email, and avatar, which Discord sends us when you authorise sign-in. Discord also sees your IP and browser as part of the sign-in flow, under their policy | Authentication                     |
+| **Email delivery (SMTP)**                          | Your email address, name, and the content of verification and reset emails                                                                                                                                | Sending those emails               |
+| **Cloud hosting, database, cache, object storage** | All the data in section 1, as stored and processed by the app                                                                                                                                             | Running the service and backups    |
+| **Sports data and odds feeds**                     | **No personal data.** Our servers make these requests, not your browser                                                                                                                                   | Scores, schedules, stats, and odds |
+| **Google Fonts**                                   | Your IP and browser details when your browser loads the fonts (see section 2)                                                                                                                             | Interface typography               |
+
+We don't sell personal data and don't share it for behavioural advertising. If the app is ever
+acquired or merged, data may transfer as part of that deal — we'll tell you before it does.
+
+Our main hosting is configured in the **AWS Asia Pacific (Jakarta)** region. Some providers may
+process data outside Indonesia; where they do, we rely on the transfer bases in Article 56 of the
+PDP Law (an adequate protection level, appropriate safeguards, or your consent). Ask us for the
+details of a specific transfer.
+
+## 7. Security
+
+We protect your data with salted password hashes, session cookies marked `HttpOnly` and `SameSite`,
+HTTPS in transit, restricted access to production data, rate limiting, and logging to catch abuse.
+
+No system is perfectly secure. If you think your account is compromised, email [rakaiseto@gmail.com](mailto:rakaiseto@gmail.com)
+and change your password.
+
+**If there's a breach.** Under Article 46 of the PDP Law, if a personal data breach occurs we'll
+notify you and the supervisory authority in writing within **3 × 24 hours** of becoming aware of
+it — describing what data was involved, how it happened, and what we're doing about it. Where a
+breach seriously affects you, we'll also publish a notice.
+
+## 8. Children
+
+IKnoBall is for people **18 and over**. We don't knowingly collect data from children. If we learn
+we hold a child's data, we'll delete it and close the account. If you think a child has given us
+their data, email [rakaiseto@gmail.com](mailto:rakaiseto@gmail.com).
+
+## 9. Your rights
+
+Under the PDP Law you can:
+
+1. **Be informed** about how your data is processed — this policy is that.
+2. **Get a copy** of your personal data.
+3. **Correct** data that's wrong or incomplete.
+4. **Have your data erased**, subject to records we're legally required to keep.
+5. **Withdraw consent** at any time for anything based on consent. That doesn't affect processing
+   already done, and may mean you lose a feature that depends on it.
+6. **Restrict or object** to processing, where the law allows.
+7. **Port your data** in a machine-readable format, where the law provides for it.
+8. **Not be subject to** decisions based solely on automated processing that have legal or
+   significant effects.
+9. **Claim compensation** for unlawful processing, and **complain** to the supervisory authority.
+
+**How to use them:** email [rakaiseto@gmail.com](mailto:rakaiseto@gmail.com) from your account address, say which right you're
+using and what you want. We may ask for enough information to confirm it's you, so we don't hand
+your data to someone else. We won't charge for a reasonable request.
+
+We may narrow or refuse a request where the law requires us to keep the data, where it would
+infringe someone else's rights, or where it's clearly excessive.
+
+**Complaints.** If our answer doesn't satisfy you, you can complain to the Indonesian data
+protection supervisory authority, currently within the Ministry of Communication and Digital
+Affairs (Komdigi), or to the dedicated agency once it's established. We'd rather sort it out with
+you first.
+
+## 10. Changes
+
+We may update this policy as the app, our providers, or the law change. The version and date at the
+top will change with them. If a change materially affects how we use your data, we'll tell you in
+the app or by email before it takes effect, and where the law requires it we'll ask for your
+consent. Older versions are available on request.
+
+## 11. Contact
+
+SETO Tech — [rakaiseto@gmail.com](mailto:rakaiseto@gmail.com)
+
+---
+
+_See also our [Terms of Service](/terms)._
