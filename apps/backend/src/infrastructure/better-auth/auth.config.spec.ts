@@ -91,4 +91,12 @@ describe('Better Auth email configuration', () => {
       fromKey: 'reset',
     });
   });
+
+  it('treats every live session as fresh', () => {
+    // freshAge measures from `createdAt`, which only a new sign-in moves, while
+    // the daily refresh only extends `expiresAt`. The 24h default therefore left
+    // a 7-day session unable to call `list-sessions` or `unlink-account` for six
+    // of its seven days. Restoring the default would silently reintroduce that.
+    expect(createAuth(email as never).options.session?.freshAge).toBe(0);
+  });
 });
