@@ -85,6 +85,14 @@ export function createAuth(email: EmailService) {
     basePath: '/auth',
     session: {
       cookieCache: { enabled: false },
+      // Better Auth defaults this to 24h and measures it from `createdAt`, which
+      // only a new sign-in moves — the daily refresh updates `expiresAt` and
+      // `updatedAt`, never `createdAt`. So a 7-day session was only "fresh" for
+      // its first day, and `list-sessions` and `unlink-account` returned 403 for
+      // the remaining six. `change-password` is not freshness-gated, so keeping
+      // the gate protected the less sensitive action while the more sensitive one
+      // ran on any valid session. 0 treats every live session as fresh.
+      freshAge: 0,
     },
     plugins: [bearer(), admin()],
   });
