@@ -578,7 +578,7 @@ function FinalCta() {
 function LandingFooter() {
   return (
     <footer className="border-t border-white/10 bg-brand-navyDark px-5 py-14 text-white/60 sm:px-8">
-      <div className="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-2">
           <Logo className="text-white" />
           <p className="mt-4 max-w-sm text-sm leading-relaxed">
@@ -632,6 +632,24 @@ function LandingFooter() {
               <a href="#features" className="transition-colors hover:text-white">
                 Features
               </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="font-heading text-sm font-bold uppercase tracking-[0.14em] text-white">
+            Legal
+          </h3>
+          <ul className="mt-4 space-y-2.5 text-sm">
+            <li>
+              <Link to="/terms" className="transition-colors hover:text-white">
+                Terms of Service
+              </Link>
+            </li>
+            <li>
+              <Link to="/privacy" className="transition-colors hover:text-white">
+                Privacy Policy
+              </Link>
             </li>
           </ul>
         </div>

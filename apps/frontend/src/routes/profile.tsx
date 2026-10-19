@@ -4,7 +4,12 @@ import { CalendarClock } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
 import { TeamRail } from '../components/profile/TeamRail';
 import { ConnectionsSection } from '../components/profile/ConnectionsSection';
-import { IdentitySection, PasswordSection, SessionsSection } from '../components/profile/sections';
+import {
+  IdentitySection,
+  LegalSection,
+  PasswordSection,
+  SessionsSection,
+} from '../components/profile/sections';
 import { Avatar } from '../components/profile/parts';
 import { useAccounts } from '../lib/use-account';
 import { useTeams } from '../lib/api';
@@ -97,6 +102,7 @@ function ProfilePage() {
               <PasswordSection hasPassword={hasPassword} />
               <SessionsSection currentToken={session?.session.token} />
               <ConnectionsSection enabled={!!user} />
+              <LegalSection />
             </div>
           </div>
         </div>

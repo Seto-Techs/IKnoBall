@@ -57,6 +57,11 @@ export const EmailTemplate: React.FC<EmailTemplateProps> = ({
 
   const selectedIcon = icons[iconType];
 
+  // The legal pages live on the frontend, so their links are only useful when the
+  // frontend origin is configured. Without it the footer shows plain labels
+  // instead of links that go nowhere.
+  const legalBaseUrl = (process.env.FRONTEND_URL ?? '').replace(/\/+$/, '');
+
   // IKnoBall court colourway
   const colorSchemes = {
     verify: {
@@ -497,17 +502,23 @@ export const EmailTemplate: React.FC<EmailTemplateProps> = ({
                           © {new Date().getFullYear()} SETO Tech. All rights reserved.
                         </p>
                         <div style={styles.footerLinks}>
-                          <a href="#" style={styles.footerLink}>
-                            Privacy
-                          </a>
-                          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-                          <a href="#" style={styles.footerLink}>
-                            Terms
-                          </a>
-                          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-                          <a href="#" style={styles.footerLink}>
-                            Support
-                          </a>
+                          {legalBaseUrl ? (
+                            <>
+                              <a href={`${legalBaseUrl}/privacy`} style={styles.footerLink}>
+                                Privacy
+                              </a>
+                              <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+                              <a href={`${legalBaseUrl}/terms`} style={styles.footerLink}>
+                                Terms
+                              </a>
+                            </>
+                          ) : (
+                            <>
+                              <span style={styles.footerLink}>Privacy</span>
+                              <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+                              <span style={styles.footerLink}>Terms</span>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

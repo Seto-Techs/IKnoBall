@@ -126,6 +126,24 @@ function RegisterPage() {
             >
               {signUp.isPending ? 'Creating account…' : 'Create account'}
             </button>
+
+            <p className="text-center text-xs leading-relaxed text-stone-500">
+              By creating an account you agree to our{' '}
+              <Link
+                to="/terms"
+                className="font-medium text-brand-navy underline-offset-2 hover:underline"
+              >
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link
+                to="/privacy"
+                className="font-medium text-brand-navy underline-offset-2 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
 
           <div className="relative my-6 flex items-center">
