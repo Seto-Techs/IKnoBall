@@ -17,7 +17,7 @@ jobs:
     if: |
       github.event.pull_request.merged == true &&
       (github.event.pull_request.base.ref == 'dev' ||
-       (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'be'))
+       github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,7 +58,7 @@ jobs:
     if: |
       github.event.pull_request.merged == true &&
       (github.event.pull_request.base.ref == 'dev' ||
-       (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'fe'))
+       github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -103,7 +103,7 @@ jobs:
     if: |
       github.event.pull_request.merged == true &&
       (github.event.pull_request.base.ref == 'dev' ||
-       (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'worker'))
+       github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -265,7 +265,15 @@ jobs:
       - name: Deploy via Dokploy
         run: |
           PROJECT_NAME="iknoball"
-          COMPOSE_NAME="staging"
+
+          # One compose per environment in the same Dokploy project. `main` ships
+          # the prod compose, `dev` ships staging; the compose content is the same
+          # repo file, only its env differs.
+          if [ "$ENV" = "prod" ]; then
+            COMPOSE_NAME="production"
+          else
+            COMPOSE_NAME="staging"
+          fi
 
           PROJECTS=$(curl -s -X GET \
             "${{ secrets.DOKPLOY_HOST }}/api/project.all" \
