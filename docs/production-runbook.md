@@ -21,15 +21,15 @@ compose (see below) or it answers 404.
 
 ## 0. Where production stands (2026-10-20)
 
-| Step                       | State                                             |
-| -------------------------- | ------------------------------------------------- |
-| Migrations (11, 19 tables) | applied to `iknoball_prod`                        |
-| Teams                      | 30                                                |
-| Players                    | 518 (8 are 2026 rookies with no NBA games yet)    |
-| Career stats               | 6,324 rows across 510 players                     |
-| Schedule 2025-26           | 230 days / 1,400 games, all final                 |
-| Schedule 2026-27           | 174 days / 1,274 games, statuses from the feed    |
-| Dokploy compose            | `production` created, env saved, not yet deployed |
+| Step                       | State                                                  |
+| -------------------------- | ------------------------------------------------------ |
+| Migrations (11, 19 tables) | applied to `iknoball_prod`                             |
+| Teams                      | 30                                                     |
+| Players                    | 518 (8 are 2026 rookies with no NBA games yet)         |
+| Career stats               | 6,324 rows across 510 players                          |
+| Schedule 2025-26           | 230 days / 1,400 games, all final                      |
+| Schedule 2026-27           | 174 days / 1,274 games, statuses from the feed         |
+| Dokploy compose            | `production` deployed (appName `iknoball-prod-f0av90`) |
 
 Today is **opening night**: the 2026-27 regular season tips off 2026-10-20 with
 BOS@DET (3pm ET), PHI@NYK (7pm ET), OKC@SAS (9:30pm ET). The 67 games already
@@ -107,7 +107,9 @@ REDIS_URL="redis://:<REDIS_PASSWORD>@redis:6379"
 REDIS_LOGGING_URL="redis://:<password>@log-redis:6379"
 
 # Auth mail is queued here and sent by the email worker, not over SMTP.
-EMAIL_QUEUE_REDIS_URL="redis://:<password>@HOST:6199"
+# Reach it over the `workers_redis-email` network, not the published port: 6199
+# is firewalled off from Docker bridges on this host (see section 6).
+EMAIL_QUEUE_REDIS_URL="redis://:<password>@email-redis:6379"
 EMAIL_QUEUE_KEY="queue:iknoball"
 EMAIL_INTERNAL_TOKEN="<generated>"
 EMAIL_FROM_NAME="IKnoBall"
@@ -192,8 +194,30 @@ a week away.
   re-registering it.
 - **Migrations only run from the api entrypoint.** The worker assumes the schema
   exists; that is what the healthcheck dependency is for.
+- **Port 6199 is unreachable from the containers, even though it works from
+  outside.** `workers-aumrfa-email-redis-1` publishes 6199 on the host, but a
+  connection from any Docker bridge to it is dropped — `nc` to
+  `195.85.19.218:6199` and to `172.17.0.1:6199` both hang, while 5454 (Postgres)
+  is fine. Because the SYNs are dropped rather than refused, node-redis retried
+  forever and sign-up hung with no error. The api now joins `workers_redis-email`
+  and talks to `email-redis:6379` directly, the same way staging reaches
+  `log-redis` on `workers_redis-log`. If you would rather use the published port,
+  open 6199 to the Docker bridge subnet on the host.
+- **`EMAIL_INTERNAL_TOKEN` must match the worker's `INTERNAL_TOKEN_IKNOBALL`.**
+  The email worker validates the payload against its own token, so a generated
+  value silently gets the mail dropped. Copy it from the `workers` compose's
+  `email-switcher` environment.
 - **`env_file: .env` is not automatic.** Dokploy writes the env file but does not
   inject it. Drop that line from a service and it boots with no config.
+- **`compose.create` ignores `sourceType: "raw"`.** It stores the compose as
+  `github`, so the first deploy fails in ~30ms trying to clone a repo that was
+  never configured. Send a follow-up `compose.update` with `{"sourceType":"raw"}`
+  and check `compose.one` before deploying. `randomize` and `appName` are also
+  decided at create time — passing `appName` still yields a random suffix.
+- **CD deploys, it does not push compose content.** The workflow only calls
+  `compose.deploy`, so edits to `deploy/dokploy/production.compose.yaml` reach
+  production only when the compose is pasted into Dokploy again. Dokploy's copy
+  is the source of truth at runtime.
 - **The career crawl used to wedge itself.** `PlayerIndexClient` aborted only the
   header wait, so `await response.json()` on a stalled body hung forever: the job
   stayed `active` for the life of the process, holding one of two concurrency

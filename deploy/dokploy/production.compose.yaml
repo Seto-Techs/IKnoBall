@@ -50,6 +50,10 @@ services:
     networks:
       - app_net
       - redis_log_net
+      # The email queue's redis. Its published port 6199 is firewalled off from
+      # Docker bridges on this host, so mail is queued over this network by
+      # container name instead (`email-redis:6379`).
+      - redis_email_net
       - dokploy-network
 
   web:
@@ -111,6 +115,9 @@ networks:
   redis_log_net:
     external: true
     name: workers_redis-log
+  redis_email_net:
+    external: true
+    name: workers_redis-email
   dokploy-network:
     external: true
     name: dokploy-network

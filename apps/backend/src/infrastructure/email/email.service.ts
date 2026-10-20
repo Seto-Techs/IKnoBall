@@ -18,6 +18,15 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private hasValidatedFromAddressMap = false;
 
+  /**
+   * How long to wait for the email queue before giving up. Short enough that a
+   * misconfigured or firewalled queue shows up as an error on sign-up rather than
+   * a request that never returns.
+   */
+  private readonly queueConnectTimeoutMs = Number(
+    process.env.EMAIL_QUEUE_CONNECT_TIMEOUT_MS || '5000',
+  );
+
   private getDefaultFrom() {
     return this.config.get<string>('from');
   }
@@ -59,7 +68,24 @@ export class EmailService {
 
   private async enqueueEmail(payload: InvoiceEmailPayload) {
     const { redisUrl, key } = this.getEmailQueueConfig();
-    const client = createClient({ url: redisUrl });
+    // Both limits exist because this call sits on the sign-up path, and node-redis
+    // retries a failing connection forever by default. When the queue host is
+    // unreachable its SYNs are dropped rather than refused, so `connect()` never
+    // settles: the request hangs until the client gives up, which for sign-up
+    // means a spinner that never resolves. Failing fast turns that into an error
+    // the user and the logs can actually see.
+    const client = createClient({
+      url: redisUrl,
+      socket: {
+        connectTimeout: this.queueConnectTimeoutMs,
+        reconnectStrategy: false,
+      },
+    });
+    // Without a listener, a connection error is an unhandled event that takes the
+    // process down before the rejection below is handled.
+    client.on('error', (error) => {
+      this.logger.error(`Email queue connection failed: ${error.message}`);
+    });
     try {
       await client.connect();
       await client.rPush(key, JSON.stringify(payload));
