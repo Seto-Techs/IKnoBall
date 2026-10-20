@@ -83,7 +83,7 @@ export type NbaScheduleResponse = {
 export class NbaScheduleClient {
   private readonly logger = new Logger(NbaScheduleClient.name);
   private readonly baseUrl = process.env.NBA_STATS_BASE_URL || 'https://stats.nba.com/stats';
-  private readonly requestTimeoutMs = 15000;
+  private readonly requestTimeoutMs = Number(process.env.NBA_STATS_REQUEST_TIMEOUT_MS || '15000');
   private readonly forceIpv4 = process.env.NBA_STATS_FORCE_IPV4 === 'true';
   private readonly ipv4Configured = this.configureIpv4();
 
@@ -92,8 +92,8 @@ export class NbaScheduleClient {
     url.searchParams.set('Season', season);
     url.searchParams.set('LeagueID', leagueId);
 
-    const response = await this.fetchWithRetry(url, 3);
-    return (await response.json()) as NbaScheduleResponse;
+    const { body } = await this.fetchWithRetry(url, 3);
+    return JSON.parse(body) as NbaScheduleResponse;
   }
 
   private headers(): Record<string, string> {
@@ -117,7 +117,7 @@ export class NbaScheduleClient {
     };
   }
 
-  private async fetchWithRetry(url: URL, retries: number) {
+  private async fetchWithRetry(url: URL, retries: number): Promise<{ body: string }> {
     let attempt = 0;
     while (true) {
       try {
@@ -136,7 +136,16 @@ export class NbaScheduleClient {
     }
   }
 
-  private async fetchWithTimeout(url: URL) {
+  /**
+   * Fetch and read the body under one abort timer.
+   *
+   * The timeout has to cover the body read, not just the wait for response
+   * headers. When only the header wait was guarded, a body that stalled
+   * mid-stream left the caller awaiting `response.json()` forever, so the
+   * schedule sync never finished and its queue job stayed `active`. An abort
+   * mid-body surfaces as an `AbortError`, which `isRetryable` retries.
+   */
+  private async fetchWithTimeout(url: URL): Promise<{ body: string }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
     try {
@@ -146,13 +155,14 @@ export class NbaScheduleClient {
         signal: controller.signal,
       });
 
+      const body = await response.text();
+
       if (!response.ok) {
-        const body = await response.text();
         this.logger.error(`NBA schedule error ${response.status}: ${body}`);
         throw new Error(`NBA schedule request failed: ${response.status}`);
       }
 
-      return response;
+      return { body };
     } finally {
       clearTimeout(timeout);
     }

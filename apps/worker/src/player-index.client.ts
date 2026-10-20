@@ -29,7 +29,7 @@ type LeagueLeadersResponse = {
 export class PlayerIndexClient {
   private readonly logger = new Logger(PlayerIndexClient.name);
   private readonly baseUrl = process.env.NBA_STATS_BASE_URL || 'https://stats.nba.com/stats';
-  private readonly requestTimeoutMs = 15000;
+  private readonly requestTimeoutMs = Number(process.env.NBA_STATS_REQUEST_TIMEOUT_MS || '15000');
 
   private headers(): Record<string, string> {
     return {
@@ -64,8 +64,7 @@ export class PlayerIndexClient {
     url.searchParams.set('LeagueID', '00');
     url.searchParams.set('Season', season);
 
-    const response = await this.fetchWithRetry(url, 3);
-    return (await response.json()) as PlayerIndexResponse;
+    return this.fetchWithRetry<PlayerIndexResponse>(url, 3);
   }
 
   async fetchPlayerDashboardByYear(
@@ -98,8 +97,7 @@ export class PlayerIndexClient {
     url.searchParams.set('VsConference', '');
     url.searchParams.set('VsDivision', '');
 
-    const response = await this.fetchWithRetry(url, 3);
-    return (await response.json()) as PlayerDashboardResponse;
+    return this.fetchWithRetry<PlayerDashboardResponse>(url, 3);
   }
 
   /**
@@ -120,15 +118,14 @@ export class PlayerIndexClient {
     url.searchParams.set('SeasonType', seasonType);
     url.searchParams.set('StatCategory', 'PTS');
 
-    const response = await this.fetchWithRetry(url, 3);
-    return (await response.json()) as LeagueLeadersResponse;
+    return this.fetchWithRetry<LeagueLeadersResponse>(url, 3);
   }
 
-  private async fetchWithRetry(url: URL, retries: number) {
+  private async fetchWithRetry<T>(url: URL, retries: number): Promise<T> {
     let attempt = 0;
     while (true) {
       try {
-        return await this.fetchWithTimeout(url);
+        return await this.fetchJsonWithTimeout<T>(url);
       } catch (error) {
         attempt += 1;
         if (attempt > retries || !this.isRetryable(error)) {
@@ -143,7 +140,17 @@ export class PlayerIndexClient {
     }
   }
 
-  private async fetchWithTimeout(url: URL) {
+  /**
+   * Fetch and parse the body under one abort timer.
+   *
+   * The timeout has to cover the body read, not just the response headers. When
+   * only the header wait was guarded, a body that stalled mid-stream hung the
+   * job indefinitely: it stayed `active` for the rest of the process's life,
+   * holding one of the two career-crawl slots, so the whole queue slowly
+   * stopped making progress. An abort mid-body surfaces as an `AbortError`,
+   * which `isRetryable` already treats as worth retrying.
+   */
+  private async fetchJsonWithTimeout<T>(url: URL): Promise<T> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
     try {
@@ -159,7 +166,7 @@ export class PlayerIndexClient {
         throw new Error(`NBA stats request failed: ${response.status}`);
       }
 
-      return response;
+      return (await response.json()) as T;
     } finally {
       clearTimeout(timeout);
     }
