@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { isLightColor, darken } from '../lib/color';
 import { useSaveTeam, useTeams, type TeamWithLeaders } from '../lib/api';
+import { TeamMark } from '../components/TeamMark';
 import { useSession } from '../lib/use-auth';
 
 export const Route = createFileRoute('/onboarding')({
@@ -53,47 +54,64 @@ function OnboardingPage() {
   if (sessionLoading || sessionFetching) return null;
   if (!session?.user) return null;
 
+  const submit = () => {
+    if (!selected || saveTeam.isPending) return;
+    saveTeam.mutate(selected.abbreviation, {
+      onSuccess: () => navigate({ to: '/dashboard', search: {} as never }),
+    });
+  };
+
   return (
     <div
-      className="relative grid grid-cols-1 gap-8 lg:grid-cols-[1fr_340px]"
-      style={{ minHeight: 'calc(100vh - 80px)' }}
+      className={`relative grid grid-cols-1 gap-8 xl:grid-cols-[1fr_340px] ${
+        // The phone action bar floats over the bottom of the page; without this
+        // the last row of chips can sit under it.
+        selected ? 'pb-24 xl:pb-0' : ''
+      }`}
+      style={{ minHeight: 'calc(100dvh - 80px)' }}
     >
       {/* ── Left: Team Grid ─────────────────────────────────── */}
       <div className="flex flex-col justify-center">
         <h1
-          className={`text-3xl font-bold tracking-tight ${selected && !isLightBody ? 'text-white/90' : 'text-stone-900'}`}
+          className={`text-2xl font-bold tracking-tight sm:text-3xl ${selected && !isLightBody ? 'text-white/90' : 'text-stone-900'}`}
         >
           Choose Your Team
         </h1>
         <p
-          className={`mt-1 text-base ${selected && !isLightBody ? 'text-white/60' : 'text-stone-500'}`}
+          className={`mt-1 text-sm sm:text-base ${selected && !isLightBody ? 'text-white/60' : 'text-stone-500'}`}
         >
           Select the franchise you'll manage this season.
         </p>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-5 space-y-5 sm:mt-6 sm:space-y-6">
           {conferences.map((conf) => {
             const confTeams = teams?.filter((t) => t.conference === conf.key) ?? [];
             return (
               <section key={conf.key}>
                 <h2
-                  className={`mb-3 text-base font-bold tracking-[0.15em] ${selected && !isLightBody ? 'text-white/70' : 'text-stone-600'}`}
+                  className={`mb-2.5 text-xs font-bold tracking-[0.15em] sm:mb-3 sm:text-base ${selected && !isLightBody ? 'text-white/70' : 'text-stone-600'}`}
                 >
                   {conf.label}
                 </h2>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3 sm:space-y-2.5">
                   {conf.divisions.map((div) => {
                     const divTeams = confTeams.filter((t) => t.division === div);
                     return (
-                      <div key={div} className="flex items-center gap-4">
+                      // A division label beside the chips needs room that only the
+                      // desktop rail layout has, so below xl the label sits on its own
+                      // line and the chips take the full width in three columns.
+                      <div
+                        key={div}
+                        className="flex flex-col gap-2 xl:flex-row xl:items-center xl:gap-4"
+                      >
                         <span
-                          className={`w-28 shrink-0 text-base font-semibold ${selected && !isLightBody ? 'text-white/60' : 'text-stone-600'}`}
+                          className={`text-sm font-semibold xl:w-28 xl:shrink-0 xl:text-base ${selected && !isLightBody ? 'text-white/60' : 'text-stone-600'}`}
                         >
                           {div}
                         </span>
 
-                        <div className="grid flex-1 grid-cols-5 gap-3">
+                        <div className="grid flex-1 grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-5">
                           {divTeams.map((team) => {
                             const isSelected = selected?.abbreviation === team.abbreviation;
                             return (
@@ -105,8 +123,9 @@ function OnboardingPage() {
                                   )
                                 }
                                 className={`
-                                  group relative flex items-center gap-3 rounded-2xl border-2 px-4 py-5
-                                  text-left outline-none transition-all duration-300 ease-out
+                                  group relative flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3
+                                  text-center outline-none transition-all duration-300 ease-out
+                                  md:gap-2 md:px-3 md:py-4
                                   ${
                                     isSelected
                                       ? 'shadow-lg scale-[1.02] translate-y-px'
@@ -125,6 +144,7 @@ function OnboardingPage() {
                               >
                                 {/* Checkmark */}
                                 <span
+                                  aria-hidden="true"
                                   className={`absolute -top-1.5 -right-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full text-[10px] shadow transition-all duration-300 ${
                                     isSelected ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
                                   }`}
@@ -135,34 +155,36 @@ function OnboardingPage() {
                                 >
                                   ✓
                                 </span>
-                                {/* Silhouette logo — clipped to card */}
-                                <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-                                  <img
-                                    src={team.logoUrl}
-                                    alt=""
-                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 h-32 w-32 object-contain grayscale transition-opacity duration-300 ${isSelected ? 'opacity-[0.12]' : 'opacity-[0.05] group-hover:opacity-[0.08]'}`}
+                                {/* Silhouette logo — clipped to card. Off on phones:
+                                    behind a small chip's two lines of text it only
+                                    muddies them. */}
+                                <div className="pointer-events-none absolute inset-0 hidden overflow-hidden rounded-2xl md:block">
+                                  <Crest
+                                    team={team}
+                                    className={`absolute -right-4 top-1/2 -translate-y-1/2 h-24 w-24 object-contain grayscale transition-opacity duration-300 md:h-32 md:w-32 ${isSelected ? 'opacity-[0.12]' : 'opacity-[0.05] group-hover:opacity-[0.08]'}`}
                                   />
                                 </div>
 
                                 {/* Logo */}
-                                <img
-                                  src={team.logoUrl}
-                                  alt={team.fullName}
-                                  className={`relative z-[1] h-12 w-12 shrink-0 object-contain transition-transform duration-300 ${
+                                <Crest
+                                  team={team}
+                                  className={`relative z-[1] h-9 w-9 shrink-0 object-contain transition-transform duration-300 md:h-12 md:w-12 ${
                                     isSelected ? 'scale-110' : 'group-hover:scale-105'
                                   }`}
-                                  loading="lazy"
                                 />
 
-                                {/* Text */}
-                                <div className="relative z-[1] min-w-0">
+                                {/* Text. Every chip is a fixed-width grid cell, so the
+                                    crest sits above the name rather than beside it: at five
+                                    columns there is no room for both on one line, and
+                                    beside it the longest names spilled past the card. */}
+                                <div className="relative z-[1] w-full min-w-0">
                                   <span
-                                    className={`block text-lg font-bold leading-tight ${isSelected ? (isLightCard ? 'text-stone-900' : 'text-white') : 'text-stone-800'}`}
+                                    className={`block text-sm font-bold leading-tight md:text-base ${isSelected ? (isLightCard ? 'text-stone-900' : 'text-white') : 'text-stone-800'}`}
                                   >
                                     {team.abbreviation}
                                   </span>
                                   <span
-                                    className={`block text-base leading-tight ${isSelected ? (isLightCard ? 'text-stone-700' : 'text-white/80') : 'text-stone-500'}`}
+                                    className={`block text-[10px] leading-tight md:text-[13px] ${isSelected ? (isLightCard ? 'text-stone-700' : 'text-white/80') : 'text-stone-500'}`}
                                   >
                                     {team.teamName}
                                   </span>
@@ -183,7 +205,7 @@ function OnboardingPage() {
 
       {/* ── Right: Detail Sidebar — always rendered, animated ── */}
       <div
-        className={`flex flex-col lg:absolute lg:inset-y-0 lg:right-0 lg:w-[340px] lg:overflow-y-auto transition-all duration-300 ease-out ${
+        className={`flex flex-col xl:absolute xl:inset-y-0 xl:right-0 xl:w-[340px] xl:overflow-y-auto transition-all duration-300 ease-out ${
           selected ? 'translate-x-0 opacity-100' : 'pointer-events-none translate-x-4 opacity-0'
         }`}
       >
@@ -199,12 +221,7 @@ function OnboardingPage() {
               }`}
               style={{ backgroundColor: selected.primaryColor }}
             >
-              <img
-                src={selected.logoUrl}
-                alt=""
-                aria-hidden="true"
-                className="h-14 w-14 shrink-0 object-contain"
-              />
+              <Crest team={selected} className="h-14 w-14 shrink-0 object-contain" />
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
                   {selected.city}
@@ -234,12 +251,7 @@ function OnboardingPage() {
                       className="flex flex-col items-center gap-1 rounded-[10px] border border-brand-line bg-stone-50 px-0.5 py-2"
                     >
                       {leader?.headshotUrl ? (
-                        <img
-                          src={leader.headshotUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="aspect-[260/190] w-full rounded-lg bg-white object-contain"
-                        />
+                        <Headshot url={leader.headshotUrl} />
                       ) : (
                         <div className="aspect-[260/190] w-full rounded-lg bg-white" />
                       )}
@@ -268,14 +280,9 @@ function OnboardingPage() {
               </div>
 
               <button
-                onClick={() => {
-                  if (saveTeam.isPending) return;
-                  saveTeam.mutate(selected.abbreviation, {
-                    onSuccess: () => navigate({ to: '/dashboard', search: {} as never }),
-                  });
-                }}
+                onClick={submit}
                 disabled={saveTeam.isPending}
-                className={`flex w-full items-center justify-center gap-2 rounded-md px-6 py-3.5 text-base font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
+                className={`hidden w-full items-center justify-center gap-2 rounded-md px-6 py-3.5 text-base font-bold transition-colors duration-200 xl:flex ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
                 style={{ backgroundColor: selected.primaryColor }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.filter = 'brightness(1.1)';
@@ -300,16 +307,98 @@ function OnboardingPage() {
                 </svg>
               </button>
 
-              {saveTeam.isError && (
-                <p className="text-center text-sm font-medium text-red-600">
-                  Couldn't save your team. Check your connection and try again.
-                </p>
-              )}
+              {saveTeam.isError && <SaveError />}
             </div>
           </div>
         )}
       </div>
+
+      {/* ── Phone: the pick and Continue, pinned to the bottom ──
+          The detail card sits below the grid below xl, so its own Continue
+          button only renders in the desktop rail. Without this bar the button is
+          a full scroll of thirty teams away from the chip you just tapped. */}
+      {selected && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-line bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md xl:hidden">
+          <div className="flex items-center gap-3 px-4 pt-3">
+            <Crest team={selected} className="h-9 w-9 shrink-0 object-contain" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-heading text-sm font-bold uppercase leading-tight tracking-wide text-brand-ink">
+                {selected.teamName}
+              </p>
+              <p className="truncate text-[11px] leading-tight text-stone-500">
+                {selected.city} · {selected.division}
+              </p>
+            </div>
+            <button
+              onClick={submit}
+              disabled={saveTeam.isPending}
+              className={`flex shrink-0 items-center gap-2 rounded-md px-5 py-2.5 text-sm font-bold transition-colors duration-200 ${isLightCard ? 'text-stone-900' : 'text-white'} disabled:opacity-60`}
+              style={{ backgroundColor: selected.primaryColor }}
+            >
+              {saveTeam.isPending ? 'Saving…' : 'Continue'}
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                />
+              </svg>
+            </button>
+          </div>
+          {saveTeam.isError && <SaveError />}
+        </div>
+      )}
     </div>
+  );
+}
+
+function SaveError() {
+  return (
+    <p role="alert" className="px-4 pt-2 text-center text-sm font-medium text-red-600">
+      Couldn't save your team. Check your connection and try again.
+    </p>
+  );
+}
+
+/**
+ * A team's mark for the picker, falling back to the league mark if the CDN
+ * cannot be reached. A torn-image glyph in every chip reads as a broken page
+ * rather than a missing logo, and this page is all crests.
+ */
+function Crest({ team, className }: { team: TeamWithLeaders; className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <TeamMark
+      logoUrl={failed ? null : team.logoUrl}
+      alt=""
+      className={className}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** The leaders' headshots, degrading to the same empty tile as a missing one. */
+function Headshot({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) return <div className="aspect-[260/190] w-full rounded-lg bg-white" />;
+
+  return (
+    <img
+      src={url}
+      alt=""
+      aria-hidden="true"
+      onError={() => setFailed(true)}
+      className="aspect-[260/190] w-full rounded-lg bg-white object-contain"
+    />
   );
 }
 

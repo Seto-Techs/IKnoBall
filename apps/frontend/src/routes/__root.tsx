@@ -93,7 +93,7 @@ export const Route = createRootRoute({
             hasSiteFooter ? 'min-h-[100dvh]' : ''
           } ${
             isOnboarding
-              ? 'px-8 py-4'
+              ? 'px-4 py-4 sm:px-8'
               : isAppShell
                 ? 'w-full'
                 : 'mx-auto w-full max-w-6xl px-4 py-6'
