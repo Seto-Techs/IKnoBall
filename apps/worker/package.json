@@ -17,7 +17,8 @@
     "backfill:starters": "node dist/run-backfill-starters.js",
     "refresh:shot-zones": "node dist/run-refresh-shot-zones.js",
     "backfill:scores": "node dist/run-backfill-scores.js",
-    "seed:teams": "node dist/run-seed-teams.js"
+    "seed:teams": "node dist/run-seed-teams.js",
+    "bootstrap": "node dist/run-bootstrap.js"
   },
   "dependencies": {
     "@iknoball/database": "workspace:*",

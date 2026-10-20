@@ -318,7 +318,7 @@ export type PlayerInfoResponse = {
 export class NbaBoxScoreClient {
   private readonly logger = new Logger(NbaBoxScoreClient.name);
   private readonly baseUrl = process.env.NBA_STATS_BASE_URL || 'https://stats.nba.com/stats';
-  private readonly requestTimeoutMs = 15000;
+  private readonly requestTimeoutMs = Number(process.env.NBA_STATS_REQUEST_TIMEOUT_MS || '15000');
   private readonly forceIpv4 = process.env.NBA_STATS_FORCE_IPV4 === 'true';
   private readonly ipv4Configured = this.configureIpv4();
 
@@ -326,30 +326,28 @@ export class NbaBoxScoreClient {
     const url = new URL(`${this.baseUrl}/boxscoretraditionalv3`);
     url.searchParams.set('GameID', gameId);
 
-    const response = await this.fetchWithRetry(url, 3);
-    return (await response.json()) as BoxScoreTraditionalResponse;
+    const { body } = await this.fetchWithRetry(url, 3);
+    return JSON.parse(body) as BoxScoreTraditionalResponse;
   }
 
   async fetchBoxScoreSummary(gameId: string): Promise<BoxScoreSummaryResponse> {
     const url = new URL(`${this.baseUrl}/boxscoresummaryv3`);
     url.searchParams.set('GameID', gameId);
 
-    const response = await this.fetchWithRetry(url, 3);
-    return (await response.json()) as BoxScoreSummaryResponse;
+    const { body } = await this.fetchWithRetry(url, 3);
+    return JSON.parse(body) as BoxScoreSummaryResponse;
   }
 
   async fetchCommonPlayerInfo(playerId: string): Promise<PlayerInfoResponse> {
     const url = new URL(`${this.baseUrl}/commonplayerinfo`);
     url.searchParams.set('PlayerID', playerId);
 
-    const response = await this.fetchWithRetry(url, 3);
-    const contentType = response.headers.get('content-type') ?? 'unknown';
-    const bodyText = await response.text();
+    const { status, statusText, contentType, body } = await this.fetchWithRetry(url, 3);
     try {
-      return JSON.parse(bodyText) as PlayerInfoResponse;
+      return JSON.parse(body) as PlayerInfoResponse;
     } catch (error) {
       this.logger.error(
-        `NBA commonplayerinfo parse error status=${response.status} ${response.statusText} content-type=${contentType} body=${this.truncateBody(bodyText)}`,
+        `NBA commonplayerinfo parse error status=${status} ${statusText} content-type=${contentType} body=${this.truncateBody(body)}`,
       );
       throw error;
     }
@@ -376,7 +374,10 @@ export class NbaBoxScoreClient {
     };
   }
 
-  private async fetchWithRetry(url: URL, retries: number) {
+  private async fetchWithRetry(
+    url: URL,
+    retries: number,
+  ): Promise<{ status: number; statusText: string; contentType: string; body: string }> {
     let attempt = 0;
     while (true) {
       try {
@@ -395,7 +396,18 @@ export class NbaBoxScoreClient {
     }
   }
 
-  private async fetchWithTimeout(url: URL) {
+  /**
+   * Fetch and read the body under one abort timer.
+   *
+   * The timeout has to cover the body read, not just the wait for response
+   * headers. When only the header wait was guarded, a body that stalled
+   * mid-stream left the caller awaiting `response.json()` forever, so the crawl
+   * never finished and its job stayed `active`. An abort mid-body surfaces as an
+   * `AbortError`, which `isRetryable` retries.
+   */
+  private async fetchWithTimeout(
+    url: URL,
+  ): Promise<{ status: number; statusText: string; contentType: string; body: string }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
     try {
@@ -408,16 +420,17 @@ export class NbaBoxScoreClient {
         signal: controller.signal,
       });
 
+      const contentType = response.headers.get('content-type') ?? 'unknown';
+      const body = await response.text();
+
       if (!response.ok) {
-        const contentType = response.headers.get('content-type') ?? 'unknown';
-        const body = await response.text();
         this.logger.error(
           `NBA boxscore error ${response.status} ${response.statusText} content-type=${contentType} body=${this.truncateBody(body)}`,
         );
         throw new Error(`NBA boxscore request failed: ${response.status}`);
       }
 
-      return response;
+      return { status: response.status, statusText: response.statusText, contentType, body };
     } finally {
       clearTimeout(timeout);
     }

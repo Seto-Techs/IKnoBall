@@ -1,0 +1,116 @@
+# Dokploy compose — IKnoBall production.
+#
+# This is the compose Dokploy actually runs for the `production` compose in the
+# `iknoball` project. It is pasted into Dokploy (source type `raw`), so this file
+# is the reviewed copy — Dokploy keeps its own, and editing this one changes
+# nothing until it is pasted in again.
+#
+# It mirrors the `staging` compose: images pinned by tag, Traefik labels for
+# routing, and app env supplied from Dokploy's `.env` (see the runbook). The
+# differences are the image tag, the hostnames, the Docker project name, and the
+# Redis host port, so the two stacks can share a host without colliding.
+name: iknoball-prod
+
+services:
+  api:
+    image: ghcr.io/seto-techs/iknoball-be:prod
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    # The entrypoint migrates before the server listens, so "healthy" means the
+    # schema is ready and the worker can safely start against it. `bun`, not
+    # `node`: this image has no real Node, and it ships neither curl nor wget.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=dokploy-network'
+      - 'traefik.http.routers.iknoball-prod-api-web.entrypoints=web'
+      - 'traefik.http.routers.iknoball-prod-api-web.middlewares=redirect-to-https@file'
+      - 'traefik.http.routers.iknoball-prod-api-web.rule=Host(`api-iknoball.setotechs.com`)'
+      - 'traefik.http.routers.iknoball-prod-api-web.service=iknoball-prod-api-web'
+      - 'traefik.http.routers.iknoball-prod-api-websecure.entrypoints=websecure'
+      - 'traefik.http.routers.iknoball-prod-api-websecure.rule=Host(`api-iknoball.setotechs.com`)'
+      - 'traefik.http.routers.iknoball-prod-api-websecure.service=iknoball-prod-api-websecure'
+      - 'traefik.http.services.iknoball-prod-api-web.loadbalancer.server.port=3000'
+      - 'traefik.http.services.iknoball-prod-api-websecure.loadbalancer.server.port=3000'
+    networks:
+      - app_net
+      - redis_log_net
+      - dokploy-network
+
+  web:
+    image: ghcr.io/seto-techs/iknoball-fe:prod
+    pull_policy: always
+    restart: unless-stopped
+    # No env_file: the frontend is static nginx. VITE_API_URL is baked in at
+    # build time by the CD workflow, not read at runtime.
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=dokploy-network'
+      - 'traefik.http.routers.iknoball-prod-fe-web.entrypoints=web'
+      - 'traefik.http.routers.iknoball-prod-fe-web.middlewares=redirect-to-https@file'
+      - 'traefik.http.routers.iknoball-prod-fe-web.rule=Host(`iknoball.setotechs.com`)'
+      - 'traefik.http.routers.iknoball-prod-fe-web.service=iknoball-prod-fe-web'
+      - 'traefik.http.routers.iknoball-prod-fe-websecure.entrypoints=websecure'
+      - 'traefik.http.routers.iknoball-prod-fe-websecure.rule=Host(`iknoball.setotechs.com`)'
+      - 'traefik.http.routers.iknoball-prod-fe-websecure.service=iknoball-prod-fe-websecure'
+      - 'traefik.http.services.iknoball-prod-fe-web.loadbalancer.server.port=3000'
+      - 'traefik.http.services.iknoball-prod-fe-websecure.loadbalancer.server.port=3000'
+    networks:
+      - dokploy-network
+      - default
+
+  worker:
+    image: ghcr.io/seto-techs/iknoball-worker:prod
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_started
+      api:
+        condition: service_healthy
+    networks:
+      - app_net
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - '6204:6379' # RedisInsight; staging uses 6203
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - app_net
+
+volumes:
+  redis-data:
+
+networks:
+  app_net:
+    name: iknoball-prod_app_net
+    driver: bridge
+  redis_log_net:
+    external: true
+    name: workers_redis-log
+  dokploy-network:
+    external: true
+    name: dokploy-network
