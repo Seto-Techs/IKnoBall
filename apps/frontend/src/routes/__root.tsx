@@ -1,5 +1,6 @@
 import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
 import { Logo } from '../components/brand/Logo';
+import { SiteFooter } from '../components/site/Footer';
 import { useSession } from '../lib/use-auth';
 
 function Header() {
@@ -70,9 +71,13 @@ export const Route = createRootRoute({
       pathname.startsWith('/game') ||
       pathname.startsWith('/player');
 
+    // The landing page has its own full marketing footer, and onboarding is a
+    // focused flow that should not offer ways out.
+    const hasSiteFooter = !isLanding && !isOnboarding;
+
     return (
       <div
-        className="min-h-screen bg-stone-200 text-stone-900 antialiased"
+        className="flex min-h-screen flex-col bg-stone-200 text-stone-900 antialiased"
         style={{
           backgroundColor: 'var(--team-bg, #e7e5e4)',
           transition: 'background-color 0.5s ease',
@@ -80,12 +85,23 @@ export const Route = createRootRoute({
       >
         {!isAppShell && <Header />}
         <main
-          className={
-            isOnboarding ? 'px-8 py-4' : isAppShell ? 'w-full' : 'mx-auto max-w-6xl px-4 py-6'
-          }
+          className={`flex flex-1 flex-col ${
+            // The footer must never show before you reach the bottom, so the
+            // main column always fills at least a viewport. A plain 100dvh is
+            // deliberate: measuring the sticky header instead would put the
+            // footer a few pixels above the fold on short pages.
+            hasSiteFooter ? 'min-h-[100dvh]' : ''
+          } ${
+            isOnboarding
+              ? 'px-8 py-4'
+              : isAppShell
+                ? 'w-full'
+                : 'mx-auto w-full max-w-6xl px-4 py-6'
+          }`}
         >
           <Outlet />
         </main>
+        {hasSiteFooter && <SiteFooter />}
       </div>
     );
   },

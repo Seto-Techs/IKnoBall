@@ -15,6 +15,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding';
 import { Route as PredictRouteImport } from './routes/predict';
 import { Route as PrivacyRouteImport } from './routes/privacy';
 import { Route as ProfileRouteImport } from './routes/profile';
+import { Route as SupportRouteImport } from './routes/support';
 import { Route as TermsRouteImport } from './routes/terms';
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password';
 import { Route as AuthLoginRouteImport } from './routes/auth/login';
@@ -55,6 +56,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const SupportRoute = SupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => rootRouteImport,
 } as any);
 const TermsRoute = TermsRouteImport.update({
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/predict': typeof PredictRoute;
   '/privacy': typeof PrivacyRoute;
   '/profile': typeof ProfileRoute;
+  '/support': typeof SupportRoute;
   '/terms': typeof TermsRoute;
   '/auth/forgot-password': typeof AuthForgotPasswordRoute;
   '/auth/login': typeof AuthLoginRoute;
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/predict': typeof PredictRoute;
   '/privacy': typeof PrivacyRoute;
   '/profile': typeof ProfileRoute;
+  '/support': typeof SupportRoute;
   '/terms': typeof TermsRoute;
   '/auth/forgot-password': typeof AuthForgotPasswordRoute;
   '/auth/login': typeof AuthLoginRoute;
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/predict': typeof PredictRoute;
   '/privacy': typeof PrivacyRoute;
   '/profile': typeof ProfileRoute;
+  '/support': typeof SupportRoute;
   '/terms': typeof TermsRoute;
   '/auth/forgot-password': typeof AuthForgotPasswordRoute;
   '/auth/login': typeof AuthLoginRoute;
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/predict'
     | '/privacy'
     | '/profile'
+    | '/support'
     | '/terms'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/predict'
     | '/privacy'
     | '/profile'
+    | '/support'
     | '/terms'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/predict'
     | '/privacy'
     | '/profile'
+    | '/support'
     | '/terms'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -238,6 +250,7 @@ export interface RootRouteChildren {
   PredictRoute: typeof PredictRoute;
   PrivacyRoute: typeof PrivacyRoute;
   ProfileRoute: typeof ProfileRoute;
+  SupportRoute: typeof SupportRoute;
   TermsRoute: typeof TermsRoute;
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute;
   AuthLoginRoute: typeof AuthLoginRoute;
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       path: '/profile';
       fullPath: '/profile';
       preLoaderRoute: typeof ProfileRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/support': {
+      id: '/support';
+      path: '/support';
+      fullPath: '/support';
+      preLoaderRoute: typeof SupportRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/terms': {
@@ -382,6 +402,7 @@ const rootRouteChildren: RootRouteChildren = {
   PredictRoute: PredictRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
+  SupportRoute: SupportRoute,
   TermsRoute: TermsRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,

@@ -578,7 +578,7 @@ function FinalCta() {
 function LandingFooter() {
   return (
     <footer className="border-t border-white/10 bg-brand-navyDark px-5 py-14 text-white/60 sm:px-8">
-      <div className="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-6">
         <div className="lg:col-span-2">
           <Logo className="text-white" />
           <p className="mt-4 max-w-sm text-sm leading-relaxed">
@@ -631,6 +631,39 @@ function LandingFooter() {
             <li>
               <a href="#features" className="transition-colors hover:text-white">
                 Features
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="font-heading text-sm font-bold uppercase tracking-[0.14em] text-white">
+            Support
+          </h3>
+          <ul className="mt-4 space-y-2.5 text-sm">
+            <li>
+              <Link to="/support" className="transition-colors hover:text-white">
+                Donate
+              </Link>
+            </li>
+            <li>
+              <a
+                href="https://saweria.co/setotechs"
+                target="_blank"
+                rel="noreferrer"
+                className="transition-colors hover:text-white"
+              >
+                Saweria
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://sociabuzz.com/setotechs"
+                target="_blank"
+                rel="noreferrer"
+                className="transition-colors hover:text-white"
+              >
+                Sociabuzz
               </a>
             </li>
           </ul>

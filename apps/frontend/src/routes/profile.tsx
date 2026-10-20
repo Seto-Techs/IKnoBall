@@ -61,7 +61,7 @@ function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-200">
+    <div className="flex-1 bg-stone-200">
       <DashboardHeader
         userName={user.name}
         userImage={user.image}
