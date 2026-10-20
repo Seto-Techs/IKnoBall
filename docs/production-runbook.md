@@ -21,15 +21,15 @@ compose (see below) or it answers 404.
 
 ## 0. Where production stands (2026-10-20)
 
-| Step                       | State                                             |
-| -------------------------- | ------------------------------------------------- |
-| Migrations (11, 19 tables) | applied to `iknoball_prod`                        |
-| Teams                      | 30                                                |
-| Players                    | 518 (8 are 2026 rookies with no NBA games yet)    |
-| Career stats               | 6,324 rows across 510 players                     |
-| Schedule 2025-26           | 230 days / 1,400 games, all final                 |
-| Schedule 2026-27           | 174 days / 1,274 games, statuses from the feed    |
-| Dokploy compose            | `production` created, env saved, not yet deployed |
+| Step                       | State                                                  |
+| -------------------------- | ------------------------------------------------------ |
+| Migrations (11, 19 tables) | applied to `iknoball_prod`                             |
+| Teams                      | 30                                                     |
+| Players                    | 518 (8 are 2026 rookies with no NBA games yet)         |
+| Career stats               | 6,324 rows across 510 players                          |
+| Schedule 2025-26           | 230 days / 1,400 games, all final                      |
+| Schedule 2026-27           | 174 days / 1,274 games, statuses from the feed         |
+| Dokploy compose            | `production` deployed (appName `iknoball-prod-f0av90`) |
 
 Today is **opening night**: the 2026-27 regular season tips off 2026-10-20 with
 BOS@DET (3pm ET), PHI@NYK (7pm ET), OKC@SAS (9:30pm ET). The 67 games already
@@ -194,6 +194,15 @@ a week away.
   exists; that is what the healthcheck dependency is for.
 - **`env_file: .env` is not automatic.** Dokploy writes the env file but does not
   inject it. Drop that line from a service and it boots with no config.
+- **`compose.create` ignores `sourceType: "raw"`.** It stores the compose as
+  `github`, so the first deploy fails in ~30ms trying to clone a repo that was
+  never configured. Send a follow-up `compose.update` with `{"sourceType":"raw"}`
+  and check `compose.one` before deploying. `randomize` and `appName` are also
+  decided at create time — passing `appName` still yields a random suffix.
+- **CD deploys, it does not push compose content.** The workflow only calls
+  `compose.deploy`, so edits to `deploy/dokploy/production.compose.yaml` reach
+  production only when the compose is pasted into Dokploy again. Dokploy's copy
+  is the source of truth at runtime.
 - **The career crawl used to wedge itself.** `PlayerIndexClient` aborted only the
   header wait, so `await response.json()` on a stalled body hung forever: the job
   stayed `active` for the life of the process, holding one of two concurrency
