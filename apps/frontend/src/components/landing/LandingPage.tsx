@@ -70,8 +70,8 @@ const FEATURES = [
   },
   {
     icon: Target,
-    title: 'Odds-aware scoring',
-    body: 'Real moneyline prices, so backing a long shot actually pays like one.',
+    title: 'Dynamic scoring',
+    body: 'Points scale with how big the call is, so calling an upset is worth far more than a safe pick.',
   },
   {
     icon: Layers,
@@ -193,7 +193,7 @@ function PickCard() {
             abbr: 'LAL',
             name: 'Lakers',
             record: '41-27',
-            odds: '2.55',
+            points: '26',
             logo: '/logos/lakers.svg',
             picked: false,
           },
@@ -201,7 +201,7 @@ function PickCard() {
             abbr: 'BOS',
             name: 'Celtics',
             record: '52-16',
-            odds: '1.52',
+            points: '15',
             logo: '/logos/celtics.svg',
             picked: true,
           },
@@ -227,10 +227,10 @@ function PickCard() {
             </span>
             <span className="ml-auto text-right">
               <span className="block font-heading text-xl font-black tabular-nums text-white">
-                {team.odds}
+                {team.points}
               </span>
               <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-                ML
+                PTS
               </span>
             </span>
             {team.picked ? (
@@ -247,10 +247,10 @@ function PickCard() {
       <div className="flex items-center justify-between gap-3 border-t border-white/10 px-5 py-4">
         <span>
           <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
-            Weighted payout if correct
+            Weighted points if correct
           </span>
           <span className="block font-heading text-2xl font-black tabular-nums text-basketball-400">
-            15.2 pts
+            15 pts
           </span>
         </span>
         <span className="rounded-lg bg-basketball-500 px-4 py-2 text-sm font-semibold text-white">
@@ -279,7 +279,7 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
-            A season-long prediction game settled against real moneyline odds, sitting alongside the
+            A season-long prediction game where every pick is scored twice, sitting alongside the
             scores, standings and stat leaders for all 30 teams.
           </p>
 
@@ -391,7 +391,7 @@ function Features() {
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
         <SectionHeading
           eyebrow="Features"
-          title="Everything but the ticket stub"
+          title="Everything but the scoreboard"
           body="The stats you already refresh ten times a night, and the game built on top of them."
         />
 
@@ -445,17 +445,17 @@ function ScoringModes() {
               Weighted
             </h3>
             <p className="mt-3 text-white/65">
-              Correct picks pay out at the price you locked, so an underdog is worth far more than a
-              favorite.
+              Correct picks are weighted by how big the upset would be, so calling an underdog is
+              worth far more than calling a favorite.
             </p>
             <p className="mt-auto pt-7 font-heading text-4xl font-black tabular-nums text-basketball-400">
-              41 pts <span className="text-lg text-white/55">if a 4.10 underdog wins</span>
+              40+ pts <span className="text-lg text-white/55">for calling a long shot</span>
             </p>
           </div>
         </div>
 
         <p className="mt-6 text-sm text-white/50">
-          Picks close at tip‑off · Your price locks when you submit · Postponed games do not count
+          Picks close at tip‑off · Your score locks when you submit · Postponed games do not count
         </p>
       </div>
     </section>
