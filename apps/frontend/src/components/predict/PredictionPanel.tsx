@@ -32,9 +32,13 @@ function ConfettiMark() {
 }
 
 /**
- * What the weighted mode pays, resolved in the order the state becomes known:
- * a settled result, then the price locked at submit, then the pending and live
- * odds states that lead up to it.
+ * What the weighted mode is worth, resolved in the order the state becomes known:
+ * a settled result, then the points locked at submit, then the pending and
+ * not-yet-rated states that lead up to it.
+ *
+ * Deliberately never renders the underlying decimal. It is a bookmaker's price,
+ * and showing `1.55` next to a points total reads as a betting slip; the number
+ * the player cares about is the points.
  */
 function weightedReturnLabel({
   pick,
@@ -49,14 +53,13 @@ function weightedReturnLabel({
 }): string {
   if (pick?.points != null) return formatPoints(pick.points);
   if (pick?.lockedDecimal != null) {
-    return `locked ${pick.lockedDecimal.toFixed(2)} · ${oddsForSide?.weighted ?? '—'} pts if correct`;
+    return `locked · ${oddsForSide?.weighted ?? '—'} pts if correct`;
   }
-  if (pick?.pendingPrice) return 'Awaiting the opening line';
-  if (oddsLoading) return 'Loading odds…';
-  if (!oddsAvailable) return 'No line yet — the opening line will be used';
-  if (oddsForSide)
-    return `${oddsForSide.decimal.toFixed(2)} · ${oddsForSide.weighted} pts if correct`;
-  return 'Pick a team to see the return';
+  if (pick?.pendingPrice) return 'Points pending';
+  if (oddsLoading) return 'Working out the points…';
+  if (!oddsAvailable) return 'Points unlock closer to tip-off';
+  if (oddsForSide) return `${oddsForSide.weighted} pts if correct`;
+  return 'Pick a team to see the points';
 }
 
 export function PredictionPanel({
@@ -279,8 +282,8 @@ export function PredictionPanel({
 
             {side && !locked && (
               <p className="mt-3 text-center text-xs font-medium text-stone-500">
-                One pick counts in both modes. Classic always pays 1; weighted pays the locked
-                price.
+                One pick counts in both modes. Classic is always 1 point; weighted locks its points
+                when you submit.
               </p>
             )}
           </>
