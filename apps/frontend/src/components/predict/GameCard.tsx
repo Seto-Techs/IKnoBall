@@ -16,7 +16,7 @@ import {
 } from '../dashboard/MatchupBackdrop';
 import { TeamMark } from '../TeamMark';
 import type { GamePicks, SavedPrediction } from './predictions';
-import { formatPoints, picksOf } from './predictions';
+import { formatPoints, picksOf, potentialPoints } from './predictions';
 
 export interface TeamRecord {
   wins: number;
@@ -303,16 +303,19 @@ export function GameCard({
                   : entryOutcome === 'hit'
                     ? 'bg-emerald-600/85 text-white ring-white/30'
                     : 'bg-white/20 text-white ring-white/30';
-              // Settled picks show what they scored; open ones show the locked
-              // price so the payout is visible before the game resolves. A
-              // weighted pick with no price yet says so rather than looking broken.
+              // Settled picks show what they scored; open ones show the points
+              // locked in so the total is visible before the game resolves. A
+              // weighted pick with no rating yet says so rather than looking
+              // broken. Never the raw decimal: that is a bookmaker's price, not
+              // something a player needs to see.
+              const projected = potentialPoints(entry.mode, entry.lockedDecimal);
               const detail =
                 entry.points != null
                   ? formatPoints(entry.points)
-                  : entry.lockedDecimal != null
-                    ? entry.lockedDecimal.toFixed(2)
+                  : projected != null
+                    ? formatPoints(projected)
                     : entry.pendingPrice
-                      ? 'awaiting line'
+                      ? 'points pending'
                       : null;
               return (
                 <span

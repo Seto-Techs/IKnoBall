@@ -14,14 +14,15 @@ live scores, standings, stat leaders, player pages, and shot-zone charts.
 Four things that will decide whether this lands or gets deleted.
 
 1. **The copy is deliberately free of betting vocabulary.** The weighted board is
-   built on real moneyline prices, but nothing user-facing says so: the app now
-   talks about _dynamic scoring_ — points scale with how big the call is. That is
-   a reframe, not a disguise: the scoring genuinely works that way, and the terms
-   of service already describe odds as "only a scoring weight". Keep it consistent
-   and do not reintroduce words like _odds_, _moneyline_, _payout_, or _bet_ in
-   posts. If you do, r/nba's Rule 4 ("no betting, fantasy sports, parlays, or odds
-   talk") and similar rules elsewhere become a live problem instead of a
-   non-issue.
+   built on real moneyline prices, but nothing user-facing says so: the landing
+   page talks about _dynamic scoring_ (points scale with how big the call is), and
+   the prediction panel says points "unlock closer to tip-off" rather than waiting
+   for an opening line. That is a reframe, not a disguise: the scoring genuinely
+   works that way, and the terms of service already describe odds as "only a
+   scoring weight". Keep it consistent and do not reintroduce words like _odds_,
+   _moneyline_, _line_, _payout_, or _bet_ in posts. If you do, r/nba's Rule 4
+   ("no betting, fantasy sports, parlays, or odds talk") and similar rules
+   elsewhere become a live problem instead of a non-issue.
 
 2. **Lead with the stats, not the game.** The hook that travels in NBA-adjacent
    spaces is "a stats app for the whole league that also has a prediction game".
