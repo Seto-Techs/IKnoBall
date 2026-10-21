@@ -1,9 +1,52 @@
 import type { Game } from '../../lib/api';
 import { etDateKey, gameDateKey, getGameStatus } from '../../lib/game-utils';
 import { hasPick, picksOf, type PicksByGame } from './predictions';
+import { weekStartKey, weekStartOf } from './week';
 
 /** Calendar days the slate covers: today plus the next six. */
 export const SLATE_DAY_COUNT = 7;
+
+/** Ways a slate day's games can be narrowed down. */
+export const PICK_FILTERS = ['all', 'unpicked', 'picked'] as const;
+
+export type PickFilter = (typeof PICK_FILTERS)[number];
+
+/**
+ * The slate view, as carried in the URL.
+ *
+ * Keeping it in search params is what lets a reader walk into a game and come
+ * back to the day they were predicting — the route remounts on the way back, so
+ * local state would reset to today.
+ */
+export interface SlateSearch {
+  /** Sunday that opens the week. Only needed when no day is selected. */
+  week?: string;
+  /** The selected `YYYY-MM-DD` day; the week is derived from it. */
+  day?: string;
+  /** Omitted means `all`. */
+  filter?: PickFilter;
+}
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+function isDateKey(value: unknown): value is string {
+  return typeof value === 'string' && DATE_KEY.test(value);
+}
+
+/** Drop anything malformed so a hand-edited URL falls back to the defaults. */
+export function parseSlateSearch(search: Record<string, unknown>): SlateSearch {
+  return {
+    week: isDateKey(search.week) ? search.week : undefined,
+    day: isDateKey(search.day) ? search.day : undefined,
+    filter: PICK_FILTERS.find((key) => key === search.filter),
+  };
+}
+
+/** The Sunday the slate opens on: the selected day's week, else the given week. */
+export function slateWeekStart(search: SlateSearch, now: Date = new Date()): string {
+  if (search.day) return weekStartOf(search.day);
+  return search.week ?? weekStartKey(0, now);
+}
 
 export interface SlateDay {
   key: string;

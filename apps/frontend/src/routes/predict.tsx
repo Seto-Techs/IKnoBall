@@ -12,8 +12,12 @@ import { SeasonMenu } from '../components/predict/SeasonMenu';
 import {
   buildDaysFrom,
   formatSlateDayLabel,
+  parseSlateSearch,
   slateStats,
+  slateWeekStart,
+  type PickFilter,
   type SlateDay,
+  type SlateSearch,
   type SlateStats,
 } from '../components/predict/slate';
 import { WeekNavigator } from '../components/predict/WeekNavigator';
@@ -38,10 +42,11 @@ import { gameDateKey, shiftEtDate } from '../lib/game-utils';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/predict')({
+  // The slate view rides in the URL: coming back from a game detail page, or
+  // reloading, lands on the day the reader was predicting rather than today.
+  validateSearch: (search: Record<string, unknown>) => parseSlateSearch(search),
   component: PredictPage,
 });
-
-type PickFilter = 'all' | 'unpicked' | 'picked';
 
 type Tab = 'slate' | 'picks';
 
@@ -58,6 +63,13 @@ const FILTERS: { key: PickFilter; label: string }[] = [
 
 const anchorOf = (key: string) => new Date(`${key}T12:00:00.000Z`);
 const shiftKey = (key: string, days: number) => shiftEtDate(days, anchorOf(key));
+
+/** Search params for a slate view; `all` and unset values stay out of the URL. */
+const slateSearchOf = ({ week, day, filter }: SlateSearch): SlateSearch => ({
+  week,
+  day,
+  filter: filter === 'all' ? undefined : filter,
+});
 
 /**
  * The nearest week in `dir` that has any games, skipping empty ones.
@@ -180,12 +192,11 @@ function PredictPage() {
   const signOut = useSignOut();
   const user = session?.user;
 
+  const { week, day, filter = 'all' } = Route.useSearch();
   const [tab, setTab] = useState<Tab>('slate');
-  const [weekStart, setWeekStart] = useState(() => weekStartKey(0));
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [filter, setFilter] = useState<PickFilter>('all');
   const [busy, setBusy] = useState(false);
 
+  const weekStart = useMemo(() => slateWeekStart({ week, day }), [week, day]);
   const weekEnd = useMemo(() => weekEndOf(weekStart), [weekStart]);
   const weekOffset = weekOffsetOf(weekStart);
 
@@ -224,10 +235,14 @@ function PredictPage() {
     else if (!user.favoriteTeam) navigate({ to: '/onboarding' });
   }, [sessionLoading, sessionFetching, user, navigate]);
 
-  const goToWeek = useCallback((startKey: string) => {
-    setWeekStart(startKey);
-    setSelectedKey(null);
-  }, []);
+  const goToWeek = useCallback(
+    (startKey: string) => {
+      // Dropping `day` lets the week open on its own default day, which is the
+      // first one with games rather than an empty Sunday.
+      navigate({ to: '/predict', search: slateSearchOf({ week: startKey, filter }) });
+    },
+    [navigate, filter],
+  );
 
   const shiftWeek = useCallback(
     async (dir: -1 | 1) => {
@@ -252,10 +267,16 @@ function PredictPage() {
   const accentColor =
     teams?.find((t) => t.abbreviation === user.favoriteTeam)?.primaryColor ?? '#1C4188';
 
-  const activeKey = selectedKey ?? defaultDayKey(days);
+  const activeKey = day ?? defaultDayKey(days);
   const activeDay: SlateDay | undefined = days.find((d) => d.key === activeKey) ?? days[0];
   const weekIsEmpty = days.every((d) => d.games.length === 0);
   const nextGameDate = nextGames?.[0]?.gameDate ?? null;
+
+  // Selecting a day pins it in the URL; the week follows from it.
+  const selectDay = (key: string) =>
+    navigate({ to: '/predict', search: slateSearchOf({ day: key, filter }) });
+  const selectFilter = (key: PickFilter) =>
+    navigate({ to: '/predict', search: slateSearchOf({ day: activeKey, filter: key }) });
 
   const visibleGames = (activeDay?.games ?? []).filter((game) => {
     if (filter === 'unpicked') return !predictions[game.id];
@@ -331,7 +352,7 @@ function PredictPage() {
             <WeekNavigator
               days={days}
               activeKey={activeKey}
-              onSelect={setSelectedKey}
+              onSelect={selectDay}
               weekOffset={weekOffset}
               onShiftWeek={shiftWeek}
               onCurrentWeek={() => goToWeek(weekStartKey(0))}
@@ -385,7 +406,7 @@ function PredictPage() {
                       <button
                         key={option.key}
                         type="button"
-                        onClick={() => setFilter(option.key)}
+                        onClick={() => selectFilter(option.key)}
                         aria-pressed={filter === option.key}
                         className={`rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy ${
                           filter === option.key

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useCanGoBack, useNavigate, useRouter } from '@tanstack/react-router';
 import { useEffect, useMemo } from 'react';
 import { Activity, MapPin } from 'lucide-react';
 import { DashboardHeader } from '../components/dashboard/Header';
@@ -24,6 +24,8 @@ export const Route = createFileRoute('/game/$gameId')({
 
 function GameDetailPage() {
   const navigate = useNavigate();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const { gameId } = Route.useParams();
   const { data: session, isPending: sessionLoading, isFetching: sessionFetching } = useSession();
   const signOut = useSignOut();
@@ -69,6 +71,14 @@ function GameDetailPage() {
     signOut.mutate(undefined, { onSuccess: () => navigate({ to: '/' }) });
   };
 
+  // The slate view lives in the URL, so stepping back through history returns to
+  // the day the reader was predicting. A page opened cold has nothing to step
+  // back to, so it falls through to the slate's default day.
+  const goBack = () => {
+    if (canGoBack) router.history.back();
+    else navigate({ to: '/predict' });
+  };
+
   return (
     <div className="flex-1 bg-stone-200">
       <DashboardHeader
@@ -98,12 +108,7 @@ function GameDetailPage() {
 
         {!isLoading && game && (
           <div className="flex flex-col gap-6">
-            <MatchupHero
-              game={game}
-              away={away}
-              home={home}
-              onBack={() => navigate({ to: '/predict' })}
-            />
+            <MatchupHero game={game} away={away} home={home} onBack={goBack} />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
               {/* Left: matchup detail */}
