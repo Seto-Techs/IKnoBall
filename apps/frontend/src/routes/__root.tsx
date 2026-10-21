@@ -67,6 +67,7 @@ export const Route = createRootRoute({
       isOnboarding ||
       pathname.startsWith('/dashboard') ||
       pathname.startsWith('/predict') ||
+      pathname.startsWith('/rankings') ||
       pathname.startsWith('/profile') ||
       pathname.startsWith('/game') ||
       pathname.startsWith('/player');

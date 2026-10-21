@@ -1,5 +1,5 @@
 import { GiCrown, GiMedal, GiTrophyCup, GiWeightScale } from 'react-icons/gi';
-import { Panel } from './shared';
+import { LoadingSpinner, EmptyState, Panel } from './shared';
 import { darken, isLightColor } from '../../lib/color';
 
 /** Display shape for one leaderboard row. */
@@ -117,11 +117,10 @@ function ListRow({
 }
 
 /**
- * Flat leaderboard — no podium columns. Ranks 1-3 use gold/silver/bronze row
- * tints (via ListRow) to differentiate. Always 10 rows: 1-10 when user is
- * inside top 10, otherwise top 9 + user row (inserted at natural rank, still
- * 10 total). Column header sticky top-0 and user row sticky top/bottom mirrors
- * StandingsSidebar conference headers.
+ * One board. `scrollable` is the dashboard rail: a fixed-height box that scrolls
+ * on its own with the user's row pinned top and bottom. The rankings page turns
+ * it off so the whole top 50 flows with the document instead of nesting a
+ * second scrollbar inside the page.
  */
 export function LeaderboardPanel({
   title,
@@ -131,6 +130,8 @@ export function LeaderboardPanel({
   userPoints,
   userName,
   userColor,
+  loading = false,
+  scrollable = true,
 }: {
   title: string;
   weighted?: boolean;
@@ -139,6 +140,8 @@ export function LeaderboardPanel({
   userPoints: number;
   userName?: string;
   userColor?: string;
+  loading?: boolean;
+  scrollable?: boolean;
 }) {
   const userLabel = userName || 'You';
   const inTop50 = userRank <= LEADERBOARD_SIZE;
@@ -171,53 +174,65 @@ export function LeaderboardPanel({
         </span>
       }
     >
-      <div className="max-h-[480px] overflow-y-auto overscroll-contain scrollbar-hide">
-        <div className="sticky top-0 z-[9] bg-white">
-          <div className="flex items-center gap-3 px-5 pb-1 pt-3 text-sm font-semibold uppercase tracking-wide text-stone-600">
-            <span className="w-7 shrink-0 text-right">#</span>
-            <span className="w-8 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 flex-1">User</span>
-            <span className="w-12 shrink-0 text-right">Pts</span>
-          </div>
+      {loading ? (
+        <div className="py-10">
+          <LoadingSpinner />
         </div>
+      ) : displayList.length === 0 ? (
+        <EmptyState message="No settled picks yet. The board fills in once the first games are scored." />
+      ) : (
+        <div
+          className={
+            scrollable ? 'max-h-[480px] overflow-y-auto overscroll-contain scrollbar-hide' : ''
+          }
+        >
+          <div className="sticky top-0 z-[9] bg-white">
+            <div className="flex items-center gap-3 px-5 pb-1 pt-3 text-sm font-semibold uppercase tracking-wide text-stone-600">
+              <span className="w-7 shrink-0 text-right">#</span>
+              <span className="w-8 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">User</span>
+              <span className="w-12 shrink-0 text-right">Pts</span>
+            </div>
+          </div>
 
-        <ul>
-          {displayList.map((entry) => {
-            const isUser = !!entry.isUser;
-            const isStickyUser = isUser;
-            const stickyBg =
-              isStickyUser && userColor
-                ? isLightColor(userColor)
-                  ? darken(userColor, 0.35)
-                  : userColor
-                : '';
-            const stickyStyle = isStickyUser
-              ? stickyBg
-                ? { backgroundColor: stickyBg }
-                : { backgroundColor: '#1C4188' }
-              : undefined;
-            return (
-              <li
-                key={entry.rank}
-                className={
-                  isStickyUser
-                    ? 'sticky top-[36px] bottom-0 z-[8] border-y border-brand-line shadow-[0_4px_12px_rgba(0,0,0,0.08),0_-4px_12px_rgba(0,0,0,0.08)]'
-                    : ''
-                }
-                style={stickyStyle}
-              >
-                <ListRow
-                  rank={entry.rank}
-                  name={entry.name}
-                  points={entry.points}
-                  isUser={isUser}
-                  userColor={userColor}
-                />
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+          <ul>
+            {displayList.map((entry) => {
+              const isUser = !!entry.isUser;
+              const isStickyUser = isUser && scrollable;
+              const stickyBg =
+                isStickyUser && userColor
+                  ? isLightColor(userColor)
+                    ? darken(userColor, 0.35)
+                    : userColor
+                  : '';
+              const stickyStyle = isStickyUser
+                ? stickyBg
+                  ? { backgroundColor: stickyBg }
+                  : { backgroundColor: '#1C4188' }
+                : undefined;
+              return (
+                <li
+                  key={entry.rank}
+                  className={
+                    isStickyUser
+                      ? 'sticky top-[36px] bottom-0 z-[8] border-y border-brand-line shadow-[0_4px_12px_rgba(0,0,0,0.08),0_-4px_12px_rgba(0,0,0,0.08)]'
+                      : ''
+                  }
+                  style={stickyStyle}
+                >
+                  <ListRow
+                    rank={entry.rank}
+                    name={entry.name}
+                    points={entry.points}
+                    isUser={isUser}
+                    userColor={userColor}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </Panel>
   );
 }

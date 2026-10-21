@@ -6,11 +6,21 @@ import { GlobalSearchField, GlobalSearchTrigger } from './GlobalSearch';
 import { Logo } from '../brand/Logo';
 import { navLinkClass } from '../brand/nav';
 
-export type NavKey = 'dashboard' | 'predict' | 'profile' | 'game' | 'player' | undefined;
+export type NavKey =
+  | 'dashboard'
+  | 'predict'
+  | 'rankings'
+  | 'profile'
+  | 'game'
+  | 'player'
+  | undefined;
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'predict', label: 'Predictions' },
+  // The dashboard rails hold standings and the boards from xl up; the rankings
+  // page is the only place they exist below that, so it is a top-level tab.
+  { key: 'rankings', label: 'Rankings' },
 ];
 
 // Game detail lives in the Predictions section, so it keeps that tab lit. A
@@ -31,6 +41,49 @@ function mobileNavClass(on: boolean): string {
     on,
     'light',
     'flex min-h-[44px] flex-1 items-center justify-center px-1 py-3',
+  );
+}
+
+/**
+ * One primary nav entry. Dashboard and Rankings carry their default search so a
+ * tap lands on the team tab or the standings tab rather than replaying whatever
+ * the previous visit left in the URL.
+ */
+function NavItem({
+  item,
+  active,
+  className,
+}: {
+  item: (typeof NAV_ITEMS)[number];
+  active?: NavKey;
+  className: string;
+}) {
+  const isActive = active === item.key;
+  const props = {
+    className,
+    'aria-current': isActive ? ('page' as const) : undefined,
+  };
+
+  if (item.key === 'predict') {
+    return (
+      <Link to="/predict" {...props}>
+        {item.label}
+      </Link>
+    );
+  }
+
+  if (item.key === 'rankings') {
+    return (
+      <Link to="/rankings" search={{ tab: 'standings', board: 'flat' }} {...props}>
+        {item.label}
+      </Link>
+    );
+  }
+
+  return (
+    <Link to="/dashboard" search={{ tab: 'team' }} {...props}>
+      {item.label}
+    </Link>
   );
 }
 
@@ -119,28 +172,14 @@ export function DashboardHeader({
           </Link>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
-            {NAV_ITEMS.map((item) =>
-              item.key === 'predict' ? (
-                <Link
-                  key={item.key}
-                  to="/predict"
-                  className={navClass(activeNav === item.key)}
-                  aria-current={activeNav === item.key ? 'page' : undefined}
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <Link
-                  key={item.key}
-                  to="/dashboard"
-                  search={{ tab: 'team' }}
-                  className={navClass(activeNav === item.key)}
-                  aria-current={activeNav === item.key ? 'page' : undefined}
-                >
-                  {item.label}
-                </Link>
-              ),
-            )}
+            {NAV_ITEMS.map((item) => (
+              <NavItem
+                key={item.key}
+                item={item}
+                active={activeNav}
+                className={navClass(activeNav === item.key)}
+              />
+            ))}
           </nav>
         </div>
 
@@ -217,33 +256,20 @@ export function DashboardHeader({
         </div>
       </div>
 
-      {/* Mobile nav */}
+      {/* Mobile nav. Tighter horizontal padding than the wordmark row: three
+          items have to fit a 320px screen without clipping a label. */}
       <nav
         aria-label="Primary mobile"
-        className="flex items-stretch border-t border-brand-line px-6 sm:hidden"
+        className="flex items-stretch border-t border-brand-line px-2 sm:hidden"
       >
-        {NAV_ITEMS.map((item) =>
-          item.key === 'predict' ? (
-            <Link
-              key={item.key}
-              to="/predict"
-              className={mobileNavClass(activeNav === item.key)}
-              aria-current={activeNav === item.key ? 'page' : undefined}
-            >
-              {item.label}
-            </Link>
-          ) : (
-            <Link
-              key={item.key}
-              to="/dashboard"
-              search={{ tab: 'team' }}
-              className={mobileNavClass(activeNav === item.key)}
-              aria-current={activeNav === item.key ? 'page' : undefined}
-            >
-              {item.label}
-            </Link>
-          ),
-        )}
+        {NAV_ITEMS.map((item) => (
+          <NavItem
+            key={item.key}
+            item={item}
+            active={activeNav}
+            className={mobileNavClass(activeNav === item.key)}
+          />
+        ))}
       </nav>
     </header>
   );
