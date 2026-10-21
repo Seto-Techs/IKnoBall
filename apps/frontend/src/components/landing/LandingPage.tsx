@@ -15,6 +15,7 @@ import {
 import { useSession } from '../../lib/use-auth';
 import { Logo as BrandLogo } from '../brand/Logo';
 import { navLinkClass } from '../brand/nav';
+import { seasonLabel, weekStartKey } from '../predict/week';
 
 /*
  * Public marketing page for logged-out visitors.
@@ -261,12 +262,14 @@ function PickCard() {
 }
 
 function Hero() {
+  const season = seasonLabel(weekStartKey(0));
+
   return (
     <section id="top" className="bg-brand-navyDark text-white">
       <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:py-24">
         <div>
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
-            2025–26 season · 30 teams
+            {season} season · 30 teams
           </span>
 
           <h1 className="mt-6 font-heading text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl">
