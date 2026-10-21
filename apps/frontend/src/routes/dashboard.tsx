@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { isToday } from 'date-fns';
 import { Target, TrendingUp, Trophy, Zap } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
@@ -176,12 +176,20 @@ function DashboardPage() {
 
         <main className="flex min-w-0 flex-col gap-6">
           <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
-            <StatCard
-              icon={<Trophy className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
-              label="Leaderboard"
-              value={bestRank ? `#${bestRank.rank}` : '—'}
-              caption={bestRankMode ? `${bestRankMode} board` : 'No settled picks'}
-            />
+            {/* The board itself lives in the right rail from xl up and on
+                /rankings below that, so this card is the way in on a phone. */}
+            <Link
+              to="/rankings"
+              search={{ tab: 'leaderboard', board: 'flat' }}
+              className="block rounded-xl transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+            >
+              <StatCard
+                icon={<Trophy className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
+                label="Leaderboard"
+                value={bestRank ? `#${bestRank.rank}` : '—'}
+                caption={bestRankMode ? `${bestRankMode} board` : 'No settled picks'}
+              />
+            </Link>
             <StatCard
               icon={<TrendingUp className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
               label="Predictions"
@@ -278,6 +286,7 @@ function DashboardPage() {
             userPoints={myFlat?.points ?? 0}
             userName={user.name}
             userColor={team.primaryColor}
+            loading={flatBoard.isLoading}
           />
           <LeaderboardPanel
             title="Weighted"
@@ -287,6 +296,7 @@ function DashboardPage() {
             userPoints={myWeighted?.points ?? 0}
             userName={user.name}
             userColor={team.primaryColor}
+            loading={weightedBoard.isLoading}
           />
         </aside>
       </div>
