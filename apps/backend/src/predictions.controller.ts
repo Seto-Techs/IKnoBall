@@ -202,12 +202,15 @@ export class PredictionsController {
     'Leaderboard fetched.',
     true,
   )
-  async leaderboard(@Query('mode') mode: string): Promise<ApiResponse<LeaderboardEntryResponse[]>> {
+  async leaderboard(
+    @Session() session: UserSession,
+    @Query('mode') mode: string,
+  ): Promise<ApiResponse<LeaderboardEntryResponse[]>> {
     const resolved = (mode ?? 'flat') as PredictionMode;
     if (!MODES.includes(resolved)) {
       throw new BadRequestException(`mode must be one of: ${MODES.join(', ')}`);
     }
-    const rows = await this.predictions.leaderboard(resolved);
+    const rows = await this.predictions.leaderboard(resolved, session.user.id as string);
     return response(true, 'Leaderboard fetched.', rows);
   }
 

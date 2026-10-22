@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { PredictionsService } from './predictions.service';
 import type { ResolvedOdds } from './odds.service';
@@ -37,6 +38,15 @@ function createDb(responses: Row[][]): DbDouble {
       limit: () => Promise.resolve(rows),
       orderBy: () => p,
       groupBy: () => p,
+      // The service builds a `totals` CTE out of a grouped select; the columns
+      // only need to be SQL, since every assertion reads the queued rows.
+      as: (name: string) =>
+        Object.fromEntries(
+          ['userId', 'name', 'points', 'picks', 'correct'].map((column) => [
+            column,
+            sql.raw(`${name}.${column}`),
+          ]),
+        ),
     };
     return p;
   };
@@ -323,6 +333,40 @@ describe('leaderboard', () => {
   it('returns an empty board when nothing has settled', async () => {
     const { service } = makeService([[]]);
     await expect(service.leaderboard('flat')).resolves.toEqual([]);
+  });
+
+  it('leaves the board alone when the viewer is already on it', async () => {
+    const { service } = makeService([
+      [{ userId: 'me', name: 'raka', points: 9, picks: 2, correct: 1 }],
+    ]);
+    const rows = await service.leaderboard('flat', 'me');
+    expect(rows).toEqual([
+      { rank: 1, userId: 'me', name: 'raka', points: 9, picks: 2, correct: 1 },
+    ]);
+  });
+
+  it('appends the viewer at their real rank when the cut leaves them off', async () => {
+    const { service } = makeService([
+      [{ userId: 'a', name: 'lena', points: 88, picks: 5, correct: 4 }],
+      [],
+      [{ userId: 'me', name: 'raka', points: 3, picks: 2, correct: 1 }],
+      [{ ahead: 40 }],
+    ]);
+    const rows = await service.leaderboard('flat', 'me');
+    expect(rows.map((row) => [row.rank, row.userId])).toEqual([
+      [1, 'a'],
+      [41, 'me'],
+    ]);
+  });
+
+  it('adds nothing for a viewer with no settled picks', async () => {
+    const { service } = makeService([
+      [{ userId: 'a', name: 'lena', points: 88, picks: 5, correct: 4 }],
+      [],
+      [],
+    ]);
+    const rows = await service.leaderboard('flat', 'me');
+    expect(rows.map((row) => row.userId)).toEqual(['a']);
   });
 });
 

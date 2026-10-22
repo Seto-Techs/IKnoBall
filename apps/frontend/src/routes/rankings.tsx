@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
 import { Trophy } from 'lucide-react';
 import { useEffect } from 'react';
 import { DashboardHeader } from '../components/dashboard/Header';
 import { LeaderboardPanel } from '../components/dashboard/LeaderboardPanel';
 import { StandingsPanel } from '../components/dashboard/StandingsSidebar';
 import { useLeaderboard, useStandings, useTeams } from '../lib/api';
+import { RAIL_LAYOUT_QUERY, useMediaQuery } from '../lib/media-query';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/rankings')({
@@ -14,6 +15,13 @@ export const Route = createFileRoute('/rankings')({
     tab: search.tab === 'leaderboard' ? ('leaderboard' as const) : ('standings' as const),
     board: search.board === 'weighted' ? ('weighted' as const) : ('flat' as const),
   }),
+  // A desktop reader already has all of this in the dashboard rails, so send
+  // them there instead of rendering a page that duplicates it.
+  beforeLoad: () => {
+    if (window.matchMedia(RAIL_LAYOUT_QUERY).matches) {
+      throw redirect({ to: '/dashboard', search: { tab: 'team' }, replace: true });
+    }
+  },
   component: RankingsPage,
 });
 
@@ -33,7 +41,7 @@ const BOARDS = [
  * The dashboard keeps them in its xl rails, where a 288px column can scroll on
  * its own. Narrower screens have no rail at all, so this page is the only way
  * to see either — the panels render at full height here and the document does
- * the scrolling.
+ * the scrolling. From xl up it would only duplicate the rails, so it redirects.
  */
 function RankingsPage() {
   const navigate = useNavigate();
@@ -52,6 +60,13 @@ function RankingsPage() {
     if (!user) navigate({ to: '/auth/login' });
     else if (!user.favoriteTeam) navigate({ to: '/onboarding' });
   }, [sessionLoading, sessionFetching, user, navigate]);
+
+  // `beforeLoad` only runs when the route is matched, so a window widened past
+  // the rail breakpoint while this page is open has to leave on its own.
+  const railLayout = useMediaQuery(RAIL_LAYOUT_QUERY);
+  useEffect(() => {
+    if (railLayout) navigate({ to: '/dashboard', search: { tab: 'team' }, replace: true });
+  }, [railLayout, navigate]);
 
   if (sessionLoading || sessionFetching) return null;
   if (!user || !user.favoriteTeam) return null;
