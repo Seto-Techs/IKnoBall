@@ -19,7 +19,8 @@ const NAV_ITEMS: { key: NavKey; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'predict', label: 'Predictions' },
   // The dashboard rails hold standings and the boards from xl up; the rankings
-  // page is the only place they exist below that, so it is a top-level tab.
+  // page is the only place they exist below that, so it is a top-level tab —
+  // one that `NavItem` hides once the rails take over.
   { key: 'rankings', label: 'Rankings' },
 ];
 
@@ -59,8 +60,11 @@ function NavItem({
   className: string;
 }) {
   const isActive = active === item.key;
+  // From xl up the dashboard rails hold standings and both boards, so the tab
+  // would only lead to a page that duplicates what is already on screen.
+  const linkClass = item.key === 'rankings' ? `${className} xl:hidden` : className;
   const props = {
-    className,
+    className: linkClass,
     'aria-current': isActive ? ('page' as const) : undefined,
   };
 

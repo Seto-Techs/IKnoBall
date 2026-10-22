@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { isToday } from 'date-fns';
 import { Target, TrendingUp, Trophy, Zap } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { DashboardHeader } from '../components/dashboard/Header';
 import { StandingsSidebar } from '../components/dashboard/StandingsSidebar';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -30,6 +30,7 @@ import {
   useLeagueLeaders,
 } from '../lib/api';
 import { picksOf, picksPerGame, usePredictions } from '../components/predict/predictions';
+import { RAIL_LAYOUT_QUERY, useMediaQuery } from '../lib/media-query';
 import { useSession, useSignOut } from '../lib/use-auth';
 
 export const Route = createFileRoute('/dashboard')({
@@ -46,6 +47,24 @@ function getRangeStrings(): { from: string; to: string } {
   toDate.setDate(now.getDate() + 6);
   const to = toDate.toISOString().slice(0, 10);
   return { from, to };
+}
+
+/**
+ * The leaderboard stat card, which is also the way into /rankings on a phone.
+ * Once the dashboard shows its right rail that page only redirects back here,
+ * so the card stays a plain stat rather than a link that goes nowhere.
+ */
+function StatCardLink({ linked, children }: { linked: boolean; children: ReactNode }) {
+  if (!linked) return <>{children}</>;
+  return (
+    <Link
+      to="/rankings"
+      search={{ tab: 'leaderboard', board: 'flat' }}
+      className="block rounded-xl transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+    >
+      {children}
+    </Link>
+  );
 }
 
 function DashboardPage() {
@@ -81,6 +100,9 @@ function DashboardPage() {
   const predictions = usePredictions();
   const flatBoard = useLeaderboard('flat');
   const weightedBoard = useLeaderboard('weighted');
+  // From xl up the right rail already shows both boards, so the stat card that
+  // leads to /rankings below that has nowhere to go.
+  const railLayout = useMediaQuery(RAIL_LAYOUT_QUERY);
 
   const heroMeta = useMemo(() => {
     const now = new Date();
@@ -177,19 +199,16 @@ function DashboardPage() {
         <main className="flex min-w-0 flex-col gap-6">
           <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
             {/* The board itself lives in the right rail from xl up and on
-                /rankings below that, so this card is the way in on a phone. */}
-            <Link
-              to="/rankings"
-              search={{ tab: 'leaderboard', board: 'flat' }}
-              className="block rounded-xl transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
-            >
+                /rankings below that, so this card is the way in on a phone and
+                a plain stat once the rail is on screen. */}
+            <StatCardLink linked={!railLayout}>
               <StatCard
                 icon={<Trophy className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
                 label="Leaderboard"
                 value={bestRank ? `#${bestRank.rank}` : '—'}
                 caption={bestRankMode ? `${bestRankMode} board` : 'No settled picks'}
               />
-            </Link>
+            </StatCardLink>
             <StatCard
               icon={<TrendingUp className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
               label="Predictions"

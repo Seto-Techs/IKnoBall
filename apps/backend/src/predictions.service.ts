@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, sql } from 'drizzle-orm';
 import { predictionPicks, scheduleGames, user } from '@iknoball/database';
 import {
   deVig,
@@ -207,8 +207,11 @@ export class PredictionsService {
   /**
    * Standings for one mode. Voided picks are excluded so a postponement neither
    * helps nor hurts.
+   *
+   * The board is capped, so a viewer ranked below the cut would get nothing to
+   * show for themselves. Their own row rides along at its real rank instead.
    */
-  async leaderboard(mode: PredictionMode): Promise<LeaderboardRow[]> {
+  async leaderboard(mode: PredictionMode, viewerId?: string): Promise<LeaderboardRow[]> {
     const rows = await this.db.db
       .select({
         userId: predictionPicks.userId,
@@ -224,7 +227,55 @@ export class PredictionsService {
       .orderBy(desc(sql`coalesce(sum(${predictionPicks.points}), 0)`))
       .limit(LEADERBOARD_SIZE);
 
-    return rows.map((row, index) => ({ rank: index + 1, ...row }));
+    const ranked = rows.map((row, index) => ({ rank: index + 1, ...row }));
+    if (!viewerId || ranked.some((row) => row.userId === viewerId)) return ranked;
+
+    const mine = await this.viewerRank(mode, viewerId);
+    return mine ? [...ranked, mine] : ranked;
+  }
+
+  /**
+   * One viewer's row at its true rank, so a viewer below the board's cut still
+   * has something to show. The rank is one more than the users ahead of them,
+   * matching the tie-free ordering the board itself uses.
+   */
+  private async viewerRank(mode: PredictionMode, viewerId: string): Promise<LeaderboardRow | null> {
+    const totals = this.db.db
+      .select({
+        userId: predictionPicks.userId,
+        name: user.name,
+        // Aliased because the outer query reads these back off the subquery.
+        points: sql<number>`coalesce(sum(${predictionPicks.points}), 0)::int`.as('points'),
+        picks: sql<number>`count(*)::int`.as('picks'),
+        correct: sql<number>`count(*) filter (where ${predictionPicks.points} > 0)::int`.as(
+          'correct',
+        ),
+      })
+      .from(predictionPicks)
+      .innerJoin(user, eq(user.id, predictionPicks.userId))
+      .where(and(eq(predictionPicks.mode, mode), eq(predictionPicks.status, 'settled')))
+      .groupBy(predictionPicks.userId, user.name)
+      .as('totals');
+
+    const [mine] = await this.db.db
+      .select({
+        userId: totals.userId,
+        name: totals.name,
+        points: totals.points,
+        picks: totals.picks,
+        correct: totals.correct,
+      })
+      .from(totals)
+      .where(eq(totals.userId, viewerId));
+
+    if (!mine) return null;
+
+    const [{ ahead }] = await this.db.db
+      .select({ ahead: sql<number>`count(*)::int` })
+      .from(totals)
+      .where(gt(totals.points, mine.points));
+
+    return { rank: ahead + 1, ...mine };
   }
 
   /** Current price and what each side would pay, for the pick UI. */

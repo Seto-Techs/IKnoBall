@@ -9,8 +9,18 @@ export interface LeaderboardEntry {
   points: number;
 }
 
-/* Leaderboard shows top 50, viewport shows 10 rows at a time (scroll to see rest). */
-const LEADERBOARD_SIZE = 50;
+/*
+ * Two surfaces, two limits. The rankings page lists the top 49 and then your own
+ * row — 50 at most, so the cut never lands on you. The dashboard rail keeps the
+ * whole board behind a ten-row viewport and scrolls through it.
+ */
+const PAGE_TOP_ROWS = 49;
+
+/** One list row's height, fixed by `h-12` in `ListRow`. */
+const ROW_HEIGHT = 48;
+
+/** Rows the rail's scrollport shows at once; the rest scroll behind them. */
+const RAIL_VISIBLE_ROWS = 10;
 
 function ListRow({
   rank,
@@ -64,7 +74,7 @@ function ListRow({
 
   return (
     <div
-      className={`flex items-center gap-3 px-5 py-2 ${isUser ? 'bg-brand-navy' : medalRowBg} ${medal ? medalBorder : ''}`}
+      className={`flex h-12 items-center gap-3 px-5 ${isUser ? 'bg-brand-navy' : medalRowBg} ${medal ? medalBorder : ''}`}
       style={rowBg ? { backgroundColor: rowBg } : undefined}
     >
       <span className={`w-7 shrink-0 text-right text-sm tabular-nums ${rankColor}`}>{rank}</span>
@@ -119,8 +129,8 @@ function ListRow({
 /**
  * One board. `scrollable` is the dashboard rail: a fixed-height box that scrolls
  * on its own with the user's row pinned top and bottom. The rankings page turns
- * it off so the whole top 50 flows with the document instead of nesting a
- * second scrollbar inside the page.
+ * it off so the top 49 plus the user's own row flow with the document instead of
+ * nesting a second scrollbar inside the page.
  */
 export function LeaderboardPanel({
   title,
@@ -144,20 +154,17 @@ export function LeaderboardPanel({
   scrollable?: boolean;
 }) {
   const userLabel = userName || 'You';
-  const inTop50 = userRank <= LEADERBOARD_SIZE;
-  const displayList: (LeaderboardEntry & { isUser?: boolean })[] = inTop50
-    ? entries
-        .slice(0, LEADERBOARD_SIZE)
-        .map((entry) => ({ ...entry, isUser: entry.rank === userRank }))
-    : [
-        ...entries.slice(0, LEADERBOARD_SIZE - 1).map((entry) => ({ ...entry, isUser: false })),
-        {
-          rank: userRank,
-          name: userLabel,
-          points: userPoints,
-          isUser: true,
-        } as LeaderboardEntry & { isUser: boolean },
-      ];
+  // The rail scrolls its own ten-row box, so it keeps every row the API sent.
+  // The page flows with the document and is capped instead: the top 49 and then
+  // your own row, so the cut never lands on you.
+  const rows = scrollable || userRank === 0 ? entries : entries.slice(0, PAGE_TOP_ROWS);
+  const showUserRow = userRank > 0 && !rows.some((entry) => entry.rank === userRank);
+  const displayList: (LeaderboardEntry & { isUser?: boolean })[] = showUserRow
+    ? [
+        ...rows.map((entry) => ({ ...entry, isUser: false })),
+        { rank: userRank, name: userLabel, points: userPoints, isUser: true },
+      ]
+    : rows.map((entry) => ({ ...entry, isUser: entry.rank === userRank }));
   return (
     <Panel
       title={title}
@@ -181,12 +188,8 @@ export function LeaderboardPanel({
       ) : displayList.length === 0 ? (
         <EmptyState message="No settled picks yet. The board fills in once the first games are scored." />
       ) : (
-        <div
-          className={
-            scrollable ? 'max-h-[480px] overflow-y-auto overscroll-contain scrollbar-hide' : ''
-          }
-        >
-          <div className="sticky top-0 z-[9] bg-white">
+        <div>
+          <div className="bg-white">
             <div className="flex items-center gap-3 px-5 pb-1 pt-3 text-sm font-semibold uppercase tracking-wide text-stone-600">
               <span className="w-7 shrink-0 text-right">#</span>
               <span className="w-8 shrink-0" aria-hidden="true" />
@@ -195,42 +198,47 @@ export function LeaderboardPanel({
             </div>
           </div>
 
-          <ul>
-            {displayList.map((entry) => {
-              const isUser = !!entry.isUser;
-              const isStickyUser = isUser && scrollable;
-              const stickyBg =
-                isStickyUser && userColor
-                  ? isLightColor(userColor)
-                    ? darken(userColor, 0.35)
-                    : userColor
-                  : '';
-              const stickyStyle = isStickyUser
-                ? stickyBg
-                  ? { backgroundColor: stickyBg }
-                  : { backgroundColor: '#1C4188' }
-                : undefined;
-              return (
-                <li
-                  key={entry.rank}
-                  className={
-                    isStickyUser
-                      ? 'sticky top-[36px] bottom-0 z-[8] border-y border-brand-line shadow-[0_4px_12px_rgba(0,0,0,0.08),0_-4px_12px_rgba(0,0,0,0.08)]'
-                      : ''
-                  }
-                  style={stickyStyle}
-                >
-                  <ListRow
-                    rank={entry.rank}
-                    name={entry.name}
-                    points={entry.points}
-                    isUser={isUser}
-                    userColor={userColor}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <div
+            className={scrollable ? 'overflow-y-auto overscroll-contain scrollbar-hide' : ''}
+            style={scrollable ? { maxHeight: RAIL_VISIBLE_ROWS * ROW_HEIGHT } : undefined}
+          >
+            <ul>
+              {displayList.map((entry) => {
+                const isUser = !!entry.isUser;
+                const isStickyUser = isUser && scrollable;
+                const stickyBg =
+                  isStickyUser && userColor
+                    ? isLightColor(userColor)
+                      ? darken(userColor, 0.35)
+                      : userColor
+                    : '';
+                const stickyStyle = isStickyUser
+                  ? stickyBg
+                    ? { backgroundColor: stickyBg }
+                    : { backgroundColor: '#1C4188' }
+                  : undefined;
+                return (
+                  <li
+                    key={entry.rank}
+                    className={
+                      isStickyUser
+                        ? 'sticky top-0 bottom-0 z-[8] outline outline-1 -outline-offset-1 outline-brand-line shadow-[0_4px_12px_rgba(0,0,0,0.08),0_-4px_12px_rgba(0,0,0,0.08)]'
+                        : ''
+                    }
+                    style={stickyStyle}
+                  >
+                    <ListRow
+                      rank={entry.rank}
+                      name={entry.name}
+                      points={entry.points}
+                      isUser={isUser}
+                      userColor={userColor}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       )}
     </Panel>
