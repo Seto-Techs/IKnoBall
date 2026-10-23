@@ -3,45 +3,9 @@ import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
-import { players, playerSeasonStats, teams, scheduleDays, scheduleGames } from '@iknoball/database';
-import { and, eq, desc, sql, inArray, asc } from 'drizzle-orm';
-
-function getPreviousSeason(season: string): string {
-  const m = /^(\d{4})-(\d{2})$/.exec(season);
-  if (!m) return '2025-26';
-  const first = parseInt(m[1], 10);
-  const prevFirst = first - 1;
-  const prevSecond = String(prevFirst + 1)
-    .slice(-2)
-    .padStart(2, '0');
-  return `${prevFirst}-${prevSecond}`;
-}
-
-async function resolveSeasonStart(
-  db: import('./infrastructure/database/database.service').DatabaseService['db'],
-  season: string,
-): Promise<Date | null> {
-  if (process.env.NBA_SEASON_START_DATE) {
-    const d = new Date(process.env.NBA_SEASON_START_DATE);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  try {
-    const rows = await db
-      .select({ dt: scheduleGames.gameDateTimeUTC })
-      .from(scheduleGames)
-      .innerJoin(scheduleDays, eq(scheduleGames.scheduleDayId, scheduleDays.id))
-      .where(and(eq(scheduleDays.seasonYear, season), sql`${scheduleGames.gameLabel} = ''`))
-      .orderBy(asc(scheduleGames.gameDateTimeUTC))
-      .limit(1);
-    if (rows.length && rows[0].dt) return rows[0].dt as Date;
-  } catch {}
-  const fallbackMap: Record<string, string> = {
-    '2026-27': '2026-10-20T00:00:00Z',
-    '2025-26': '2025-10-21T00:00:00Z',
-  };
-  if (fallbackMap[season]) return new Date(fallbackMap[season]);
-  return null;
-}
+import { players, playerSeasonStats, teams } from '@iknoball/database';
+import { and, eq, sql, inArray } from 'drizzle-orm';
+import { resolveCurrentSeason } from './common/season';
 
 class LeaderEntry {
   @ApiProperty({ example: '1641705' })
@@ -133,21 +97,12 @@ const CATS: Record<string, { col: string; perGame: string }> = {
 export class LeadersController {
   constructor(private readonly db: DatabaseService) {}
 
-  private async getEffectiveSeason(rawSeason: string): Promise<string> {
-    const start = await resolveSeasonStart(this.db.db, rawSeason);
-    if (!start || Number.isNaN(start.getTime())) return rawSeason;
-    const now = new Date();
-    const daysUntil = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntil > 7) return getPreviousSeason(rawSeason);
-    return rawSeason;
-  }
-
   @Get()
   @ApiOperation({ summary: 'League leaders per game (top 5 per category) — season long' })
   @ApiDataResponse(LeadersResponse, HttpStatus.OK, 'Leaders fetched.', 'Leaders fetched.')
   async getLeaders(@Query('season') season?: string): Promise<ApiResponse<LeadersResponse>> {
-    const raw = season ?? process.env.NBA_CURRENT_SEASON ?? '2025-26';
-    const seasonYear = season ? raw : await this.getEffectiveSeason(raw);
+    // An explicit `season` is honoured as asked; only the default is resolved.
+    const seasonYear = season ?? (await resolveCurrentSeason(this.db.db));
     const limit = 5;
 
     // qualification guard, matching NBA.com's per-game regular-season leaderboard:

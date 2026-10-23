@@ -15,6 +15,7 @@ import {
 } from '@iknoball/database';
 import { SHOT_ZONE_IDS } from '@iknoball/shot-zones';
 import { and, asc, count, desc, eq, gte, notInArray, or, sql, sum } from 'drizzle-orm';
+import { resolveCurrentSeason } from './common/season';
 
 /** Games per page of the game log. */
 const GAME_LOG_PAGE_SIZE = 10;
@@ -29,8 +30,6 @@ const GAME_LOG_PAGE_MAX = 50;
 const ZERO_MINUTES_PATTERN = '^PT0*M0*([.][0-9]+)?S?$';
 const MINUTES_PLAYED = sql`${scheduleBoxscorePlayers.minutes} is not null and ${scheduleBoxscorePlayers.minutes} !~ ${ZERO_MINUTES_PATTERN}`;
 const EXCLUDED_GAME_LABELS = ['All-Star', 'All-Star Championship'];
-/** The season the page leads with, matching the other player endpoints. */
-const CURRENT_SEASON = process.env.NBA_CURRENT_SEASON ?? '2025-26';
 /**
  * The season types the shot-zone endpoint accepts, mapped to the timeframe the
  * refresh writes. Anything unrecognised falls back to the regular season, so a
@@ -466,6 +465,43 @@ export class PlayersController {
   constructor(private readonly db: DatabaseService) {}
 
   /**
+   * The season the API leads with, matching the other stat endpoints.
+   *
+   * Resolved per request rather than captured in a module-level constant: a
+   * constant is frozen at import time, so a season bump needed a redeploy, and
+   * its `'2025-26'` fallback pinned every player page to last season whenever
+   * `NBA_CURRENT_SEASON` was missing — while the worker, which derives the
+   * season from the calendar, was already syncing the new one.
+   */
+  private resolveSeason(): Promise<string> {
+    return resolveCurrentSeason(this.db.db);
+  }
+
+  /**
+   * The season a player's page leads with, for a caller that has not already
+   * loaded their seasons: the resolved current season when they have a
+   * regular-season row in it, otherwise the newest one they do. The same rule the
+   * detail endpoint applies to `seasons`, so the hero and the game log cannot
+   * label one season and list another.
+   */
+  private async leadSeasonFor(playerId: string): Promise<string> {
+    const rows = await this.db.db
+      .select({ season: playerSeasonStats.season })
+      .from(playerSeasonStats)
+      .where(
+        and(
+          eq(playerSeasonStats.playerId, playerId),
+          eq(playerSeasonStats.statsTimeframe, 'ByYear-regular'),
+        ),
+      )
+      .orderBy(desc(playerSeasonStats.season));
+    return leadSeason(
+      rows.map((row) => row.season),
+      await this.resolveSeason(),
+    );
+  }
+
+  /**
    * All 30 teams. The schedule and the box scores both carry the NBA team id,
    * while their tricodes disagree with the teams table (the feed says BKN, the
    * seed says BRK), so ids are the safe join key.
@@ -598,10 +634,9 @@ export class PlayersController {
     // otherwise whatever there is. Deliberately not simply the newest season:
     // in October that is a handful of preseason attempts, which draws a mostly
     // empty chart and reads as a broken page rather than a quiet one.
+    const currentSeason = await this.resolveSeason();
     const flagship =
-      available.find(
-        (entry) => entry.season === CURRENT_SEASON && entry.seasonType === 'regular',
-      ) ??
+      available.find((entry) => entry.season === currentSeason && entry.seasonType === 'regular') ??
       // `available` is newest season first, so this is the newest regular season.
       available.find((entry) => entry.seasonType === 'regular') ??
       available[0];
@@ -740,7 +775,8 @@ export class PlayersController {
     const start = parsePageParam(offset, 0, Number.MAX_SAFE_INTEGER, 'offset');
     // The log covers the season the page leads with. A player's earlier seasons
     // are the career table's job, and mixing them here reads as one long run.
-    const where = this.gameLogWhere(player.id, CURRENT_SEASON);
+    const season = await this.leadSeasonFor(player.id);
+    const where = this.gameLogWhere(player.id, season);
 
     const [counted] = await this.db.db
       .select({ total: count() })
@@ -783,7 +819,7 @@ export class PlayersController {
       teamId == null ? undefined : teamById.get(String(teamId));
 
     return response(true, 'Game log fetched.', {
-      season: CURRENT_SEASON,
+      season,
       // `count()` comes back as a bigint string from pg.
       total: Number(counted?.total ?? 0),
       limit: pageSize,
@@ -987,15 +1023,11 @@ export class PlayersController {
     // `seasons` is newest first, so the first regular-season row is the latest
     // one the player has on file — used when the current season has no row yet.
     const regularSeasons = seasons.filter((s) => s.seasonType === 'regular');
-    const currentSeason =
-      regularSeasons.find(
-        (s) =>
-          s.season ===
-          leadSeason(
-            regularSeasons.map((r) => r.season),
-            CURRENT_SEASON,
-          ),
-      ) ?? null;
+    const currentSeasonLabel = leadSeason(
+      regularSeasons.map((r) => r.season),
+      await this.resolveSeason(),
+    );
+    const currentSeason = regularSeasons.find((s) => s.season === currentSeasonLabel) ?? null;
 
     // The player's own tricode comes from the same feed as the schedule's, so
     // this matches directly where the teams table would need the id.
