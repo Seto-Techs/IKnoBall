@@ -53,6 +53,21 @@ export class QueueService {
     );
   }
 
+  /**
+   * Career re-crawl for a player whose game just went final.
+   *
+   * The job id is per game, so it never dedupes against a pending
+   * `career-<id>` job from the player sync: that job may have started before the
+   * game's stats reached the feed, and dropping this one would leave the player
+   * on their pre-game totals until the next sync.
+   */
+  async enqueuePlayerCareerAfterFinal(playerExternalId: string, gameId: string, delayMs: number) {
+    await this.enqueuePlayerCareer(playerExternalId, {
+      delay: delayMs,
+      jobId: `career-${playerExternalId}-final-${gameId}`,
+    });
+  }
+
   /** Remove all waiting/delayed jobs from the career queue (stop retry storms). */
   async drainPlayerCareerQueue() {
     await this.crawlPlayerCareerQueue.drain();
