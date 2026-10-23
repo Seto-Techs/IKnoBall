@@ -237,7 +237,7 @@ function OnboardingPage() {
 
             <div className="flex flex-col gap-3.5 px-6 py-5">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-stone-400">
-                2025-26 Leaders
+                Season Leaders
               </p>
 
               {/* One tile per category, so a face repeats when one player leads two of them. */}

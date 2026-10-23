@@ -123,6 +123,16 @@ export function getSeasonBadge(g: Game): SeasonBadge {
   return { label: 'Regular Season', variant: 'regular' };
 }
 
+/**
+ * The season label (`2026-27`) a date belongs to. The season runs October to
+ * June, so anything from July onward opens the season named after its own year.
+ */
+export function seasonLabelFor(date: Date): string {
+  const year = date.getUTCFullYear();
+  const first = date.getUTCMonth() >= 6 ? year : year - 1;
+  return `${first}-${String((first + 1) % 100).padStart(2, '0')}`;
+}
+
 export function formatTimeET(dateStr: string): string {
   try {
     const d = new Date(dateStr);

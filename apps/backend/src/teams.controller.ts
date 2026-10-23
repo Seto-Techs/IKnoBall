@@ -10,6 +10,7 @@ import {
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
+import { resolveCurrentSeason } from './common/season';
 import { DatabaseService } from './infrastructure/database/database.service';
 import { teams, players, playerSeasonStats, scheduleDays, scheduleGames } from '@iknoball/database';
 import { eq, and, or, notInArray, desc, sql, gte, lt, asc, inArray, max } from 'drizzle-orm';
@@ -225,10 +226,10 @@ export class TeamsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'All 30 NBA teams with 2025-26 stat leaders' })
+  @ApiOperation({ summary: 'All 30 NBA teams with current-season stat leaders' })
   @ApiDataResponse(TeamResponse, HttpStatus.OK, 'Teams with leaders.', 'Teams with leaders.')
   async getTeams(): Promise<ApiResponse<TeamResponse[]>> {
-    const season = '2025-26';
+    const season = await resolveCurrentSeason(this.db.db);
 
     // Fetch team metadata
     const allTeams = await this.db.db.select().from(teams);
@@ -312,7 +313,7 @@ export class TeamsController {
   @ApiOperation({ summary: 'Team win-loss record for the current season' })
   @ApiDataResponse(TeamRecordResponse, HttpStatus.OK, 'Team record.', 'Team record.')
   async getTeamRecord(@Param('abbr') abbr: string): Promise<ApiResponse<TeamRecordResponse>> {
-    const season = '2025-26';
+    const season = await resolveCurrentSeason(this.db.db);
 
     const team = await this.findTeam(abbr);
 
@@ -579,7 +580,7 @@ export class TeamsController {
 
     // Players table uses BKN; teams table uses BRK
     const tricode = abbr === 'BRK' ? 'BKN' : abbr;
-    const season = '2025-26';
+    const season = await resolveCurrentSeason(this.db.db);
 
     // Min-games guard: half the league's most-played games, capped at 20 —
     // keeps the panel populated early in the season, strict once it matures.

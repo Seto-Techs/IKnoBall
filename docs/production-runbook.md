@@ -129,9 +129,14 @@ Deliberately absent:
   needs to exist if that changes.
 
 The NBA and odds variables otherwise have working defaults. `NBA_CURRENT_SEASON`
-is derived from the calendar — the worker logs a warning when the env disagrees —
-but the **backend reads it raw** in `leaders`, `standings`, and `players`, so a
-stale value makes the API serve the wrong season. Set it, and bump it each July.
+is what the API reports as the current season, served as written — bump it at the
+rollover each July. Unset, the API derives the season from the calendar instead,
+so a missing value can never pin it to a hardcoded year. If the two disagree the
+API logs `NBA_CURRENT_SEASON=... disagrees with the calendar` once at boot and
+serves the configured value anyway; that warning is the signal that the API has
+drifted from the worker, which always syncs by the calendar.
+`NBA_SEASON_START_DATE` only affects the derived path, for pinning opening night
+when the schedule has not been synced yet.
 
 ## 4. First boot
 
@@ -166,6 +171,16 @@ psql "$DATABASE_URL" -c 'select "seasonYear", count(*) from schedule_days group 
 # API
 curl -s https://api-iknoball.setotechs.com/api
 curl -s https://iknoball.setotechs.com/ -o /dev/null -w '%{http_code}\n'  -- 200
+
+# The season the api is serving. `NBA_CURRENT_SEASON` wins when set, so a value
+# left behind at the rollover silently serves last season — compare this with the
+# calendar and bump it in Dokploy if they disagree. `bun`, not `printenv`: the
+# runner image is oven/bun and the healthcheck already relies on it being there.
+# `||`, not `??`: the resolver trims and then tests truthiness, so an empty or
+# blank value takes the calendar path — `??` would print a blank line here and
+# read as a failed command instead of "calendar fallback".
+docker exec "$(docker ps -qf 'name=iknoball-prod.*-api-1' | head -1)" \
+  bun -e 'console.log(process.env.NBA_CURRENT_SEASON?.trim() || "(unset: calendar fallback)")'
 
 # Worker: should log "Redis: ready", then schedule sync and live poll
 # activity once games are in the window.

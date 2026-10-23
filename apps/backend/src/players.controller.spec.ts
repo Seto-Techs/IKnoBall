@@ -11,6 +11,21 @@ import { SHOT_ZONE_IDS } from '@iknoball/shot-zones';
 // Nest testing module cannot infer the controller's constructor dependency.
 Reflect.defineMetadata('design:paramtypes', [DatabaseService], PlayersController);
 
+/**
+ * The controller resolves the season per request. The fixtures below are written
+ * against one season, so pin the resolver rather than letting the wall clock and
+ * the ambient `NBA_CURRENT_SEASON` decide — and so a regression back to a
+ * module-level constant fails here instead of quietly serving last season.
+ *
+ * `importOriginal` keeps the rest of the real module loaded: a factory that
+ * replaced it outright would let these tests pass even if `./common/season` were
+ * missing from the tree, which is exactly the mistake a partial commit makes.
+ */
+vi.mock('./common/season', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./common/season')>()),
+  resolveCurrentSeason: vi.fn(async () => '2026-27'),
+}));
+
 type Row = Record<string, unknown>;
 
 /**
@@ -416,6 +431,35 @@ describe('PlayersController.getById', () => {
     expect(res.data?.currentSeason).toMatchObject({ season: '2024-25', seasonType: 'regular' });
   });
 
+  it('leads the hero with the resolved current season once the player has a row in it', async () => {
+    const controller = makeController(
+      detailFixture({
+        seasons: [
+          {
+            season: '2026-27',
+            statsTimeframe: 'ByYear-regular',
+            gp: 3,
+            points: 18.5,
+            rebounds: 6,
+            assists: 4,
+          },
+          ...seasonRows,
+        ],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+
+    // The hero card renders exactly this row, so a season resolved from a stale
+    // constant showed last season's averages next to this season's games.
+    expect(res.data?.currentSeason).toMatchObject({
+      season: '2026-27',
+      seasonType: 'regular',
+      gp: 3,
+      points: 18.5,
+    });
+  });
+
   it('attaches each per-team split to its season, with the team identity', async () => {
     const controller = makeController(detailFixture({ splits: splitRows }));
 
@@ -503,13 +547,16 @@ describe('PlayersController.getById', () => {
 });
 
 describe('PlayersController.getGames', () => {
-  /** The four queries a page of the game log runs, in call order. */
-  const pageFixture = (total: unknown, rows: Row[] = logRows): Row[][] => [
-    [{ id: 'p-1' }],
-    [{ total }],
-    rows,
-    teamRows,
-  ];
+  /**
+   * The five queries a page of the game log runs, in call order: the player, the
+   * seasons that decide which one the page leads with, the count, the page, then
+   * the teams.
+   */
+  const pageFixture = (
+    total: unknown,
+    rows: Row[] = logRows,
+    seasons: Row[] = [{ season: '2026-27' }, { season: '2025-26' }],
+  ): Row[][] => [[{ id: 'p-1' }], seasons, [{ total }], rows, teamRows];
 
   it('pages the log and reports the offset it served', async () => {
     const controller = makeController(pageFixture('115'));
@@ -524,7 +571,21 @@ describe('PlayersController.getGames', () => {
     expect(res.data?.offset).toBe(20);
     expect(res.data?.games).toHaveLength(2);
     // The log is pinned to one season, and says which, so the client can label it
-    // without keeping its own idea of the current season.
+    // without keeping its own idea of the current season. It is the season the
+    // resolver names, not a constant captured when the module loaded.
+    expect(res.data?.season).toBe('2026-27');
+  });
+
+  it('follows the season the page leads with when the player has no row in the current one', async () => {
+    // The hero falls back to the newest season a player has a row for, so the log
+    // has to fall back with it: labelling the page 2025-26 above an empty 2026-27
+    // table would read as a bug, and would hide every game the player does have.
+    const controller = makeController(
+      pageFixture('94', logRows, [{ season: '2025-26' }, { season: '2024-25' }]),
+    );
+
+    const res = await controller.getGames('p-1', undefined, undefined);
+
     expect(res.data?.season).toBe('2025-26');
   });
 
@@ -904,7 +965,13 @@ describe('PlayersController routing', () => {
   });
 
   it('serves a page of the game log over HTTP without shadowing the :id route', async () => {
-    const app = await makeApp([[{ id: 'p-1' }], [{ total: '115' }], logRows, teamRows]);
+    const app = await makeApp([
+      [{ id: 'p-1' }],
+      [{ season: '2026-27' }],
+      [{ total: '115' }],
+      logRows,
+      teamRows,
+    ]);
 
     const res = await request(app.getHttpServer())
       .get('/api/players/p-1/games?limit=10&offset=10')

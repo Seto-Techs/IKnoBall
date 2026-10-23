@@ -9,6 +9,7 @@ import {
   getGameStatus,
   getSeasonBadge,
   hexLuminance,
+  seasonLabelFor,
 } from '../../lib/game-utils';
 import { TeamMark } from '../TeamMark';
 import { MatchupBackdrop } from './MatchupBackdrop';
@@ -423,6 +424,9 @@ export function LeagueWideHeroCarousel({
   const offseason = !loading && (!hero || heroGames.length === 0);
   const heroSeason = useMemo(() => getHeroSeasonSummary(heroGames), [heroGames]);
   const seasonStart = new Date('2026-10-20T00:00:00Z');
+  const seasonStartLabel = seasonStart
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    .toUpperCase();
   const daysUntil = Math.max(
     0,
     Math.ceil((seasonStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
@@ -466,10 +470,10 @@ export function LeagueWideHeroCarousel({
             SEASON STARTS
           </p>
           <p className="relative font-heading text-5xl font-black leading-none text-brand-gold sm:text-6xl">
-            OCT 21
+            {seasonStartLabel}
           </p>
           <p className="relative mt-3 text-sm font-semibold uppercase tracking-[0.2em] text-white/60">
-            {daysUntil} DAYS — 2025-26 Season
+            {daysUntil} DAYS — {seasonLabelFor(seasonStart)} Season
           </p>
         </div>
       </div>
