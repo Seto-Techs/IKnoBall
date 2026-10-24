@@ -228,7 +228,7 @@ export async function upsertSeasonTeamTotals(
 
 /**
  * Write one player_season_stats row from a totals snapshot. Missing keys in
- * `totals` (e.g. wins/losses when the source is the leagueleaders API) are
+ * `totals` (e.g. wins/losses for preseason, which the feed never reports) are
  * left untouched on update.
  *
  * - No existing row -> insert.

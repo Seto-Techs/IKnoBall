@@ -16,13 +16,20 @@ type PlayerDashboardResponse = {
   }>;
 };
 
-/** leagueleaders returns a singular `resultSet`, unlike the dashboard endpoints. */
-type LeagueLeadersResponse = {
-  resultSet: {
+/**
+ * Season-wide totals, one row per player.
+ *
+ * `leaguedashplayerstats`, not `leagueleaders`: stats.nba.com serves the latter
+ * an HTML error page (the request looks blocked rather than throttled, and it
+ * never recovers), while this one answers normally. It also carries wins and
+ * losses, which `leagueleaders` omitted.
+ */
+type LeagueDashPlayerStatsResponse = {
+  resultSets: Array<{
     name: string;
     headers: string[];
     rowSet: unknown[][];
-  };
+  }>;
 };
 
 @Injectable()
@@ -101,24 +108,37 @@ export class PlayerIndexClient {
   }
 
   /**
-   * Season-wide leaderboard: one request returns totals for every player who
-   * played in the season (PerMode=Totals has no GP filter). Useful as a
-   * cheap bulk repair path when per-player dashboard endpoints are throttled.
+   * Season-wide totals for every player who played, in one request.
+   *
+   * This is the bulk repair path for `player_season_stats`: one call per season
+   * type replaces a per-player career crawl, which matters when the per-player
+   * dashboard endpoints are throttling. `PerMode=Totals` has no GP filter, so
+   * everyone who logged a minute is in the payload.
    */
-  async fetchLeagueLeaders(
+  async fetchLeagueDashPlayerStats(
     season: string,
     seasonType: string,
-    perMode = 'Totals',
-  ): Promise<LeagueLeadersResponse> {
-    const url = new URL(`${this.baseUrl}/leagueleaders`);
+  ): Promise<LeagueDashPlayerStatsResponse> {
+    const url = new URL(`${this.baseUrl}/leaguedashplayerstats`);
     url.searchParams.set('LeagueID', '00');
-    url.searchParams.set('PerMode', perMode);
-    url.searchParams.set('Scope', 'S');
+    url.searchParams.set('PerMode', 'Totals');
+    url.searchParams.set('MeasureType', 'Base');
     url.searchParams.set('Season', season);
     url.searchParams.set('SeasonType', seasonType);
-    url.searchParams.set('StatCategory', 'PTS');
+    url.searchParams.set('PlusMinus', 'N');
+    url.searchParams.set('PaceAdjust', 'N');
+    url.searchParams.set('Rank', 'N');
+    url.searchParams.set('LastNGames', '0');
+    url.searchParams.set('Month', '0');
+    url.searchParams.set('OpponentTeamID', '0');
+    url.searchParams.set('Period', '0');
+    url.searchParams.set('PlayerExperience', '');
+    url.searchParams.set('PlayerPosition', '');
+    url.searchParams.set('StarterBench', '');
+    url.searchParams.set('TeamID', '0');
+    url.searchParams.set('TwoWay', '0');
 
-    return this.fetchWithRetry<LeagueLeadersResponse>(url, 3);
+    return this.fetchWithRetry<LeagueDashPlayerStatsResponse>(url, 3);
   }
 
   private async fetchWithRetry<T>(url: URL, retries: number): Promise<T> {
