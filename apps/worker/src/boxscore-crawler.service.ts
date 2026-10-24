@@ -20,7 +20,64 @@ import {
 } from './nba-cdn-boxscore.client';
 import { DatabaseService } from './database.service';
 import { RedisService } from './redis.service';
+import { QueueService } from './queue.service';
 import { resolveCurrentSeason } from './season';
+
+/** `schedule_games.gameStatus`: 1 scheduled, 2 live, 3 final. */
+const STATUS_FINAL = 3;
+
+/**
+ * How long after tip-off a final game still counts as "just finished".
+ *
+ * The post-game refresh is there for the night's results, not for repairing
+ * history: a box-score crawl over an older season would otherwise queue a career
+ * crawl for every player of every game it re-read. `run-refresh-season-stats` is
+ * the tool for that.
+ */
+const SEASON_REFRESH_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/** Marker that a finished game's players have already been queued for a refresh. */
+const SEASON_REFRESH_MARKER_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * Whether a box-score line shows the player actually got on the floor.
+ *
+ * The feed spells a DNP as `PT00M00.00S` from the CDN and `0:00` from
+ * stats.nba.com; only a line with time on it means the player's season totals
+ * moved, and a DNP's crawl would fetch the same numbers again.
+ */
+export function hasPlayed(minutes: string | null | undefined): boolean {
+  if (!minutes) {
+    return false;
+  }
+  const parts = minutes.match(/\d+(?:\.\d+)?/g) ?? [];
+  return parts.some((part) => Number(part) > 0);
+}
+
+/**
+ * Whether a final game should queue a post-game season-stats refresh.
+ *
+ * A game is only worth a refresh while it is still news: the crawl is what puts
+ * the night's results into `player_season_stats` without waiting for the 3-day
+ * player sync, and re-queueing older finals would re-crawl a season's players on
+ * every box-score pass.
+ */
+export function shouldRefreshSeasonStats(
+  gameStatus: number | null,
+  gameStartedAt: Date | null,
+  now: Date,
+  windowMs = SEASON_REFRESH_WINDOW_MS,
+): boolean {
+  if (gameStatus !== STATUS_FINAL || !gameStartedAt) {
+    return false;
+  }
+  const startedMs = gameStartedAt.getTime();
+  if (Number.isNaN(startedMs)) {
+    return false;
+  }
+  const age = now.getTime() - startedMs;
+  return age >= 0 && age <= windowMs;
+}
 
 type BoxScorePlayerStats = {
   minutes: string;
@@ -51,11 +108,24 @@ export class BoxscoreCrawlerService {
   private readonly concurrency = 1;
   private readonly delayMs = 1000;
 
+  /**
+   * Delay between a game going final and the crawl that reads the season totals
+   * it changed.
+   *
+   * stats.nba.com's ByYear dashboard lags the box score by a few minutes, so a
+   * crawl at the final whistle re-reads the totals from before the game and
+   * writes nothing new.
+   */
+  private readonly seasonRefreshDelayMs = Number(
+    process.env.NBA_SEASON_REFRESH_DELAY_MS || '300000',
+  );
+
   constructor(
     private readonly boxscoreClient: NbaBoxScoreClient,
     private readonly cdnBoxscoreClient: NbaCdnBoxScoreClient,
     private readonly database: DatabaseService,
     private readonly redisService: RedisService,
+    private readonly queueService: QueueService,
   ) {}
 
   async crawlSeasonBoxscores() {
@@ -115,6 +185,7 @@ export class BoxscoreCrawlerService {
 
   async syncGameBoxscore(scheduleGameId: string, gameId: string, ttlSeconds?: number) {
     const { traditional, summary } = await this.fetchGameBoxscore(gameId);
+    const gameStatus = summary.boxScoreSummary.gameStatus;
 
     await this.upsertSummary(scheduleGameId, summary);
     await this.upsertTeams(scheduleGameId, traditional);
@@ -123,7 +194,7 @@ export class BoxscoreCrawlerService {
     await this.database.db
       .update(scheduleGames)
       .set({
-        gameStatus: summary.boxScoreSummary.gameStatus,
+        gameStatus,
         gameStatusText: summary.boxScoreSummary.gameStatusText,
         gameCode: summary.boxScoreSummary.gameCode,
         // The crawler is the authoritative source for a final score.
@@ -141,8 +212,13 @@ export class BoxscoreCrawlerService {
       })
       .where(eq(scheduleGames.id, scheduleGameId));
 
-    if (summary.boxScoreSummary.gameStatus === 3) {
+    if (gameStatus === STATUS_FINAL) {
       await this.updateSeriesTextForSeries(gameId);
+      await this.refreshSeasonStatsForFinalGame(
+        scheduleGameId,
+        gameId,
+        summary.boxScoreSummary.gameTimeUTC,
+      );
     }
 
     await this.writeRedis(
@@ -154,7 +230,71 @@ export class BoxscoreCrawlerService {
       ttlSeconds,
     );
 
-    return summary.boxScoreSummary.gameStatus ?? null;
+    return gameStatus ?? null;
+  }
+
+  /**
+   * Queue a career re-crawl for every player who took the floor in a final game.
+   *
+   * `player_season_stats` was otherwise only refreshed by the 3-day player sync,
+   * so a player's current-season row stayed behind for days after the game it
+   * belonged to — and a player whose first regular-season game had not been
+   * crawled yet had no row at all. Settlement reads the same final status off the
+   * same row, so this lands alongside it.
+   *
+   * The crawl is delayed rather than run immediately: see `seasonRefreshDelayMs`.
+   */
+  private async refreshSeasonStatsForFinalGame(
+    scheduleGameId: string,
+    gameId: string,
+    gameTimeUTC: string | null,
+  ) {
+    const startedAt = gameTimeUTC ? new Date(gameTimeUTC) : null;
+    if (!shouldRefreshSeasonStats(STATUS_FINAL, startedAt, new Date())) {
+      return;
+    }
+
+    try {
+      // One refresh per game. The live poller and a schedule re-sync can both
+      // see the final status, and a Redis marker keeps the second one from
+      // queueing the same box score again.
+      const client = this.redisService.getClient();
+      const claimed = await client.set(
+        `nba:season-refresh:${gameId}`,
+        '1',
+        'EX',
+        SEASON_REFRESH_MARKER_TTL_SECONDS,
+        'NX',
+      );
+      if (claimed !== 'OK') {
+        return;
+      }
+
+      const rows = await this.database.db
+        .select({
+          playerExternalId: scheduleBoxscorePlayers.playerExternalId,
+          minutes: scheduleBoxscorePlayers.minutes,
+        })
+        .from(scheduleBoxscorePlayers)
+        .where(eq(scheduleBoxscorePlayers.scheduleGameId, scheduleGameId));
+
+      const played = rows.filter((row) => hasPlayed(row.minutes));
+      for (const { playerExternalId } of played) {
+        await this.queueService.enqueuePlayerCareerAfterFinal(
+          playerExternalId,
+          gameId,
+          this.seasonRefreshDelayMs,
+        );
+      }
+
+      this.logger.log(
+        `season stats refresh queued game=${gameId} players=${played.length} delay=${this.seasonRefreshDelayMs / 1000}s`,
+      );
+    } catch (error) {
+      // The box score is already stored; a queue hiccup must not fail the crawl
+      // (and with it the game's final status write).
+      this.logger.error(`season stats refresh queue failed game=${gameId}`, error as Error);
+    }
   }
 
   private async updateSeriesTextForSeries(gameId: string) {
