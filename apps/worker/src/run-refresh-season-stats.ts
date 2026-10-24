@@ -21,13 +21,13 @@ import { resolveCurrentSeason } from './season';
  * insert-if-missing.
  *
  * Modes:
- *   leagueleaders (default) — ONE leagueleaders request per season type returns
- *     totals for every player who played; bulk-updates all rows for the season.
- *     Wins/losses are not in that payload and are left untouched (the crawl
- *     mode fills them). Use this when stats.nba.com throttles per-player
- *     endpoints — leagueleaders stays reachable much longer.
- *   crawl — staggered per-player career crawls (fills wins/losses and every
- *     season at once). Needs the dashboard endpoints to respond.
+ *   bulk (default) — ONE `leaguedashplayerstats` request per season type returns
+ *     totals for every player who played; bulk-updates all rows for the season,
+ *     wins/losses included. This is the cheap path when stats.nba.com throttles
+ *     per-player endpoints. (It replaced `leagueleaders`, which the feed now
+ *     answers with an HTML error page.)
+ *   crawl — staggered per-player career crawls (every season at once). Needs the
+ *     dashboard endpoints to respond.
  *   purge — drain waiting/delayed jobs from the career queue (stop a retry
  *     storm), then exit.
  *
@@ -42,7 +42,7 @@ import { resolveCurrentSeason } from './season';
  *
  * Usage (from apps/worker):
  *   bun src/run-refresh-season-stats.ts [season] [staleDays] [mode]
- *   bun src/run-refresh-season-stats.ts 2025-26 1 leagueleaders
+ *   bun src/run-refresh-season-stats.ts 2025-26 1 bulk
  *   bun src/run-refresh-season-stats.ts 2025-26 1 crawl
  *   bun src/run-refresh-season-stats.ts "" "" purge
  */
@@ -70,8 +70,8 @@ const SEASON_TYPES = [
   { seasonType: 'Pre Season', statsTimeframe: 'ByYear-preseason' },
 ] as const;
 
-/** LeagueLeaders row -> SeasonTotals (no wins/losses in that payload). */
-function leagueLeadersRowToTotals(
+/** One `leaguedashplayerstats` row -> SeasonTotals. */
+function dashPlayerStatsRowToTotals(
   headers: string[],
   row: unknown[],
 ): { externalId: string; totals: SeasonTotals } | null {
@@ -92,6 +92,9 @@ function leagueLeadersRowToTotals(
     externalId: String(r.PLAYER_ID),
     totals: {
       gp,
+      // Preseason reports neither, and the payload has them as null there.
+      wins: num('W'),
+      losses: num('L'),
       fgPct: num('FG_PCT'),
       fg3Pct: num('FG3_PCT'),
       ftPct: num('FT_PCT'),
@@ -109,21 +112,21 @@ function leagueLeadersRowToTotals(
   };
 }
 
-async function backfillFromLeagueLeaders(
+async function backfillFromBulkTotals(
   database: DatabaseService,
   client: PlayerIndexClient,
   season: string,
 ) {
   for (const { seasonType, statsTimeframe } of SEASON_TYPES) {
-    console.log(`fetching leagueleaders season=${season} seasonType=${seasonType} ...`);
+    console.log(`fetching leaguedashplayerstats season=${season} seasonType=${seasonType} ...`);
     let response;
     try {
-      response = await client.fetchLeagueLeaders(season, seasonType);
+      response = await client.fetchLeagueDashPlayerStats(season, seasonType);
     } catch (err) {
-      console.error(`leagueleaders fetch failed for ${seasonType}:`, err);
+      console.error(`leaguedashplayerstats fetch failed for ${seasonType}:`, err);
       continue;
     }
-    const resultSet = response.resultSet;
+    const resultSet = response.resultSets?.find((set) => set.name === 'LeagueDashPlayerStats');
     if (!resultSet || !Array.isArray(resultSet.headers) || !Array.isArray(resultSet.rowSet)) {
       console.error(`no usable result set for ${seasonType}`);
       continue;
@@ -131,10 +134,10 @@ async function backfillFromLeagueLeaders(
 
     const rows: { externalId: string; totals: SeasonTotals }[] = [];
     for (const row of resultSet.rowSet) {
-      const mapped = leagueLeadersRowToTotals(resultSet.headers, row);
+      const mapped = dashPlayerStatsRowToTotals(resultSet.headers, row);
       if (mapped) rows.push(mapped);
     }
-    console.log(`leagueleaders returned ${rows.length} players (${seasonType})`);
+    console.log(`leaguedashplayerstats returned ${rows.length} players (${seasonType})`);
 
     const externalIds = rows.map((r) => r.externalId);
     const idRows = externalIds.length
@@ -247,8 +250,10 @@ async function backfillFromCrawls(
 
 async function run() {
   const args = process.argv.slice(2);
-  const mode = (args.find((a) => ['leagueleaders', 'crawl', 'purge'].includes(a)) ||
-    'leagueleaders') as 'leagueleaders' | 'crawl' | 'purge';
+  const mode = (args.find((a) => ['bulk', 'crawl', 'purge'].includes(a)) || 'bulk') as
+    | 'bulk'
+    | 'crawl'
+    | 'purge';
   const currentSeason = resolveCurrentSeason();
 
   if (mode === 'purge') {
@@ -278,8 +283,8 @@ async function run() {
 
   console.log(`run-refresh-season-stats mode=${mode} season=${season}`);
 
-  if (mode === 'leagueleaders') {
-    await backfillFromLeagueLeaders(database, client, season);
+  if (mode === 'bulk') {
+    await backfillFromBulkTotals(database, client, season);
   } else {
     await backfillFromCrawls(database, queue, season, staleDays);
   }
