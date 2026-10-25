@@ -112,12 +112,16 @@ export class BoxscoreCrawlerService {
    * Delay between a game going final and the crawl that reads the season totals
    * it changed.
    *
-   * stats.nba.com's ByYear dashboard lags the box score by a few minutes, so a
-   * crawl at the final whistle re-reads the totals from before the game and
-   * writes nothing new.
+   * Deliberately much longer than the score: the final score is written from the
+   * box score itself, so it lands within a poll of the buzzer and settlement can
+   * pay picks off it, but stats.nba.com's ByYear dashboard lags the box score by
+   * far more than a few minutes. A crawl minutes after the final whistle
+   * re-reads the totals from before the game and writes nothing new, and the
+   * per-game refresh marker is one-shot, so that miss is permanent until the
+   * 3-day player sync. Two hours gives the dashboard time to publish the game.
    */
   private readonly seasonRefreshDelayMs = Number(
-    process.env.NBA_SEASON_REFRESH_DELAY_MS || '300000',
+    process.env.NBA_SEASON_REFRESH_DELAY_MS || '7200000',
   );
 
   constructor(
