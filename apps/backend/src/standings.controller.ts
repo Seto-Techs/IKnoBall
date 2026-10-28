@@ -1,13 +1,12 @@
 import { setDefaultResultOrder } from 'node:dns';
-import { BadGatewayException, Controller, Get, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Logger } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
 import { RedisService } from './infrastructure/redis/redis.service';
 import { teams, scheduleDays, scheduleGames } from '@iknoball/database';
-import { and, eq, sql } from 'drizzle-orm';
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { resolveCurrentSeason } from './common/season';
 
 if (process.env.NBA_STATS_FORCE_IPV4 === 'true') {
@@ -54,7 +53,13 @@ class StandingsResponse {
 @Controller('standings')
 export class StandingsController {
   private readonly logger = new Logger(StandingsController.name);
-  private readonly requestTimeoutMs = 4000;
+
+  /** stats.nba.com is slow even when it answers at all, and it is optional here. */
+  private readonly markerTimeoutMs = 8000;
+  /** Clinch markers do not move once a season is over. */
+  private readonly markerTtlSeconds = 60 * 60 * 6;
+  /** Back-off after a failed marker fetch, so a dead upstream is not retried per request. */
+  private readonly markerRetryTtlSeconds = 60 * 30;
 
   constructor(
     private readonly db: DatabaseService,
@@ -66,92 +71,92 @@ export class StandingsController {
   @ApiDataResponse(StandingsResponse, HttpStatus.OK, 'Standings fetched.', 'Standings fetched.')
   async getStandings(): Promise<ApiResponse<StandingsResponse>> {
     const season = await resolveCurrentSeason(this.db.db);
-    const cacheKey = `standings:${season}`;
-    const staleKey = `${cacheKey}:stale`;
 
-    // 1) Try fast cache (30 min)
+    // Record comes from the same final scores the team-record endpoint reads, so
+    // a night's results land as soon as the crawler writes them. stats.nba.com
+    // used to own these numbers, cached behind a 7-day stale key: whenever its
+    // standings call timed out (routinely) the endpoint kept serving a snapshot
+    // from days earlier, and a finished game never appeared in the record.
+    const standings = await this.buildStandingsFromDb(season);
+
+    // Clinch markers are the only thing the feed still supplies, and they are
+    // cosmetic. They are merged in from cache and refreshed in the background,
+    // so they can never delay the response or decide a win-loss total.
+    const markers = await this.readClinchMarkers(season);
+    if (markers) {
+      for (const conf of ['West', 'East'] as const) {
+        for (const row of standings[conf]) {
+          row.marker = markers.get(row.teamAbbr) ?? null;
+        }
+      }
+    }
+
+    return response(true, 'Standings fetched.', standings);
+  }
+
+  /**
+   * Cached clinch markers, keyed by team abbreviation.
+   *
+   * Returns null when the cache is cold and a refresh has just been started; the
+   * caller then serves the standings without markers rather than waiting on the
+   * feed.
+   */
+  private async readClinchMarkers(season: string): Promise<Map<string, string> | null> {
+    const key = `standings:markers:${season}`;
     try {
-      const cached = (await this.redis.keyExists(cacheKey))
-        ? await this.redis.getKey(cacheKey)
-        : null;
-      if (cached) {
-        return response(true, 'Standings fetched.', JSON.parse(cached) as StandingsResponse);
+      if (await this.redis.keyExists(key)) {
+        const raw = await this.redis.getKey(key);
+        if (raw) {
+          return new Map(Object.entries(JSON.parse(raw) as Record<string, string>));
+        }
       }
     } catch (e) {
-      this.logger.warn(`Redis cache read failed for ${cacheKey}: ${(e as Error).message}`);
+      this.logger.warn(`Clinch marker cache read failed: ${(e as Error).message}`);
     }
 
-    // Check stale for fast serve (stale-while-revalidate)
-    let stale: string | null = null;
+    void this.refreshClinchMarkers(season, key);
+    return null;
+  }
+
+  private async refreshClinchMarkers(season: string, key: string) {
     try {
-      stale = (await this.redis.keyExists(staleKey)) ? await this.redis.getKey(staleKey) : null;
-    } catch (e) {
-      this.logger.warn(`Redis stale read failed: ${(e as Error).message}`);
-    }
-    if (stale) {
-      // Serve stale immediately, refresh in background
-      this.refreshStandingsInBackground(season, cacheKey, staleKey).catch((e) =>
-        this.logger.warn(`Background refresh failed: ${(e as Error).message}`),
+      const rows = await this.fetchUpstreamStandings(season);
+      const teamRows = await this.db.db
+        .select({ externalId: teams.externalId, abbreviation: teams.abbreviation })
+        .from(teams)
+        .where(
+          inArray(
+            teams.externalId,
+            rows.map((row) => String(row.TeamID)),
+          ),
+        );
+      const abbrByExternalId = new Map(teamRows.map((t) => [t.externalId, t.abbreviation]));
+
+      const markers: Record<string, string> = {};
+      for (const row of rows) {
+        const abbr = abbrByExternalId.get(String(row.TeamID));
+        if (!abbr) continue;
+        const marker = this.markerFor(row, row.Conference === 'West' ? 'West' : 'East');
+        if (marker) {
+          markers[abbr] = marker;
+        }
+      }
+
+      await this.redis.setKey(key, JSON.stringify(markers), this.markerTtlSeconds);
+      this.logger.log(
+        `Clinch markers refreshed season=${season} teams=${Object.keys(markers).length}`,
       );
-      this.logger.warn(`Serving stale standings for ${season} (background refresh)`);
-      return response(true, 'Standings fetched.', JSON.parse(stale) as StandingsResponse);
-    }
-
-    // 2) No stale: try upstream fetch (single attempt, short timeout, fast fallback)
-    try {
-      const raw = await this.fetchStandingsWithTimeout(season);
-      const standings = await this.buildStandings(raw, season);
-      try {
-        await this.redis.setKey(cacheKey, JSON.stringify(standings), 60 * 30);
-        await this.redis.setKey(staleKey, JSON.stringify(standings), 60 * 60 * 24 * 7);
-      } catch (e) {
-        this.logger.warn(`Redis cache write failed: ${(e as Error).message}`);
-      }
-      return response(true, 'Standings fetched.', standings);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Upstream standings fetch failed (${season}): ${msg}`);
-
-      // 3) Fallback: compute from DB (scheduleGames) — no stale left to try
-      try {
-        const fallback = await this.buildStandingsFromDb(season);
-        try {
-          await this.redis.setKey(staleKey, JSON.stringify(fallback), 60 * 60 * 24 * 7);
-          await this.redis.setKey(cacheKey, JSON.stringify(fallback), 60 * 5);
-        } catch {}
-        this.logger.warn(`Serving DB-fallback standings for ${season}`);
-        return response(true, 'Standings fetched.', fallback);
-      } catch (e) {
-        this.logger.error(`DB fallback failed: ${(e as Error).message}`, (e as Error).stack);
-      }
-
-      if (error instanceof BadGatewayException) throw error;
-      throw new BadGatewayException('Standings source unavailable');
-    }
-  }
-
-  private async refreshStandingsInBackground(season: string, cacheKey: string, staleKey: string) {
-    try {
-      const raw = await this.fetchStandingsWithTimeout(season);
-      const standings = await this.buildStandings(raw, season);
-      await this.redis.setKey(cacheKey, JSON.stringify(standings), 60 * 30);
-      await this.redis.setKey(staleKey, JSON.stringify(standings), 60 * 60 * 24 * 7);
-      this.logger.log(`Background refresh succeeded for ${season}`);
     } catch (e) {
-      // fallback to DB if external still failing, keep stale fresh
+      this.logger.warn(`Clinch marker refresh failed season=${season}: ${(e as Error).message}`);
+      // Cache the empty result briefly: the standings themselves are unaffected,
+      // and an unreachable feed must not be retried on every page load.
       try {
-        const fallback = await this.buildStandingsFromDb(season);
-        await this.redis.setKey(staleKey, JSON.stringify(fallback), 60 * 60 * 24 * 7);
-        await this.redis.setKey(cacheKey, JSON.stringify(fallback), 60 * 5);
-        this.logger.warn(`Background refresh used DB fallback for ${season}`);
+        await this.redis.setKey(key, '{}', this.markerRetryTtlSeconds);
       } catch {}
-      throw e;
     }
   }
 
-  private async fetchStandingsWithTimeout(season: string): Promise<{
-    resultSets: { name: string; headers: string[]; rowSet: StandingValue[][] }[];
-  }> {
+  private async fetchUpstreamStandings(season: string): Promise<Record<string, StandingValue>[]> {
     const url = new URL(
       `${process.env.NBA_STATS_BASE_URL ?? 'https://stats.nba.com/stats'}/leaguestandingsv3`,
     );
@@ -162,33 +167,23 @@ export class StandingsController {
     url.searchParams.set('Section', 'overall');
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    const timeout = setTimeout(() => controller.abort(), this.markerTimeoutMs);
     try {
       const res = await fetch(url, { headers: this.headers(), signal: controller.signal });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
-        this.logger.error(`stats.nba.com responded ${res.status}: ${body.slice(0, 500)}`);
-        throw new BadGatewayException('Standings source unavailable');
+        throw new Error(`stats.nba.com responded ${res.status}: ${body.slice(0, 200)}`);
       }
-      return (await res.json()) as {
+      const payload = (await res.json()) as {
         resultSets: { name: string; headers: string[]; rowSet: StandingValue[][] }[];
       };
-    } catch (error) {
-      if (error instanceof BadGatewayException) throw error;
-      const err = error as Error;
-      if (err.name === 'AbortError') {
-        throw new BadGatewayException('Standings source unavailable (timeout)');
+      const set = payload.resultSets.find((r) => r.name === 'Standings');
+      if (!set) {
+        throw new Error('Unexpected standings payload');
       }
-      const m = err.message?.toLowerCase() ?? '';
-      if (
-        m.includes('timeout') ||
-        m.includes('etimedout') ||
-        m.includes('econnreset') ||
-        m.includes('fetch failed')
-      ) {
-        throw new BadGatewayException('Standings source unavailable');
-      }
-      throw new BadGatewayException('Standings source unavailable');
+      return set.rowSet.map((values) =>
+        Object.fromEntries(set.headers.map((h, i) => [h, values[i]])),
+      );
     } finally {
       clearTimeout(timeout);
     }
@@ -218,50 +213,6 @@ export class StandingsController {
     };
   }
 
-  private async buildStandings(
-    raw: { resultSets: { name: string; headers: string[]; rowSet: StandingValue[][] }[] },
-    season: string,
-  ): Promise<StandingsResponse> {
-    const set = raw.resultSets.find((r) => r.name === 'Standings');
-    if (!set) throw new BadGatewayException('Unexpected standings payload');
-
-    const rows: Record<string, StandingValue>[] = set.rowSet.map((values) =>
-      Object.fromEntries(set.headers.map((h, i) => [h, values[i]])),
-    );
-
-    const teamIds = rows.map((r) => String(r.TeamID));
-    const teamRows = await this.db.db
-      .select({
-        externalId: teams.externalId,
-        abbreviation: teams.abbreviation,
-        logoUrl: teams.logoUrl,
-      })
-      .from(teams)
-      .where(inArray(teams.externalId, teamIds));
-    const teamByExternalId = new Map(teamRows.map((t) => [t.externalId, t]));
-
-    const byConference: Record<'West' | 'East', StandingRow[]> = { West: [], East: [] };
-    for (const row of rows) {
-      const team = teamByExternalId.get(String(row.TeamID));
-      if (!team) continue;
-      const conference = row.Conference === 'West' ? 'West' : 'East';
-      byConference[conference].push({
-        rank: Number(row.PlayoffRank),
-        teamAbbr: team.abbreviation,
-        logoUrl: team.logoUrl ?? '',
-        wins: Number(row.WINS),
-        losses: Number(row.LOSSES),
-        gamesBack: Number(row.ConferenceGamesBack),
-        marker: this.markerFor(row, conference),
-      });
-    }
-    for (const conf of ['West', 'East'] as const) {
-      byConference[conf].sort((a, b) => a.rank - b.rank);
-    }
-
-    return { season, ...byConference };
-  }
-
   private async buildStandingsFromDb(season: string): Promise<StandingsResponse> {
     const allTeams = await this.db.db
       .select({
@@ -273,7 +224,6 @@ export class StandingsController {
       .from(teams);
 
     // tricode fix: teams uses BRK, schedule uses BKN
-    const tricodeForTeam = (abbr: string) => (abbr === 'BRK' ? 'BKN' : abbr);
     const abbrForTricode = (tri: string) => (tri === 'BKN' ? 'BRK' : tri);
 
     const winsMap = new Map<string, number>();
