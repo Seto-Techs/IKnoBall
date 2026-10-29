@@ -9,10 +9,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       // The workspace packages compile to CommonJS, matching how the worker and
       // backend consume them, and Vite cannot do CommonJS interop for a linked
-      // workspace dep — the browser gets raw `exports.` calls. Pointing the one
-      // package the app imports at its TypeScript source lets Vite compile it
-      // like any other app file. Types still come from the package's own build,
-      // which the frontend's `tsc -b` reads through node_modules.
+      // workspace dep — the browser gets raw `exports.` calls. Pointing the
+      // packages the app imports at their TypeScript source lets Vite compile
+      // them like any other app file. Types still come from the package's own
+      // build, which the frontend's `tsc -b` reads through node_modules.
+      '@iknoball/release': path.resolve(__dirname, '../../packages/release/src/index.ts'),
       '@iknoball/shot-zones': path.resolve(__dirname, '../../packages/shot-zones/src/index.ts'),
     },
   },

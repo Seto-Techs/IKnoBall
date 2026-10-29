@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Camera, ChevronRight, Mail, ShieldCheck, Upload } from 'lucide-react';
+import { VERSION } from '@iknoball/release';
 import {
   fileToAvatarDataUrl,
   useChangePassword,
@@ -440,6 +441,38 @@ export function LegalSection() {
             </Link>
           </li>
         ))}
+      </ul>
+    </SettingsCard>
+  );
+}
+
+/**
+ * Release: the version this build is, and the way into the changelog.
+ *
+ * The number is read from `@iknoball/release`, the same source the health
+ * endpoint and the worker's boot line report, so what you see here is what is
+ * actually running rather than a string typed into a page.
+ */
+export function ReleaseSection() {
+  return (
+    <SettingsCard
+      title="Release"
+      description="Which version of IKnoBall you are on, and what changed in it."
+    >
+      <ul className="divide-y divide-brand-line text-sm">
+        <li className="flex items-center justify-between gap-3 py-3">
+          <span className="font-semibold text-brand-ink">Version</span>
+          <span className="font-mono text-[13px] text-stone-600">v{VERSION}</span>
+        </li>
+        <li>
+          <Link
+            to="/changelog"
+            className="flex items-center justify-between gap-3 py-3 font-semibold text-brand-ink transition-colors hover:text-brand-navy"
+          >
+            What&rsquo;s new
+            <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" aria-hidden="true" />
+          </Link>
+        </li>
       </ul>
     </SettingsCard>
   );

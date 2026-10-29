@@ -72,6 +72,9 @@ export function SiteFooter() {
           <Link to="/privacy" className={linkClass}>
             Privacy
           </Link>
+          <Link to="/changelog" className={linkClass}>
+            Changelog
+          </Link>
         </nav>
       </div>
     </footer>

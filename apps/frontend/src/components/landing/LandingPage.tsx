@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Trophy,
 } from 'lucide-react';
+import { VERSION } from '@iknoball/release';
 import { useSession } from '../../lib/use-auth';
 import { Logo as BrandLogo } from '../brand/Logo';
 import { navLinkClass } from '../brand/nav';
@@ -613,6 +614,11 @@ function LandingFooter() {
                 Standings
               </a>
             </li>
+            <li>
+              <Link to="/changelog" className="transition-colors hover:text-white">
+                Changelog
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -692,7 +698,7 @@ function LandingFooter() {
       </div>
 
       <div className="mx-auto mt-12 flex max-w-6xl flex-col gap-3 border-t border-white/10 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
-        <span>© 2026 IKnoBall.</span>
+        <span>© 2026 IKnoBall. v{VERSION}</span>
         <span className="text-white/40">Not affiliated with, or endorsed by, the NBA.</span>
       </div>
     </footer>

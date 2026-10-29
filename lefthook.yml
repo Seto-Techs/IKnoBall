@@ -7,3 +7,7 @@ pre-commit:
       run: bun run lint
     test:
       run: bun run test
+    version:
+      # A changelog entry bumps the version for every app at once, so a manifest
+      # left behind is caught here rather than discovered after a release.
+      run: bun run version:check

@@ -1,6 +1,7 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common';
 import { ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+import { VERSION } from '@iknoball/release';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { AppService } from './app.service';
@@ -8,6 +9,12 @@ import { AppService } from './app.service';
 export class HealthResponse {
   @ApiProperty({ example: 'ok' })
   status!: 'ok';
+
+  @ApiProperty({
+    example: '0.2.0',
+    description: 'The release this build is, shared with the frontend and the worker.',
+  })
+  version!: string;
 }
 
 @AllowAnonymous()
@@ -21,6 +28,6 @@ export class AppController {
   @ApiDataResponse(HealthResponse, HttpStatus.OK, 'Service is healthy.', 'Service is healthy.')
   getHello(): ApiResponse<HealthResponse> {
     this.appService.getHello();
-    return response(true, 'Service is healthy.', { status: 'ok' });
+    return response(true, 'Service is healthy.', { status: 'ok', version: VERSION });
   }
 }

@@ -8,6 +8,7 @@ import {
   IdentitySection,
   LegalSection,
   PasswordSection,
+  ReleaseSection,
   SessionsSection,
 } from '../components/profile/sections';
 import { Avatar } from '../components/profile/parts';
@@ -102,6 +103,7 @@ function ProfilePage() {
               <PasswordSection hasPassword={hasPassword} />
               <SessionsSection currentToken={session?.session.token} />
               <ConnectionsSection enabled={!!user} />
+              <ReleaseSection />
               <LegalSection />
             </div>
           </div>

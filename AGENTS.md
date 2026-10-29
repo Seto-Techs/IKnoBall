@@ -18,6 +18,7 @@ IKnoBall is a Bun + Turborepo monorepo. Use `bun` for everything.
 | `apps/worker`       | `iknoball-worker`    | NestJS standalone worker (BullMQ, cron) |
 | `packages/database` | `@iknoball/database` | Drizzle schema + migrations             |
 | `packages/schema`   | `@iknoball/schema`   | Shared Zod schemas + auth types         |
+| `packages/release`  | `@iknoball/release`  | The changelog and the one version       |
 
 ## Running things
 

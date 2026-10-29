@@ -8,11 +8,14 @@ COPY apps/worker/package.json apps/worker/package.json
 COPY packages/schema/package.json packages/schema/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/predictions/package.json packages/predictions/package.json
+COPY packages/release/package.json packages/release/package.json
 COPY packages/shot-zones/package.json packages/shot-zones/package.json
 RUN bun install --frozen-lockfile --ignore-scripts
 
 COPY apps/frontend apps/frontend
+COPY packages/release packages/release
 COPY packages/shot-zones packages/shot-zones
+RUN bun run --filter '@iknoball/release' build
 RUN bun run --filter '@iknoball/shot-zones' build
 WORKDIR /app/apps/frontend
 ARG VITE_API_URL

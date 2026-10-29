@@ -1,6 +1,6 @@
 {
   "name": "iknoball-worker",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -23,6 +23,7 @@
   "dependencies": {
     "@iknoball/database": "workspace:*",
     "@iknoball/predictions": "workspace:*",
+    "@iknoball/release": "workspace:*",
     "@iknoball/shot-zones": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
