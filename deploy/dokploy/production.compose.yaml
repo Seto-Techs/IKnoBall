@@ -92,6 +92,24 @@ services:
     networks:
       - app_net
 
+  # The Discord bot. It reaches the API at http://api:3000 by service name, so
+  # /api/internal/* never has to be reachable from the internet — hence app_net
+  # only and no Traefik labels. `depends_on: service_healthy` on the api is what
+  # guarantees the migrations have run before the bot starts calling /internal.
+  discord:
+    image: ghcr.io/seto-techs/iknoball-discord:prod
+    pull_policy: always
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_started
+      api:
+        condition: service_healthy
+    networks:
+      - app_net
+
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
