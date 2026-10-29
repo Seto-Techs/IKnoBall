@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
+exports.discordMembers = exports.discordGuilds = exports.discordLinks = exports.discordCards = exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionSource = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
 const better_auth_schema_js_1 = require("./better-auth.schema.js");
 var better_auth_schema_js_2 = require("./better-auth.schema.js");
@@ -16,6 +16,7 @@ exports.scheduleTeamSide = (0, pg_core_1.pgEnum)('ScheduleTeamSide', ['home', 'a
 exports.categoryType = (0, pg_core_1.pgEnum)('CategoryType', ['income', 'expense']);
 exports.predictionMode = (0, pg_core_1.pgEnum)('PredictionMode', ['flat', 'weighted']);
 exports.predictionStatus = (0, pg_core_1.pgEnum)('PredictionStatus', ['pending', 'settled', 'voided']);
+exports.predictionSource = (0, pg_core_1.pgEnum)('PredictionSource', ['web', 'discord']);
 exports.activityLogs = (0, pg_core_1.pgTable)('activity_logs', {
     id: (0, pg_core_1.text)('activity_log_id').primaryKey().$defaultFn(node_crypto_1.randomUUID),
     userId: (0, pg_core_1.text)('user_id'),
@@ -473,6 +474,21 @@ exports.predictionPicks = (0, pg_core_1.pgTable)('prediction_picks', {
     points: (0, pg_core_1.integer)('points'),
     status: (0, exports.predictionStatus)('status').notNull().default('pending'),
     settledAt: (0, pg_core_1.timestamp)('settledAt', { precision: 3 }),
+    /**
+     * Where the pick was placed. Null means the row predates the Discord bot,
+     * i.e. a web pick: the column was added to a table that already had rows, so
+     * a NOT NULL default would have had to invent a value for all of them and a
+     * `'web'` default would then also silently cover a writer that forgot to set
+     * it. Null reads as "web" in the leaderboard query, and every writer that
+     * knows the answer sets it explicitly.
+     */
+    source: (0, exports.predictionSource)('source'),
+    /**
+     * The Discord server the pick was placed from, for the per-server board.
+     * Null for a web pick, and overwritten on a re-pick elsewhere — last write
+     * wins, the same as `side`.
+     */
+    guildId: (0, pg_core_1.text)('guildId'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
 }, (table) => [
@@ -480,4 +496,125 @@ exports.predictionPicks = (0, pg_core_1.pgTable)('prediction_picks', {
     (0, pg_core_1.index)('prediction_picks_userId_settledAt_idx').on(table.userId, table.settledAt),
     (0, pg_core_1.index)('prediction_picks_gameId_idx').on(table.gameId),
     (0, pg_core_1.index)('prediction_picks_status_idx').on(table.status),
+    /** Serves a server board: one guild, one mode, settled rows only. */
+    (0, pg_core_1.index)('prediction_picks_guildId_mode_status_idx').on(table.guildId, table.mode, table.status),
+]);
+/**
+ * One row per game card the bot has posted into a server.
+ *
+ * The card's buttons are the only durable handle on a posted message, and both
+ * sweepers (tip-off lock, settlement) need to find the cards they still have to
+ * edit: the lock sweep selects on `lockedAt IS NULL` and the settlement sweep on
+ * `settledAt IS NULL`, which is what the `(lockedAt, settledAt)` index is for.
+ * Storing `lockedAt`/`settledAt` also makes each edit idempotent — a card with a
+ * timestamp has already been edited, so a retry after a crash does nothing.
+ *
+ * One card per game per server: the unique key is what stops a re-post from
+ * creating a second live card for the same game, and it is the conflict target
+ * for an upsert.
+ */
+exports.discordCards = (0, pg_core_1.pgTable)('discord_cards', {
+    id: id(),
+    /** `schedule_games.gameId`, deliberately not a FK: the schedule sync deletes
+     * games that drop out of a day's feed, and a card should outlive that. */
+    gameId: (0, pg_core_1.text)('gameId').notNull(),
+    guildId: (0, pg_core_1.text)('guildId').notNull(),
+    channelId: (0, pg_core_1.text)('channelId').notNull(),
+    messageId: (0, pg_core_1.text)('messageId').notNull(),
+    /** Set once the card has been edited to disabled at tip-off. */
+    lockedAt: (0, pg_core_1.timestamp)('lockedAt', { precision: 3 }),
+    /** Set once the card has been edited with the final result. */
+    settledAt: (0, pg_core_1.timestamp)('settledAt', { precision: 3 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('discord_cards_gameId_guildId_key').on(table.gameId, table.guildId),
+    (0, pg_core_1.index)('discord_cards_lockedAt_settledAt_idx').on(table.lockedAt, table.settledAt),
+]);
+/**
+ * The bot's own Discord user ↔ IKnoBall user mapping.
+ *
+ * Better Auth already knows this for anyone who signed in with Discord
+ * (`account.providerId = 'discord'`, `account.accountId = <Discord user id>`),
+ * but `account` is Better Auth's table and it is free to rewrite it on a
+ * provider change or an unlink. The bot reads on every button click, so it gets
+ * its own row it can rely on. Both sides are unique, which is what enforces
+ * "one Discord account per user and one user per Discord account" in the
+ * database rather than in application code.
+ */
+exports.discordLinks = (0, pg_core_1.pgTable)('discord_links', {
+    id: id(),
+    userId: (0, pg_core_1.text)('userId')
+        .notNull()
+        .unique()
+        .references(() => better_auth_schema_js_1.user.id, { onDelete: 'cascade' }),
+    discordUserId: (0, pg_core_1.text)('discordUserId').notNull().unique(),
+    createdAt: createdAt(),
+});
+/**
+ * Per-guild configuration, written by `/setup`.
+ *
+ * The row is kept when the bot is removed (`leftAt` set) rather than deleted, so
+ * a reinstall restores the channel and posting hour instead of asking the admin
+ * to configure the server again — and so a server board's history still has a
+ * guild to belong to. `guildId` is the Discord id and the primary key: there is
+ * exactly one config per server and nothing else to key it by.
+ *
+ * The defaults are what make the bot work before `/setup` is run: 9am in
+ * `America/New_York` is the NBA convention. Posting still needs a `channelId`,
+ * which the admin must supply, so a defaulted row cannot post into a guessed
+ * channel.
+ */
+exports.discordGuilds = (0, pg_core_1.pgTable)('discord_guilds', {
+    guildId: (0, pg_core_1.text)('guildId').primaryKey(),
+    channelId: (0, pg_core_1.text)('channelId').notNull(),
+    /** Local hour, 0–23, in `timezone`. */
+    postHour: (0, pg_core_1.integer)('postHour').notNull().default(9),
+    /** IANA zone, validated against `Intl.supportedValuesOf('timeZone')`. */
+    timezone: (0, pg_core_1.text)('timezone').notNull().default('America/New_York'),
+    enabled: (0, pg_core_1.boolean)('enabled').notNull().default(true),
+    installedAt: (0, pg_core_1.timestamp)('installedAt', { precision: 3 }).notNull().defaultNow(),
+    /** Set on `guildDelete`; the row survives so a reinstall keeps its config. */
+    leftAt: (0, pg_core_1.timestamp)('leftAt', { precision: 3 }),
+});
+/**
+ * The bot's mirror of who is in which guild, refreshed from the gateway.
+ *
+ * The per-server leaderboard uses the "all picks by users who are members of
+ * this server" definition, which is a join rather than a number: a pick carries
+ * a `userId`, and turning that into "is this person in guild X" needs the
+ * membership list on this side of the wire. The alternative — asking Discord for
+ * the guild's members on every leaderboard render — is a paginated REST call per
+ * query, and the board would be slow and rate-limit shaped for no benefit.
+ * Mirroring the list makes the board one `EXISTS` over a local table.
+ *
+ * The `GUILD_MEMBERS` intent is what makes that mirror possible: the sync reads
+ * the list when the bot joins a guild and keeps it current from join, leave, and
+ * member-update events. So the intent is a requirement of definition B, not a
+ * convenience — and this table is the only reason it is requested.
+ *
+ * `displayName` is stored for the same reason: the board falls back to the
+ * Discord display name when a linked user has no `user.name`, and reading it
+ * here avoids a REST lookup per row on every render.
+ *
+ * The composite key `(guildId, discordUserId)` is both the upsert target for the
+ * sync (one row per person per server, so a re-sync overwrites instead of
+ * duplicating) and the join path for the board, which always filters by guild.
+ * The index on `discordUserId` answers the reverse question — which of my guilds
+ * is this person in — which the button path asks when it resolves a click.
+ */
+exports.discordMembers = (0, pg_core_1.pgTable)('discord_members', {
+    guildId: (0, pg_core_1.text)('guildId').notNull(),
+    discordUserId: (0, pg_core_1.text)('discordUserId').notNull(),
+    /** Discord display name, for the leaderboard's name fallback. */
+    displayName: (0, pg_core_1.text)('displayName'),
+    joinedAt: (0, pg_core_1.timestamp)('joinedAt', { precision: 3 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.primaryKey)({
+        name: 'discord_members_guildId_discordUserId_pk',
+        columns: [table.guildId, table.discordUserId],
+    }),
+    (0, pg_core_1.index)('discord_members_discordUserId_idx').on(table.discordUserId),
 ]);

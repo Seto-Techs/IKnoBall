@@ -11,6 +11,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -24,6 +25,7 @@ export const scheduleTeamSide = pgEnum('ScheduleTeamSide', ['home', 'away']);
 export const categoryType = pgEnum('CategoryType', ['income', 'expense']);
 export const predictionMode = pgEnum('PredictionMode', ['flat', 'weighted']);
 export const predictionStatus = pgEnum('PredictionStatus', ['pending', 'settled', 'voided']);
+export const predictionSource = pgEnum('PredictionSource', ['web', 'discord']);
 
 export const activityLogs = pgTable(
   'activity_logs',
@@ -578,6 +580,21 @@ export const predictionPicks = pgTable(
     points: integer('points'),
     status: predictionStatus('status').notNull().default('pending'),
     settledAt: timestamp('settledAt', { precision: 3 }),
+    /**
+     * Where the pick was placed. Null means the row predates the Discord bot,
+     * i.e. a web pick: the column was added to a table that already had rows, so
+     * a NOT NULL default would have had to invent a value for all of them and a
+     * `'web'` default would then also silently cover a writer that forgot to set
+     * it. Null reads as "web" in the leaderboard query, and every writer that
+     * knows the answer sets it explicitly.
+     */
+    source: predictionSource('source'),
+    /**
+     * The Discord server the pick was placed from, for the per-server board.
+     * Null for a web pick, and overwritten on a re-pick elsewhere — last write
+     * wins, the same as `side`.
+     */
+    guildId: text('guildId'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -586,5 +603,138 @@ export const predictionPicks = pgTable(
     index('prediction_picks_userId_settledAt_idx').on(table.userId, table.settledAt),
     index('prediction_picks_gameId_idx').on(table.gameId),
     index('prediction_picks_status_idx').on(table.status),
+    /** Serves a server board: one guild, one mode, settled rows only. */
+    index('prediction_picks_guildId_mode_status_idx').on(table.guildId, table.mode, table.status),
+  ],
+);
+
+/**
+ * One row per game card the bot has posted into a server.
+ *
+ * The card's buttons are the only durable handle on a posted message, and both
+ * sweepers (tip-off lock, settlement) need to find the cards they still have to
+ * edit: the lock sweep selects on `lockedAt IS NULL` and the settlement sweep on
+ * `settledAt IS NULL`, which is what the `(lockedAt, settledAt)` index is for.
+ * Storing `lockedAt`/`settledAt` also makes each edit idempotent — a card with a
+ * timestamp has already been edited, so a retry after a crash does nothing.
+ *
+ * One card per game per server: the unique key is what stops a re-post from
+ * creating a second live card for the same game, and it is the conflict target
+ * for an upsert.
+ */
+export const discordCards = pgTable(
+  'discord_cards',
+  {
+    id: id(),
+    /** `schedule_games.gameId`, deliberately not a FK: the schedule sync deletes
+     * games that drop out of a day's feed, and a card should outlive that. */
+    gameId: text('gameId').notNull(),
+    guildId: text('guildId').notNull(),
+    channelId: text('channelId').notNull(),
+    messageId: text('messageId').notNull(),
+    /** Set once the card has been edited to disabled at tip-off. */
+    lockedAt: timestamp('lockedAt', { precision: 3 }),
+    /** Set once the card has been edited with the final result. */
+    settledAt: timestamp('settledAt', { precision: 3 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('discord_cards_gameId_guildId_key').on(table.gameId, table.guildId),
+    index('discord_cards_lockedAt_settledAt_idx').on(table.lockedAt, table.settledAt),
+  ],
+);
+
+/**
+ * The bot's own Discord user ↔ IKnoBall user mapping.
+ *
+ * Better Auth already knows this for anyone who signed in with Discord
+ * (`account.providerId = 'discord'`, `account.accountId = <Discord user id>`),
+ * but `account` is Better Auth's table and it is free to rewrite it on a
+ * provider change or an unlink. The bot reads on every button click, so it gets
+ * its own row it can rely on. Both sides are unique, which is what enforces
+ * "one Discord account per user and one user per Discord account" in the
+ * database rather than in application code.
+ */
+export const discordLinks = pgTable('discord_links', {
+  id: id(),
+  userId: text('userId')
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  discordUserId: text('discordUserId').notNull().unique(),
+  createdAt: createdAt(),
+});
+
+/**
+ * Per-guild configuration, written by `/setup`.
+ *
+ * The row is kept when the bot is removed (`leftAt` set) rather than deleted, so
+ * a reinstall restores the channel and posting hour instead of asking the admin
+ * to configure the server again — and so a server board's history still has a
+ * guild to belong to. `guildId` is the Discord id and the primary key: there is
+ * exactly one config per server and nothing else to key it by.
+ *
+ * The defaults are what make the bot work before `/setup` is run: 9am in
+ * `America/New_York` is the NBA convention. Posting still needs a `channelId`,
+ * which the admin must supply, so a defaulted row cannot post into a guessed
+ * channel.
+ */
+export const discordGuilds = pgTable('discord_guilds', {
+  guildId: text('guildId').primaryKey(),
+  channelId: text('channelId').notNull(),
+  /** Local hour, 0–23, in `timezone`. */
+  postHour: integer('postHour').notNull().default(9),
+  /** IANA zone, validated against `Intl.supportedValuesOf('timeZone')`. */
+  timezone: text('timezone').notNull().default('America/New_York'),
+  enabled: boolean('enabled').notNull().default(true),
+  installedAt: timestamp('installedAt', { precision: 3 }).notNull().defaultNow(),
+  /** Set on `guildDelete`; the row survives so a reinstall keeps its config. */
+  leftAt: timestamp('leftAt', { precision: 3 }),
+});
+
+/**
+ * The bot's mirror of who is in which guild, refreshed from the gateway.
+ *
+ * The per-server leaderboard uses the "all picks by users who are members of
+ * this server" definition, which is a join rather than a number: a pick carries
+ * a `userId`, and turning that into "is this person in guild X" needs the
+ * membership list on this side of the wire. The alternative — asking Discord for
+ * the guild's members on every leaderboard render — is a paginated REST call per
+ * query, and the board would be slow and rate-limit shaped for no benefit.
+ * Mirroring the list makes the board one `EXISTS` over a local table.
+ *
+ * The `GUILD_MEMBERS` intent is what makes that mirror possible: the sync reads
+ * the list when the bot joins a guild and keeps it current from join, leave, and
+ * member-update events. So the intent is a requirement of definition B, not a
+ * convenience — and this table is the only reason it is requested.
+ *
+ * `displayName` is stored for the same reason: the board falls back to the
+ * Discord display name when a linked user has no `user.name`, and reading it
+ * here avoids a REST lookup per row on every render.
+ *
+ * The composite key `(guildId, discordUserId)` is both the upsert target for the
+ * sync (one row per person per server, so a re-sync overwrites instead of
+ * duplicating) and the join path for the board, which always filters by guild.
+ * The index on `discordUserId` answers the reverse question — which of my guilds
+ * is this person in — which the button path asks when it resolves a click.
+ */
+export const discordMembers = pgTable(
+  'discord_members',
+  {
+    guildId: text('guildId').notNull(),
+    discordUserId: text('discordUserId').notNull(),
+    /** Discord display name, for the leaderboard's name fallback. */
+    displayName: text('displayName'),
+    joinedAt: timestamp('joinedAt', { precision: 3 }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'discord_members_guildId_discordUserId_pk',
+      columns: [table.guildId, table.discordUserId],
+    }),
+    index('discord_members_discordUserId_idx').on(table.discordUserId),
   ],
 );
