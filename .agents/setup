@@ -27,6 +27,7 @@ bunx turbo run build \
   --filter='@iknoball/database' \
   --filter='@iknoball/schema' \
   --filter='@iknoball/predictions' \
+  --filter='@iknoball/release' \
   --filter='@iknoball/shot-zones'
 
 step "Preparing local .env"

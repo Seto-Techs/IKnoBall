@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
+import { Route as ChangelogRouteImport } from './routes/changelog';
 import { Route as DashboardRouteImport } from './routes/dashboard';
 import { Route as OnboardingRouteImport } from './routes/onboarding';
 import { Route as PredictRouteImport } from './routes/predict';
@@ -32,6 +33,11 @@ import { Route as PrototypeShotzonesRouteImport } from './routes/prototype.shotz
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any);
 const DashboardRoute = DashboardRouteImport.update({
@@ -127,6 +133,7 @@ const PrototypeShotzonesRoute = PrototypeShotzonesRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
+  '/changelog': typeof ChangelogRoute;
   '/dashboard': typeof DashboardRoute;
   '/onboarding': typeof OnboardingRoute;
   '/predict': typeof PredictRoute;
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
+  '/changelog': typeof ChangelogRoute;
   '/dashboard': typeof DashboardRoute;
   '/onboarding': typeof OnboardingRoute;
   '/predict': typeof PredictRoute;
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
+  '/changelog': typeof ChangelogRoute;
   '/dashboard': typeof DashboardRoute;
   '/onboarding': typeof OnboardingRoute;
   '/predict': typeof PredictRoute;
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
+    | '/changelog'
     | '/dashboard'
     | '/onboarding'
     | '/predict'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
+    | '/changelog'
     | '/dashboard'
     | '/onboarding'
     | '/predict'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/changelog'
     | '/dashboard'
     | '/onboarding'
     | '/predict'
@@ -257,6 +269,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  ChangelogRoute: typeof ChangelogRoute;
   DashboardRoute: typeof DashboardRoute;
   OnboardingRoute: typeof OnboardingRoute;
   PredictRoute: typeof PredictRoute;
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/';
       fullPath: '/';
       preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/changelog': {
+      id: '/changelog';
+      path: '/changelog';
+      fullPath: '/changelog';
+      preLoaderRoute: typeof ChangelogRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/dashboard': {
@@ -417,6 +437,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChangelogRoute: ChangelogRoute,
   DashboardRoute: DashboardRoute,
   OnboardingRoute: OnboardingRoute,
   PredictRoute: PredictRoute,

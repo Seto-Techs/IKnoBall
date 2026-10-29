@@ -1,3 +1,4 @@
+import { VERSION } from '@iknoball/release';
 import { AppController } from './app.controller';
 
 describe('AppController', () => {
@@ -6,7 +7,7 @@ describe('AppController', () => {
     expect(controller.getHello()).toEqual({
       is_success: true,
       message: 'Service is healthy.',
-      data: { status: 'ok' },
+      data: { status: 'ok', version: VERSION },
     });
   });
 });

@@ -1,6 +1,7 @@
 import { Outlet, createRootRoute, Link, useLocation } from '@tanstack/react-router';
 import { Logo } from '../components/brand/Logo';
 import { SiteFooter } from '../components/site/Footer';
+import { WhatsNew } from '../components/release/WhatsNew';
 import { useSession } from '../lib/use-auth';
 
 function Header() {
@@ -76,6 +77,12 @@ export const Route = createRootRoute({
     // focused flow that should not offer ways out.
     const hasSiteFooter = !isLanding && !isOnboarding;
 
+    // Release notes greet you once per release, on whatever page you land on —
+    // except the auth screens and onboarding, where a modal over the form would
+    // only get in the way of the thing you came to do, and the changelog itself,
+    // which already is the notes.
+    const hasWhatsNew = !isOnboarding && !pathname.startsWith('/auth') && pathname !== '/changelog';
+
     return (
       <div
         className="flex min-h-screen flex-col bg-stone-200 text-stone-900 antialiased"
@@ -84,6 +91,7 @@ export const Route = createRootRoute({
           transition: 'background-color 0.5s ease',
         }}
       >
+        <WhatsNew enabled={hasWhatsNew} />
         {!isAppShell && <Header />}
         <main
           className={`flex flex-1 flex-col ${

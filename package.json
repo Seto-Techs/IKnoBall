@@ -1,5 +1,6 @@
 {
   "name": "iknoball",
+  "version": "0.2.0",
   "private": true,
   "workspaces": [
     "apps/*",
@@ -26,6 +27,8 @@
     "docker:backend": "docker build -f apps/backend/Dockerfile .",
     "docker:frontend": "docker build -f apps/frontend/Dockerfile .",
     "docker:worker": "docker build -f apps/worker/Dockerfile .",
+    "version:sync": "bun scripts/version.ts",
+    "version:check": "bun scripts/version.ts --check",
     "prepare": "lefthook install"
   },
   "devDependencies": {
