@@ -64,8 +64,8 @@ Nothing exists yet. The repo has three deployable services (frontend, backend, w
 
 - New workspace `apps/discord` (NestJS standalone, mirroring `apps/worker`), depending on `@iknoball/database` and `@iknoball/predictions`. Reuse the `DatabaseService` pattern rather than opening its own pool.
 - **Transport: gateway (`discord.js` client), not an HTTP interactions endpoint.** Reasons: no public route to expose, no Ed25519 signature verification to bolt onto a backend that runs with `bodyParser: false` (`apps/backend/src/main.ts`), and discord.js handles reconnect/resume and rate-limit buckets for us. `discord.js` 14.x runs on Bun unmodified.
-- Intents: `Guilds` only. No privileged intents — slash commands, buttons, and `interaction.member.user.id` need none, which keeps the app under the review threshold.
-- Permissions to request at invite: View Channel, Send Messages, Embed Links, Read Message History. No Manage Server, no Manage Expressions.
+- Intents: `Guilds` **and** `Guild Members`. Slash commands, buttons, and `interaction.member.user.id` need neither, but the per-server leaderboard does: see DISC-08, which settled on definition B on 27 October 2026. `Guild Members` is the only privileged intent we request, and it is what the member mirror in `discord_members` is built from. Message Content and Guild Presences are never requested.
+- Permissions to request at invite: View Channel, Send Messages, Embed Links, Create Public Threads, Send Messages in Threads. No Manage Server, no Manage Expressions. The member list is an intent, not a permission, so nothing here widens when it is enabled.
 - A separate service rather than folding into the worker: the worker's crons are load-bearing for schedule, odds, and settlement data, and a bot crash loop must not take them down.
 
 **Acceptance**
@@ -210,6 +210,8 @@ What happens when an unlinked Discord user clicks a button?
 
 Recommendation: **A now, B if the funnel shows drop-off.** A is a day of work; B is a week and a new table. Neither is worth building before DISC-07 proves people click at all.
 
+**Decided: A** (user, 27 October 2026). An unlinked click is refused with a `/link` hint and a one-click link button. C is ruled out because `users.email` is required, so auto-creation would need a synthetic address that Better Auth would then treat as real.
+
 **Change (path A)**
 
 - `/link` slash command, ephemeral: issues a single-use code (6 chars, 10 min TTL, Redis), plus a URL `…/settings/discord?code=XXXXXX`.
@@ -278,22 +280,25 @@ Requirement 4: each server wants its own board. The web leaderboard sums every s
 | A. Picks placed through Discord **in that server**      | `guildId` recorded on the pick                         | "this server's board" — honest    |
 | B. All picks by users who are **members of** the server | Guild member list (`GUILD_MEMBERS` intent, privileged) | "our members' board" — flattering |
 
-Recommendation: **A.** It is truthful, needs no privileged intent, and cannot be gamed by joining a server to inherit someone's web points. Label it clearly ("points earned in this server").
+The original recommendation was **A**. **Decided: B** (user, 27 October 2026), with the Server Members intent enabled in the Developer Portal. B reads as "our members' board", which is what a server owner actually wants, and the intent cost is one toggle plus a written justification above 10,000 unique users — not a review we cannot pass.
 
-**Change**
+**Change (definition B)**
 
-- Schema: add nullable `source` (`web` | `discord`) and `guildId` to `prediction_picks`, index `(guildId, mode, status)`. Migration in `packages/database`.
-- `GET /internal/leaderboard?guildId=…&mode=…`, reusing the existing `leaderboard()` query with a `guildId` predicate and its own board size (say top 10 — a server does not need 50 rows).
-- `/leaderboard [mode]` slash command, public reply, both modes in one embed, top 10 plus the caller's own row if outside the cut — same pattern the web board already uses via `viewerRank`.
+- Schema: add nullable `source` (`web` | `discord`) and `guildId` to `prediction_picks`, index `(guildId, mode, status)`. `source`/`guildId` stay useful as provenance even though the board no longer filters on them. Migration in `packages/database`.
+- Schema: add `discord_members` — `guildId` + `discordUserId` (composite pk), `displayName`, `joinedAt`. This is the membership mirror the board joins against.
+- Bot: request `Guilds | GuildMembers`, fetch each guild's member list on ready and on `GUILD_CREATE`, and keep it current from `guildMemberAdd` / `guildMemberRemove` / `guildMemberUpdate` (display-name changes). A member who leaves loses their row, so they drop off the board and return if they rejoin.
+- `GET /internal/leaderboard?guildId=…&mode=…`, summing every settled pick by a user who is currently a member of that guild. Top 10, plus the caller's own row when outside the cut — same pattern the web board already uses via `viewerRank`.
+- `/leaderboard [mode]` slash command, public reply, both modes in one embed. The description string must read "our members' points", never "points earned in this server" — the latter was the definition-A label and is now false.
 - Names: use `user.name`, falling back to the Discord display name only when the linked user has no name set.
 
 **Acceptance**
-`/leaderboard` in two different servers returns two different boards, each summing only its own picks. A user ranked 12th sees their own row appended.
+`/leaderboard` in two different servers returns two different boards, each summing every settled pick by that server's current members. A web pick by a member of the server appears on the server's board. A user who leaves the server disappears from it and reappears on rejoin. A user ranked 12th sees their own row appended.
 
 **Tradeoffs**
 
-- A user's web picks never appear on a server board, which may surprise people who think of their account as one thing. The label has to carry that.
-- `guildId` is overwritten when the same user re-picks the same game elsewhere (web after Discord, or another server). Last write wins, consistent with how `side` already behaves.
+- Anyone in a server inherits every web pick they have made, so a server of strong players starts high. That is the point of definition B and the label says so.
+- The member mirror is a privileged-intent obligation: it must stay accurate, the privacy policy has to describe it (it does, section 11), and the justification above 10,000 users must match what the code does.
+- A full member list is a paginated `GUILD_MEMBERS` gateway fetch at join time; on a very large server that is a burst of gateway traffic, absorbed by the rate limiter (DISC-12).
 
 ---
 
@@ -408,14 +413,14 @@ Two external gates, and one the repo has already half-decided.
 
 **Research questions**
 
-- **Gambling policy.** Discord's Developer Policy forbids using the API "to promote or facilitate unlawful online gambling". IKnoBall is free, has no prizes, and the product deliberately avoids betting vocabulary (`docs/promo-copy.md`). The open question is whether odds-derived _scoring_ trips any review, and how to describe it in the app listing. Get this read before publishing the bot, not after a takedown.
-- **Verification.** Apps can join 100 servers unverified; beyond that they need verification (and a privacy policy, a ToS, and a working support contact). Privileged intents are no longer the gate — that review now triggers at 10,000 unique users, and this bot needs none.
-- **Privacy policy.** `apps/frontend/src/content/legal/privacy-policy.md` commits to "no third-party analytics SDKs" and describes account data. It does not mention Discord user ids, message ids, or guild ids — all of which the bot will store. It needs a paragraph before launch.
+- **Gambling policy.** Discord's Developer Policy forbids using the API "to promote or facilitate unlawful online gambling". IKnoBall is free, has no prizes, and the product deliberately avoids betting vocabulary (`docs/promo-copy.md`). The open question is whether odds-derived _scoring_ trips any review, and how to describe it in the app listing. Get this read before publishing the bot, not after a takedown. **Answered:** `docs/discord-bot-listing.md` §1 — scoring does not meet Discord's own four-part gambling test, and the residual risk is the App Directory's discretionary "gambling-adjacent" rule, which not opting into Discovery sidesteps.
+- **Verification.** Apps can join 100 servers unverified; beyond that they need verification (and a privacy policy, a ToS, and a working support contact). Privileged-intent review now triggers at 10,000 unique users across all servers, not at 100 servers — this bot requests `Guild Members` (see DISC-08), so above that threshold a written justification is owed and renewed yearly.
+- **Privacy policy.** `apps/frontend/src/content/legal/privacy-policy.md` commits to "no third-party analytics SDKs" and describes account data. It does not mention Discord user ids, message ids, or guild ids — all of which the bot will store. It needs a paragraph before launch. **Done:** section 11, in C4.
 
 **Change**
 
-- Draft the listing copy in the no-betting-vocabulary register the web already uses.
-- Add a "Discord integration" section to the privacy policy: what is stored (Discord user id, guild id, channel id, message id), why (linking, posting, locking), and how to unlink (`/unlink`, which deletes the `discord_links` row and leaves picks intact).
+- Draft the listing copy in the no-betting-vocabulary register the web already uses. **Done:** `docs/discord-bot-listing.md`, in C4.
+- Add a "Discord integration" section to the privacy policy: what is stored (Discord user id, guild id, channel id, message id, per-guild membership), why (linking, posting, locking, the server board), and how to unlink (`/unlink`, which deletes the `discord_links` row and leaves picks intact). **Done:** section 11, in C4.
 - `/unlink` command and a "Disconnect Discord" control on `/settings/discord`.
 
 **Acceptance**
@@ -481,4 +486,4 @@ After picking two games and restarting the Discord client, `/picks` lists both w
 - Picking by slash command without a card (`/pick LAL`). It duplicates the card's job and adds a second path to the same write.
 - Per-guild scoring rules or custom point systems. The two boards are global by design (`docs/prediction-scoring.md`).
 - DMs and reminder DMs. A bot cannot DM users who do not share a server, and opt-in DM is a separate consent surface — the email reminder channel is a better fit for that job.
-- Anything that reads message content. No `MESSAGE_CONTENT` intent, ever; it would put the app back into privileged-intent review for no feature.
+- Anything that reads message content. No `MESSAGE_CONTENT` intent, ever; it would widen a privileged-intent review that is currently scoped to `Guild Members` and the leaderboard.

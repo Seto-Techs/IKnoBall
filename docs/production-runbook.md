@@ -47,10 +47,15 @@ game log yet, so nothing is missing that could have been fetched.
 | `main` | `prod`    | `production`    |
 
 `.github/workflows/cd.yml` runs on every PR merge into `dev` or `main`: it builds
-all three images (`iknoball-be`, `iknoball-fe`, `iknoball-worker`) tagged for that
-environment, then calls `compose.deploy` on the matching compose, found by name
-inside the `iknoball` project. So a production release is a PR merged into
-`main` — nothing is deployed by pushing a branch directly.
+all four images (`iknoball-be`, `iknoball-fe`, `iknoball-worker`,
+`iknoball-discord`) tagged for that environment, then calls `compose.deploy` on
+the matching compose, found by name inside the `iknoball` project. So a production
+release is a PR merged into `main` — nothing is deployed by pushing a branch
+directly.
+
+A build job that fails blocks the deploy job: `deploy` needs all four and refuses
+to run if any of them failed or was cancelled, so a broken Discord bot image can
+never ship a half-updated stack.
 
 The frontend's API origin is baked in at build time (`VITE_API_URL`), which is why
 the `:prod` frontend must be built by that workflow rather than reused from
@@ -245,3 +250,320 @@ a week away.
   crawls a game's box score after it finishes — only the live poll does, while it
   is live. A game that finishes while the worker is down keeps an empty box score
   on the game page until `sync:boxscore` runs by hand. Worth a cron.
+
+## 7. The Discord bot
+
+A fourth container: `ghcr.io/seto-techs/iknoball-discord:<tag>`, declared as the
+`discord` service in `deploy/dokploy/production.compose.yaml`. It publishes no
+port — it dials out to Discord's gateway — and it shares the compose's Postgres
+and Redis with the api and the worker. `depends_on: api: service_healthy` is
+load-bearing: the bot calls the api's `/internal/*` routes, and those need the
+schema the api's entrypoint migrates.
+
+The process exits non-zero when `DISCORD_TOKEN` is missing or rejected, on
+purpose. A container that restarts in a loop with
+`discord bot failed to start: ... 401 Unauthorized` is telling you the env did not
+take — see 7.4.
+
+### 7.1 Env
+
+```dotenv
+# Bot → Discord. Rotate below; nothing else in the stack uses it.
+DISCORD_TOKEN="..."
+
+# Bot → api. `IKNOBALL_API_URL` is the compose service name: /internal is never
+# reachable from the internet.
+IKNOBALL_API_URL="http://api:3000"
+INTERNAL_API_TOKEN="<openssl rand -hex 32>"
+
+# Kill switch. `false` stops posting, locking, settlement edits and picks; see 7.5.
+DISCORD_ENABLED="true"
+
+# Who may run /status. Comma-separated Discord user ids. Unset means nobody.
+DISCORD_OPERATOR_IDS="111111111111111111,222222222222222222"
+
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/iknoball_prod"
+REDIS_URL="redis://:<REDIS_PASSWORD>@redis:6379"
+```
+
+`INTERNAL_API_TOKEN` is one value read by **two** services in the same compose
+env: the api validates it, the bot sends it as `x-internal-token`. They cannot
+differ unless someone set one of them per-service instead of in the shared env.
+
+`DISCORD_OPERATOR_IDS` fails closed. Unset or blank is not "everyone" — it is
+"nobody", and `/status` answers every caller with
+`` `/status` is for the bot operator only. `` Add your own Discord user id (right
+click your name → Copy User ID, with Developer Mode on) and redeploy.
+
+### 7.2 Deploy path
+
+1. PR merged into `main` → `.github/workflows/cd.yml` builds `iknoball-be`,
+   `iknoball-fe`, `iknoball-worker` **and** `iknoball-discord`, each tagged `prod`.
+2. The `deploy` job calls `compose.deploy` on the `production` compose.
+3. Dokploy pulls `:prod` for every service, including `discord`.
+
+Same caveat as the rest of the stack: CD deploys, it does not push compose
+content. The repo's `production.compose.yaml` is the reviewed copy; Dokploy's copy
+is what runs. A `discord` service that is missing there is a bot that is never
+deployed, no matter what the workflow built.
+
+Restarting only the bot (an env change, a stuck gateway session) is Dokploy →
+compose `production` → `discord` → **Restart**. Note that `env_file: .env` is read
+when the container is created, so a _changed variable_ needs a redeploy/recreate,
+not a restart.
+
+On boot the bot logs two lines worth looking for (real output, `enabled=false`
+because this orb had the switch off):
+
+```
+[DiscordClientService] Discord: logged in as IKnoBall#1865 (0 guilds, enabled=false)
+[DiscordClientService] Discord: registered 7 global commands (/ping, /picks, /leaderboard, /setup, /status, /link, /unlink)
+```
+
+`enabled=` on the first line is the kill switch as the process read it, and the
+guild count is what the gateway reports — the two numbers to check after any
+env change.
+
+### 7.3 `/status`
+
+Operator-only, ephemeral, and it answers while the kill switch is off — a
+diagnostic the switch kills is not a diagnostic.
+
+```
+**IKnoBall bot** · active
+guilds: **12** connected · **12** configured
+last slate post: 2 hours ago (<t:1793106000:f>)
+cards: **412** posted · **377** locked · **301** settled
+queue: 3 waiting
+```
+
+Discord renders `<t:…:R>` in the reader's own timezone, which is why both the
+relative and the absolute time are on that line.
+
+| Line                  | Source                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| `active` / `paused`   | `DISCORD_ENABLED` as the process read it at boot                                                  |
+| `guilds: N connected` | the gateway client's `guilds.cache.size` (`—` while the client is not ready)                      |
+| `N configured`        | `select count(*) from discord_guilds where enabled and "leftAt" is null`                          |
+| `last slate post`     | `max("createdAt")` over `discord_cards` — written when the slate is claimed, just before the send |
+| `posted`              | `count(*)` over `discord_cards`                                                                   |
+| `locked` / `settled`  | `count("lockedAt")` / `count("settledAt")` — non-null stamps only                                 |
+| `queue`               | `RateLimiter.depth()` — queued plus in-flight outbound Discord calls                              |
+
+Everything is read live on every invocation; nothing is cached. What a _fresh_
+database looks like — the real output of `formatStatus(await collectStatus(...))`
+against this project's database (empty `discord_cards`, empty `discord_guilds`) and
+a real gateway login (the bot is in 0 guilds), with two calls parked in the rate
+limiter so `queue` is visibly not a constant:
+
+```
+**IKnoBall bot** · active
+guilds: **0** connected · **0** configured
+last slate post: never
+cards: **0** posted · **0** locked · **0** settled
+queue: 2 waiting
+```
+
+`queue: unknown` only appears if `RateLimiter.depth()` is missing from the deployed
+build; that is a version skew, not a normal state.
+
+Reading it: `connected` should equal the number of servers the bot is actually in
+(the Developer Portal does not show this; `/status` is the count). `configured`
+is how many of them ran `/setup`. `configured` below `connected` is normal for a
+guild that invited the bot and never finished setup. `locked` should be close to
+`posted` minus today's open cards; `settled` trails `locked` by the worker's
+settlement cadence. A `last slate post` older than 24 hours while `active` is the
+one number that means "posting is broken", not "nothing happened today".
+
+### 7.4 Token rotation
+
+**Discord bot token**
+
+1. Developer Portal → Applications → IKnoBall → **Bot** → **Reset Token** → copy
+   it (the portal shows it once).
+2. Dokploy → `production` compose → Environment → set `DISCORD_TOKEN`. Same for
+   the `staging` compose, with the staging token — the two environments must not
+   share a bot token: one gateway session per token, and two processes on one
+   token means duplicated posts and double the rate-limit spend.
+3. **Deploy** the compose (recreate, so the new `env_file` is read). Restarting
+   the container alone re-reads the old env file.
+4. The old token stops working the moment it is reset. The running container keeps
+   its gateway session until it reconnects, then the login fails, the process exits
+   non-zero, and `restart: unless-stopped` retries — so expect a restart loop until
+   step 3 lands. That loop is the signal, not a separate bug.
+5. Verify: the `logged in as` line in the logs, `/status` answering you, and one
+   pick click on a live card.
+
+Nothing else uses the bot token: no data migration, no re-invite, no slash-command
+re-registration (the bot re-registers its global commands on every boot).
+
+**`INTERNAL_API_TOKEN` (bot ↔ api)**
+
+One shared secret, two readers: the api's `InternalTokenGuard` and the bot's
+`IknoballClient`. If they drift, every bot → api call is a 401: pick clicks and
+`/picks` fail, while `/status` keeps working (it reads Postgres and the gateway
+directly). The bot logs the failure and the user sees the generic "Something went
+wrong" reply. When it is missing entirely the bot says so at boot, as a warning:
+`INTERNAL_API_TOKEN is not set: every bot → API /internal call will be rejected.`
+
+1. Generate one: `openssl rand -hex 32`.
+2. Set it **once** in the compose's shared env (not per service).
+3. Deploy the compose so both containers are recreated from the same file.
+4. Verify from anywhere:
+
+   ```bash
+   curl -s -X POST https://api-iknoball.setotechs.com/api/internal/health \
+     -H "x-internal-token: $INTERNAL_API_TOKEN"
+   # {"is_success":true,"message":"Internal API is reachable.","data":{"status":"ok"}}
+   ```
+
+   `401` means the api does not have that value (unset, or a stale container). The
+   response body tells the two apart: `Internal API is not configured.` is an api
+   with `INTERNAL_API_TOKEN` unset (it also logs
+   `INTERNAL_API_TOKEN is not set: ...` once, not per request), while
+   `Invalid internal token.` is a value that does not match — a drift between the
+   two services.
+
+5. A rolling recreate means a window where one side has the new value and the other
+   the old one. Expect a minute of 401s, not a broken deploy.
+
+### 7.5 The kill switch
+
+`DISCORD_ENABLED=false` is the switch, and it is read **once, at boot** (the
+config service validates the environment when Nest builds it). An env change
+without a restart does nothing — that is the one way to get this wrong.
+
+1. Dokploy → `production` → Environment → `DISCORD_ENABLED="false"`.
+2. Deploy (recreate) the compose, or at least the `discord` service.
+3. The boot line says `enabled=false`, and `/status` starts with
+   `paused (`DISCORD_ENABLED=false`)` plus
+   `_Posting, locks and settlement edits are off; pick clicks are refused._`
+
+What it stops:
+
+| Stopped          | Where                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Slate posts      | the minute scheduler returns before it looks at any guild, and warns once: `DISCORD_ENABLED=false: no slate is being posted in any guild.` |
+| Tip-off locks    | the lock sweep returns before `run()`, so no card is edited and no `lockedAt` is stamped                                                   |
+| Settlement edits | the settlement sweep, same                                                                                                                 |
+| Picks            | a click is acknowledged and answered with "Picks are paused right now… nothing was saved"; nothing reaches the api                         |
+
+What it does not stop: the gateway connection, slash-command registration, and the
+read-only commands (`/picks`, `/leaderboard`, `/status`). The bot stays invited and
+connected, so turning the switch back on needs no re-invite.
+
+Turning it back on: set `true` and redeploy. If it is still inside a guild's post
+hour, the next minute posts the slate (a paused tick never spends the day key, so
+nothing is skipped); otherwise the next day's slate is the next post.
+
+### 7.6 Reading the logs
+
+Every interaction writes exactly one line, from the router. Real output (a no-op
+handler, so both times are 0):
+
+```
+[Nest] 354648  - 10/27/2026, 6:05:30 PM     LOG [InteractionRouter] interaction outcome=ok guild=1122334455 user=953225a9f5 kind=button id=pick:0022600127:home ack=0ms latency_ms=0
+```
+
+The part after `[InteractionRouter]` is the structured line; the prefix is Nest's
+own logger. Everything is `key=value` on one line so a filter does not have to
+parse JSON, and the event word comes first so
+`rg 'interaction '` selects these lines out of everything else the process logs.
+
+| Field         | Meaning                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outcome`     | `ok`, `unknown` (no handler for that id), `ignored` (not a button or command), `paused` (refused by the kill switch), `failed` (the handler threw; the user got the generic reply)                                                                                                                                                    |
+| `guild`       | guild id, or `dm`                                                                                                                                                                                                                                                                                                                     |
+| `user`        | a 10-hex HMAC of the Discord id, keyed with a salt generated per process. It is stable inside one process and **different after a restart**, so it correlates activity within a deploy, not across one. It is deliberately not reversible: Discord ids are snowflakes, so an unkeyed hash of one day's ids is a GPU dictionary attack |
+| `kind` / `id` | `button` + custom id, or `command` + `/name`                                                                                                                                                                                                                                                                                          |
+| `ack`         | ms from receipt to the first acknowledgement, or `none`                                                                                                                                                                                                                                                                               |
+| `latency_ms`  | ms from receipt to the handler returning                                                                                                                                                                                                                                                                                              |
+
+`ack=none` with `latency_ms` over 3000 is the signature of Discord's silent
+failure: the user saw "This interaction failed" and nothing else happened. That is
+the number to look at first; everything else on the line explains which action it
+was.
+
+Useful greps in Dokploy's log view:
+
+```bash
+rg 'outcome=failed'          # handler exceptions
+rg 'ack=none'                # missed the 3-second deadline
+rg 'outcome=paused'          # users clicking during a maintenance window
+rg 'guild=1122334455'        # one server
+```
+
+The other lines worth knowing:
+
+- `SlateScheduler`: `Slate post failed for guild <id>: <reason>` — one guild, the
+  rest of the sweep continues.
+- `CardSweep`: `tip-off lock: edited N card(s) in M message(s)…`,
+  `settlement: edited …`, `… is dead, dropping N card(s)` (a 403/404/unknown
+  message, never retried), `… pausing for Ns (failure N)` (a transient failure:
+  the run stopped and backs off, doubling up to 15 minutes).
+- `Discord client error: …` — a gateway-side error from discord.js; it reconnects
+  on its own.
+
+### 7.7 Playbooks
+
+**A 401.** Three different 401s, three different fixes:
+
+| Where                     | Symptom                                                                           | Fix                                                                      |
+| ------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Bot → api                 | pick clicks and `/picks` fail, `/status` fine, api logs `Invalid internal token.` | `INTERNAL_API_TOKEN` drifted between the two services — 7.4              |
+| Bot → Discord, at boot    | `discord bot failed to start: … 401 Unauthorized`, restart loop                   | `DISCORD_TOKEN` is wrong, reset, or not in the recreated container — 7.4 |
+| Bot → Discord, at runtime | REST 401s in the logs after a token reset                                         | the old token is still in the container; redeploy                        |
+
+A runtime 401 is not retried: `RateLimiter` halts the outbound queue on it
+(`Discord rejected the bot token (401); outbound REST is halted until this process
+restarts.`) and fails every queued call, because a bad token cannot recover by
+trying again. So the symptom is "every edit and post stopped at once", and the fix
+is always a redeploy with a good token — never a wait.
+
+**Repeated 429s.** The rate limiter (`apps/discord/src/infrastructure/rate-limiter.ts`)
+is the single outbound queue, and it waits out `retry_after` instead of failing a
+card edit. Repeated 429s therefore mean something is spending the same token's
+budget outside it:
+
+1. Is more than one `discord` container running, or the same token configured in
+   two environments? One gateway session per token — stop the extra one.
+2. Is `queue` in `/status` growing without draining? That is the queue waiting on
+   a bucket, which is normal during a settlement burst.
+3. Still 429ing after that: set `DISCORD_ENABLED=false` and redeploy (7.5). It
+   stops all outbound work while leaving the connection up, which is what breaks
+   the loop; Discord's invalid-request ban (10,000 per 10 minutes) is the thing
+   being avoided.
+
+**A guild going dark.** One server stops getting slates while the others are fine.
+
+1. Logs: `Slate post failed for guild <id>: Missing Access` (a 403 on the send) or
+   `… is dead, dropping N card(s)` (a 403/404 on an edit). Both name the guild and
+   the channel.
+2. Cause, in order of likelihood: the bot was removed from that channel's
+   permissions; the channel was deleted; the bot was kicked. `/setup` points at a
+   channel id — if the channel was replaced, run `/setup` again in that server.
+3. Blast radius is one guild by design: a 403 in one guild is caught and the loop
+   moves on to the next guild, and a 403 on one message marks that message dead and
+   continues with its siblings. Both are pinned by tests
+   (`apps/discord/src/ops/isolation.spec.ts`, `apps/discord/src/lock/card-sweep.spec.ts`).
+4. The dead-message set is in process memory, so a restart retries a dead card once
+   — useful after fixing a permission, harmless otherwise.
+5. If _every_ guild is dark, it is not a guild: check `guilds: N connected` in
+   `/status` (0 means the gateway never logged in — 7.4) and the `DISCORD_ENABLED`
+   line.
+
+### 7.8 Things that are easy to get wrong
+
+- **One bot process per token.** Two replicas mean two gateway sessions, duplicate
+  slates, and double the rate-limit spend against one budget.
+- **The kill switch is boot-time.** Setting `DISCORD_ENABLED=false` in Dokploy and
+  restarting nothing changes nothing.
+- **`DISCORD_OPERATOR_IDS` fails closed.** Unset means `/status` refuses everyone,
+  including you.
+- **`INTERNAL_API_TOKEN` is shared.** The bot and the api must read the same value;
+  rotating one without the other breaks picks, not `/status`.
+- **`DISCORD_ENABLED=false` does not disconnect.** The bot still answers commands
+  and still holds a gateway session; if you want it _gone_, stop the service.
+- **Slash-command changes need a boot.** Commands are registered globally on ready;
+  a new or renamed command appears after the next deploy, and Discord's client-side
+  cache can take a few minutes to show it.

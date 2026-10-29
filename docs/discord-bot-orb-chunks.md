@@ -66,20 +66,20 @@ chunk; nothing in wave 2 waits on another wave-2 chunk.
 
 ## Chunk table
 
-| Chunk | Issues                    | Wave | Owns (tree)                                          | Depends on | Safe alongside |
-| ----- | ------------------------- | ---- | ---------------------------------------------------- | ---------- | -------------- |
-| C0    | DISC-01                   | 0    | `apps/discord/**` scaffold, `internal.module.ts`     | —          | — (serial)     |
-| C1    | DISC-02, 03, 04           | 1    | `apps/discord/src/cards/`, `scripts/`                | C0         | C2, C3, C4     |
-| C2    | DISC-07, 15 (api)         | 1    | `apps/backend/src/internal/` (predictions, picks)    | C0         | C1, C3, C4     |
-| C3    | schema for 05, 06, 08, 09 | 1    | `packages/database/`                                 | C0         | C1, C2, C4     |
-| C4    | DISC-13                   | 1    | `content/legal/`, `docs/`                            | —          | everything     |
-| C5    | DISC-06                   | 2    | `apps/backend/src/discord-link/`, `linking/`, route  | C3         | C6, C7, C8, C9 |
-| C6    | DISC-05, 11               | 2    | `apps/discord/src/lock/`, `settlement/`              | C1, C3     | C5, C7, C8, C9 |
-| C7    | DISC-09, 10               | 2    | `apps/discord/src/setup/`, `scheduler/`              | C1, C3     | C5, C6, C8, C9 |
-| C8    | DISC-08                   | 2    | `internal/leaderboard.controller.ts`, `leaderboard/` | C2, C3     | C5, C6, C7, C9 |
-| C9    | DISC-15 (cmd)             | 2    | `apps/discord/src/picks/`                            | C2         | C5, C6, C7, C8 |
-| C10   | DISC-12                   | 3    | `apps/discord/src/infrastructure/rate-limiter.ts`    | C6, C7     | C11            |
-| C11   | DISC-14                   | 3    | `apps/discord/src/ops/`                              | C0, C6, C7 | C10            |
+| Chunk | Issues                    | Wave | Owns (tree)                                                      | Depends on | Safe alongside |
+| ----- | ------------------------- | ---- | ---------------------------------------------------------------- | ---------- | -------------- |
+| C0    | DISC-01                   | 0    | `apps/discord/**` scaffold, `internal.module.ts`                 | —          | — (serial)     |
+| C1    | DISC-02, 03, 04           | 1    | `apps/discord/src/cards/`, `scripts/`                            | C0         | C2, C3, C4     |
+| C2    | DISC-07, 15 (api)         | 1    | `apps/backend/src/internal/` (predictions, picks)                | C0         | C1, C3, C4     |
+| C3    | schema for 05, 06, 08, 09 | 1    | `packages/database/`                                             | C0         | C1, C2, C4     |
+| C4    | DISC-13                   | 1    | `content/legal/`, `docs/`                                        | —          | everything     |
+| C5    | DISC-06                   | 2    | `apps/backend/src/discord-link/`, `linking/`, route              | C3         | C6, C7, C8, C9 |
+| C6    | DISC-05, 11               | 2    | `apps/discord/src/lock/`, `settlement/`                          | C1, C3     | C5, C7, C8, C9 |
+| C7    | DISC-09, 10               | 2    | `apps/discord/src/setup/`, `scheduler/`                          | C1, C3     | C5, C6, C8, C9 |
+| C8    | DISC-08                   | 2    | `internal/leaderboard.controller.ts`, `leaderboard/`, `members/` | C2, C3     | C5, C6, C7, C9 |
+| C9    | DISC-15 (cmd)             | 2    | `apps/discord/src/picks/`                                        | C2         | C5, C6, C7, C8 |
+| C10   | DISC-12                   | 3    | `apps/discord/src/infrastructure/rate-limiter.ts`                | C6, C7     | C11            |
+| C11   | DISC-14                   | 3    | `apps/discord/src/ops/`                                          | C0, C6, C7 | C10            |
 
 Issue → chunk, the other way round:
 
@@ -115,6 +115,7 @@ Every chunk's brief says what it owns. This table is the arbitration when two br
 | `apps/discord/src/lock/**`, `settlement/**`                | C6    | Cron + card edit after final.                        |
 | `apps/discord/src/setup/**`, `scheduler/**`                | C7    | `/setup`, per-guild slate posting.                   |
 | `apps/discord/src/leaderboard/**`                          | C8    | `/leaderboard`.                                      |
+| `apps/discord/src/members/**`                              | C8    | Guild membership mirror for definition B.            |
 | `apps/discord/src/picks/**`                                | C9    | `/picks`.                                            |
 | `apps/discord/src/linking/**`                              | C5    | `/link`, `/unlink`.                                  |
 | `apps/discord/src/ops/**`                                  | C11   | Kill switch, `/status`, structured logs.             |
@@ -339,8 +340,10 @@ already signed in with where possible.
 email/password user completes `/link` in under 30 seconds and their next click lands on the
 same profile as the web.
 
-**Open decision.** Path A (refuse until linked) is the recommendation in the issues doc.
-Path B (24h hold, `pending_discord_picks`) is a week of extra work — do not build it here.
+**Open decision.** Settled: path A (user, 27 October 2026). An unlinked click is refused with a
+`/link` hint and a one-click link button. Path B (24h hold, `pending_discord_picks`) is a week of
+extra work — do not build it. Path C is ruled out: `users.email` is required, so auto-creating an
+account from Discord needs a synthetic address Better Auth would then treat as real.
 
 ---
 
@@ -408,28 +411,43 @@ its channel config back.
 
 **Issues:** DISC-08. **Wave 2.**
 
-**Goal.** `/leaderboard` in a server shows points earned _in that server_.
+**Goal.** `/leaderboard` in a server shows the points of _everyone in that server_ — definition B,
+settled by the user on 27 October 2026. A pick carries a `userId` and the board ranks people, so
+"in this server" comes from the `discord_members` mirror, not from `prediction_picks.guildId`.
+`guildId` on a pick still records where the pick came from; it is provenance, not the board key.
 
-**Owns.** `apps/backend/src/internal/leaderboard.controller.ts`,
-`apps/discord/src/leaderboard/**`.
+**Owns.** `apps/backend/src/internal/leaderboard.controller.ts`, `apps/discord/src/leaderboard/**`,
+**and `apps/discord/src/members/**`** — the membership mirror that definition B needs. The trunk
+pre-creates `members/members.module.ts` and registers it in `app.module.ts`; C8 fills it in. The
+trunk also already requests `Guilds | GuildMembers` and exposes `DiscordClientService.client`, so
+C8 registers its own listeners without editing either file.
 
 **Build.**
 
-- `GET /internal/leaderboard?guildId=&mode=` reusing the existing `leaderboard()` query with a
-  `guildId` predicate, top 10, plus the caller's row when outside the cut (the `viewerRank`
-  pattern the web board already uses).
-- `/leaderboard [mode]` public reply, both modes in one embed.
+- **Member mirror first.** On `ClientReady`, and on `guildCreate`, fetch the guild's full member
+  list (`guild.members.fetch()` — paginated by discord.js) and upsert `(guildId, discordUserId,
+displayName, joinedAt)`. Then keep it current from `guildMemberAdd`, `guildMemberRemove`, and
+  `guildMemberUpdate` (display-name changes). `guildDelete` deletes that guild's rows. Upserts are
+  idempotent on the composite primary key; a member-list fetch that fails for one guild logs and
+  moves on rather than blocking the rest.
+- `GET /internal/leaderboard?guildId=&mode=` — top 10 plus the caller's own row when outside the
+  cut (the `viewerRank` pattern the web board already uses), filtered by membership in that guild.
+- `/leaderboard [mode]` public reply, both modes in one embed. Its description must read "our
+  members' points", not "Points earned in this server." — that string is definition A and is
+  currently in `apps/discord/src/leaderboard/leaderboard.command.ts`.
 - Names from `user.name`, falling back to the Discord display name only when unset.
 
-**Must not touch.** `internal.module.ts`, `predictions.service.ts` (add the predicate in the
-controller or a thin service of your own if the existing method cannot take it — report before
-modifying the shared service), `packages/database`.
+**Must not touch.** `internal.module.ts`, `app.module.ts`, `infrastructure/discord-client.service.ts`,
+`predictions.service.ts` (add the predicate in the controller or a thin service of your own if the
+existing method cannot take it — report before modifying the shared service), `packages/database`.
 
-**Done when.** Two servers return two different boards; a user ranked 12th sees their own row
-appended; the numbers match a manual sum over `prediction_picks` filtered by `guildId`.
+**Done when.** Two servers return two different boards; a member who has only ever picked on the
+website appears on their server's board; someone who leaves the server drops off it and returns when
+they rejoin; a user ranked 12th sees their own row appended; the numbers match a manual sum over
+`predictions`/`prediction_picks` for the current members of that guild.
 
-**Open decision.** Definition A (picks placed in this server) is the recommendation. Definition
-B needs the privileged `GUILD_MEMBERS` intent — do not build it.
+**Privileged intent.** The user has enabled Server Members in the Developer Portal. Do not widen
+the intent list further; `MESSAGE_CONTENT` and `GUILD_PRESENCES` stay off.
 
 ---
 
