@@ -13,6 +13,7 @@ COPY apps/discord/package.json apps/discord/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/schema/package.json packages/schema/package.json
 COPY packages/predictions/package.json packages/predictions/package.json
+COPY packages/release/package.json packages/release/package.json
 COPY packages/shot-zones/package.json packages/shot-zones/package.json
 
 COPY apps/discord apps/discord
