@@ -3,6 +3,7 @@ export declare const scheduleTeamSide: import("drizzle-orm/pg-core").PgEnum<["ho
 export declare const categoryType: import("drizzle-orm/pg-core").PgEnum<["income", "expense"]>;
 export declare const predictionMode: import("drizzle-orm/pg-core").PgEnum<["flat", "weighted"]>;
 export declare const predictionStatus: import("drizzle-orm/pg-core").PgEnum<["pending", "settled", "voided"]>;
+export declare const predictionSource: import("drizzle-orm/pg-core").PgEnum<["web", "discord"]>;
 export declare const activityLogs: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "activity_logs";
     schema: undefined;
@@ -5498,6 +5499,40 @@ export declare const predictionPicks: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        source: import("drizzle-orm/pg-core").PgColumn<{
+            name: "source";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgEnumColumn";
+            data: "web" | "discord";
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: ["web", "discord"];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        guildId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "guildId";
+            tableName: "prediction_picks";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "createdAt";
             tableName: "prediction_picks";
@@ -5518,6 +5553,541 @@ export declare const predictionPicks: import("drizzle-orm/pg-core").PgTableWithC
         updatedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "updatedAt";
             tableName: "prediction_picks";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * One row per game card the bot has posted into a server.
+ *
+ * The card's buttons are the only durable handle on a posted message, and both
+ * sweepers (tip-off lock, settlement) need to find the cards they still have to
+ * edit: the lock sweep selects on `lockedAt IS NULL` and the settlement sweep on
+ * `settledAt IS NULL`, which is what the `(lockedAt, settledAt)` index is for.
+ * Storing `lockedAt`/`settledAt` also makes each edit idempotent — a card with a
+ * timestamp has already been edited, so a retry after a crash does nothing.
+ *
+ * One card per game per server: the unique key is what stops a re-post from
+ * creating a second live card for the same game, and it is the conflict target
+ * for an upsert.
+ */
+export declare const discordCards: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "discord_cards";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "discord_cards";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        gameId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "gameId";
+            tableName: "discord_cards";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        guildId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "guildId";
+            tableName: "discord_cards";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        channelId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "channelId";
+            tableName: "discord_cards";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        messageId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "messageId";
+            tableName: "discord_cards";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lockedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "lockedAt";
+            tableName: "discord_cards";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        settledAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "settledAt";
+            tableName: "discord_cards";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "createdAt";
+            tableName: "discord_cards";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updatedAt";
+            tableName: "discord_cards";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * The bot's own Discord user ↔ IKnoBall user mapping.
+ *
+ * Better Auth already knows this for anyone who signed in with Discord
+ * (`account.providerId = 'discord'`, `account.accountId = <Discord user id>`),
+ * but `account` is Better Auth's table and it is free to rewrite it on a
+ * provider change or an unlink. The bot reads on every button click, so it gets
+ * its own row it can rely on. Both sides are unique, which is what enforces
+ * "one Discord account per user and one user per Discord account" in the
+ * database rather than in application code.
+ */
+export declare const discordLinks: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "discord_links";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "discord_links";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: true;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "userId";
+            tableName: "discord_links";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        discordUserId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "discordUserId";
+            tableName: "discord_links";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "createdAt";
+            tableName: "discord_links";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * Per-guild configuration, written by `/setup`.
+ *
+ * The row is kept when the bot is removed (`leftAt` set) rather than deleted, so
+ * a reinstall restores the channel and posting hour instead of asking the admin
+ * to configure the server again — and so a server board's history still has a
+ * guild to belong to. `guildId` is the Discord id and the primary key: there is
+ * exactly one config per server and nothing else to key it by.
+ *
+ * The defaults are what make the bot work before `/setup` is run: 9am in
+ * `America/New_York` is the NBA convention. Posting still needs a `channelId`,
+ * which the admin must supply, so a defaulted row cannot post into a guessed
+ * channel.
+ */
+export declare const discordGuilds: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "discord_guilds";
+    schema: undefined;
+    columns: {
+        guildId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "guildId";
+            tableName: "discord_guilds";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        channelId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "channelId";
+            tableName: "discord_guilds";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        postHour: import("drizzle-orm/pg-core").PgColumn<{
+            name: "postHour";
+            tableName: "discord_guilds";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        timezone: import("drizzle-orm/pg-core").PgColumn<{
+            name: "timezone";
+            tableName: "discord_guilds";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        enabled: import("drizzle-orm/pg-core").PgColumn<{
+            name: "enabled";
+            tableName: "discord_guilds";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        installedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "installedAt";
+            tableName: "discord_guilds";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        leftAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "leftAt";
+            tableName: "discord_guilds";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+/**
+ * The bot's mirror of who is in which guild, refreshed from the gateway.
+ *
+ * The per-server leaderboard uses the "all picks by users who are members of
+ * this server" definition, which is a join rather than a number: a pick carries
+ * a `userId`, and turning that into "is this person in guild X" needs the
+ * membership list on this side of the wire. The alternative — asking Discord for
+ * the guild's members on every leaderboard render — is a paginated REST call per
+ * query, and the board would be slow and rate-limit shaped for no benefit.
+ * Mirroring the list makes the board one `EXISTS` over a local table.
+ *
+ * The `GUILD_MEMBERS` intent is what makes that mirror possible: the sync reads
+ * the list when the bot joins a guild and keeps it current from join, leave, and
+ * member-update events. So the intent is a requirement of definition B, not a
+ * convenience — and this table is the only reason it is requested.
+ *
+ * `displayName` is stored for the same reason: the board falls back to the
+ * Discord display name when a linked user has no `user.name`, and reading it
+ * here avoids a REST lookup per row on every render.
+ *
+ * The composite key `(guildId, discordUserId)` is both the upsert target for the
+ * sync (one row per person per server, so a re-sync overwrites instead of
+ * duplicating) and the join path for the board, which always filters by guild.
+ * The index on `discordUserId` answers the reverse question — which of my guilds
+ * is this person in — which the button path asks when it resolves a click.
+ */
+export declare const discordMembers: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "discord_members";
+    schema: undefined;
+    columns: {
+        guildId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "guildId";
+            tableName: "discord_members";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        discordUserId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "discordUserId";
+            tableName: "discord_members";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        displayName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "displayName";
+            tableName: "discord_members";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        joinedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "joinedAt";
+            tableName: "discord_members";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "createdAt";
+            tableName: "discord_members";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updatedAt";
+            tableName: "discord_members";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;

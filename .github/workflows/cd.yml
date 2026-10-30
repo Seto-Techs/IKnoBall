@@ -10,6 +10,7 @@ env:
   BE_IMAGE: seto-techs/iknoball-be
   FE_IMAGE: seto-techs/iknoball-fe
   WORKER_IMAGE: seto-techs/iknoball-worker
+  DISCORD_IMAGE: seto-techs/iknoball-discord
 
 jobs:
   # ── BUILD: BACKEND ──────────────────────────────────────────
@@ -139,9 +140,53 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.WORKER_IMAGE }}:${{ steps.tag.outputs.tag }}
 
+  # ── BUILD: DISCORD ──────────────────────────────────────────
+  # The bot is a fourth image. It is built like the others and deployed by the
+  # same `deploy` job; the compose file decides whether a `discord` service
+  # actually runs it. See docs/production-runbook.md §7.
+  build-discord:
+    if: |
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'dev' ||
+       github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: tag
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            echo "tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & push Discord
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/discord/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.DISCORD_IMAGE }}:${{ steps.tag.outputs.tag }}
+
   # ── DEPLOY ──────────────────────────────────────────────────
   deploy:
-    needs: [build-be, build-fe, build-worker]
+    needs: [build-be, build-fe, build-worker, build-discord]
     if: |
       always() &&
       github.event.pull_request.merged == true &&
@@ -151,9 +196,12 @@ jobs:
       needs.build-fe.result != 'cancelled' &&
       needs.build-worker.result != 'failure' &&
       needs.build-worker.result != 'cancelled' &&
+      needs.build-discord.result != 'failure' &&
+      needs.build-discord.result != 'cancelled' &&
       (needs.build-be.result == 'success' ||
        needs.build-fe.result == 'success' ||
-       needs.build-worker.result == 'success')
+       needs.build-worker.result == 'success' ||
+       needs.build-discord.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read

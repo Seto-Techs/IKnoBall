@@ -58,7 +58,13 @@ export const account = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index('account_userId_idx').on(table.userId)],
+  (table) => [
+    index('account_userId_idx').on(table.userId),
+    // The bot resolves a Discord id on every card click and every command, and it
+    // asks `account` first (`where(providerId, accountId)`). Without this the read
+    // is a sequential scan over every sign-in row the app has ever written.
+    index('account_providerId_accountId_idx').on(table.providerId, table.accountId),
+  ],
 );
 
 export const verification = pgTable(

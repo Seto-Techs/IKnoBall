@@ -14,6 +14,8 @@ Contact for anything in this policy: [rakaiseto@gmail.com](mailto:rakaiseto@gmai
 - **We don't sell your data**, and there's no ad tracking or profiling.
 - We never take payment details — the app is free.
 - A handful of service providers help us run it, and section 6 names them.
+- If you use the Discord bot, it stores the Discord IDs and display names it needs to post cards,
+  score picks, and work out each server's leaderboard. Section 11 explains them.
 - You can ask for a copy of your data, fix it, or delete it. Section 9 says how.
 
 ## 1. What we collect
@@ -178,7 +180,67 @@ top will change with them. If a change materially affects how we use your data, 
 the app or by email before it takes effect, and where the law requires it we'll ask for your
 consent. Older versions are available on request.
 
-## 11. Contact
+## 11. The Discord bot
+
+IKnoBall has an optional Discord bot. Add it to a server and it posts the day's games there, so
+people can pick from the card without opening the website. To do that it keeps a record of the
+servers it's in and the people in them: Discord IDs — the numbers Discord uses to tell servers,
+channels, messages, and accounts apart — plus the display name Discord shows for each member. None
+of it is your email, and none of it is anything you write.
+
+**What the bot stores:**
+
+| Data                                                                                                                | Where it comes from                                                                                     | Why we need it                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Discord user ID**                                                                                                 | You, when you link with `/link` in Discord or **Connect Discord** on the Discord settings page          | To know which IKnoBall account a button click belongs to, so a pick lands on the profile you already have instead of creating a second one |
+| **Server membership** — your Discord user ID, the display name Discord shows for you there, and the date you joined | Discord, when the bot joins a server, and whenever someone joins, leaves, or changes their display name | To work out whose points count on that server's leaderboard                                                                                |
+| **Server ID** and **channel ID**                                                                                    | The server you add the bot to, and the channel an admin chooses with `/setup`                           | To post the card in that channel, and to keep each server's leaderboard separate                                                           |
+| **Message ID**                                                                                                      | Discord, when the bot posts a card                                                                      | To edit that same card at tip-off and after the final, rather than posting a new one                                                       |
+| **Posting hour and timezone**                                                                                       | An admin, in `/setup`                                                                                   | To post at that server's local time                                                                                                        |
+| **Where a pick was placed** — `web` or `discord`, plus the server ID                                                | Your pick                                                                                               | To record that the pick came from Discord, and in which server it was made                                                                 |
+
+If you sign in with Discord, we also hold your Discord user ID as part of that sign-in, as
+section 6 describes. That's your login, not the bot; the two are stored separately.
+
+**What the bot can see, and what it can't.** A server's leaderboard is defined by who is in the
+server, so the bot asks Discord for the member list of every server it's in. Discord calls that the
+Server Members intent, and it's the only privileged one we use. From it we keep three things: your
+user ID, the display name Discord shows for you in that server, and the date you joined. We don't
+keep your roles or anything else the member record carries.
+
+That intent does **not** let us read messages. Message content is a separate intent, which we don't
+request and which Discord reviews on its own. We also don't request the presence intent, so we can't
+see who is online or what anyone is playing. The distinction worth being clear about: **we know
+that you are in a server, and we don't know what you say in it.** Slash commands and button clicks
+arrive with the ID of the person who used them, which is enough to place a pick without reading
+anything. The bot sends no direct messages, apart from one to the person who added it, suggesting
+`/setup`.
+
+**Why we're allowed to.** Running the bot is part of the contract described in section 3 — it's
+the same game on another surface, and the member list is how a server's board is calculated.
+Keeping it working and free of abuse is our legitimate interest.
+
+**How long we keep it:**
+
+| Data                                                            | Retention                                                                                                                                                         |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discord link — your user ID and the account it belongs to       | Until you unlink, or until you close your account                                                                                                                 |
+| Server membership — your user ID, display name, and join date   | While you're in the server. It's refreshed from Discord, and the row is deleted when you leave the server or when the bot is removed from it                      |
+| Server settings — server ID, channel ID, posting hour, timezone | While the bot is in the server. If it's removed we keep them, marked as removed, so re-adding it restores the same channel and hour. Ask us and we'll delete them |
+| Card records — server, channel, and message IDs                 | While the bot still needs them to lock and settle that card, then with the rest of that season's records                                                          |
+| Picks placed from Discord                                       | Section 5 applies. They're your picks, so they stay while your account is open — including after you unlink                                                       |
+
+**How to unlink.** Run `/unlink` in Discord, or use **Disconnect Discord** on the Discord settings
+page. Either one deletes the link, so your next click can't land on your account until you link
+again. Your account and your picks stay exactly as they were — picks belong to your IKnoBall
+account, not to the link. Closing your account deletes the link with it, and section 9 covers
+asking us to do it for you.
+
+Unlinking is not the same as leaving a server. The membership record follows the server, not the
+link, so leaving the server is what deletes it — and because a server's board counts its current
+members, your picks stop counting there, and count again if you rejoin.
+
+## 12. Contact
 
 SETO Tech — [rakaiseto@gmail.com](mailto:rakaiseto@gmail.com)
 

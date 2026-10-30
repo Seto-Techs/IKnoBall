@@ -29,6 +29,7 @@ import { Route as GameGameIdRouteImport } from './routes/game.$gameId';
 import { Route as PlayerPlayerIdRouteImport } from './routes/player.$playerId';
 import { Route as PrototypeBoxscoreRouteImport } from './routes/prototype.boxscore';
 import { Route as PrototypeShotzonesRouteImport } from './routes/prototype.shotzones';
+import { Route as SettingsDiscordRouteImport } from './routes/settings.discord';
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -130,6 +131,11 @@ const PrototypeShotzonesRoute = PrototypeShotzonesRouteImport.update({
   path: '/prototype/shotzones',
   getParentRoute: () => rootRouteImport,
 } as any);
+const SettingsDiscordRoute = SettingsDiscordRouteImport.update({
+  id: '/settings/discord',
+  path: '/settings/discord',
+  getParentRoute: () => rootRouteImport,
+} as any);
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/player/$playerId': typeof PlayerPlayerIdRoute;
   '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
   '/prototype/shotzones': typeof PrototypeShotzonesRoute;
+  '/settings/discord': typeof SettingsDiscordRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/player/$playerId': typeof PlayerPlayerIdRoute;
   '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
   '/prototype/shotzones': typeof PrototypeShotzonesRoute;
+  '/settings/discord': typeof SettingsDiscordRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/player/$playerId': typeof PlayerPlayerIdRoute;
   '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
   '/prototype/shotzones': typeof PrototypeShotzonesRoute;
+  '/settings/discord': typeof SettingsDiscordRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
@@ -220,7 +229,8 @@ export interface FileRouteTypes {
     | '/game/$gameId'
     | '/player/$playerId'
     | '/prototype/boxscore'
-    | '/prototype/shotzones';
+    | '/prototype/shotzones'
+    | '/settings/discord';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -242,7 +252,8 @@ export interface FileRouteTypes {
     | '/game/$gameId'
     | '/player/$playerId'
     | '/prototype/boxscore'
-    | '/prototype/shotzones';
+    | '/prototype/shotzones'
+    | '/settings/discord';
   id:
     | '__root__'
     | '/'
@@ -264,7 +275,8 @@ export interface FileRouteTypes {
     | '/game/$gameId'
     | '/player/$playerId'
     | '/prototype/boxscore'
-    | '/prototype/shotzones';
+    | '/prototype/shotzones'
+    | '/settings/discord';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -288,6 +300,7 @@ export interface RootRouteChildren {
   PlayerPlayerIdRoute: typeof PlayerPlayerIdRoute;
   PrototypeBoxscoreRoute: typeof PrototypeBoxscoreRoute;
   PrototypeShotzonesRoute: typeof PrototypeShotzonesRoute;
+  SettingsDiscordRoute: typeof SettingsDiscordRoute;
 }
 
 declare module '@tanstack/react-router' {
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrototypeShotzonesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/settings/discord': {
+      id: '/settings/discord';
+      path: '/settings/discord';
+      fullPath: '/settings/discord';
+      preLoaderRoute: typeof SettingsDiscordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -456,6 +476,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlayerPlayerIdRoute: PlayerPlayerIdRoute,
   PrototypeBoxscoreRoute: PrototypeBoxscoreRoute,
   PrototypeShotzonesRoute: PrototypeShotzonesRoute,
+  SettingsDiscordRoute: SettingsDiscordRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
