@@ -9,8 +9,9 @@ import { TeamsController } from './teams.controller';
 import { StandingsController } from './standings.controller';
 import { GamesController } from './games.controller';
 import { PredictionsController } from './predictions.controller';
-import { PredictionsService } from './predictions.service';
-import { OddsService } from './odds.service';
+import { PredictionsModule } from './predictions.module';
+import { InternalModule } from './internal/internal.module';
+import { DiscordLinkModule } from './discord-link/discord-link.module';
 import { LeadersController } from './leaders.controller';
 import { SearchController } from './search.controller';
 import { PlayersController } from './players.controller';
@@ -40,6 +41,12 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
     EmailModule,
     RedisModule,
     S3Module,
+    // PredictionsService + OddsService live here now, so AppModule and the
+    // /internal controllers share one instance of each.
+    PredictionsModule,
+    InternalModule,
+    // Empty until chunk C5 fills it in.
+    DiscordLinkModule,
     AuthModule.forRootAsync({
       imports: [EmailModule],
       inject: [EmailService],
@@ -60,8 +67,6 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
   ],
   providers: [
     AppService,
-    PredictionsService,
-    OddsService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
