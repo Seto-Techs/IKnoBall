@@ -137,6 +137,24 @@ describe('IknoballClient', () => {
     expect((init.headers as Record<string, string>)['x-internal-token']).toBe('shared-secret');
   });
 
+  it("adds the caller's Discord id so the API can append their own row", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { is_success: true, message: 'ok', data: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new IknoballClient(config).leaderboard({
+      guildId: 'guild-1',
+      mode: 'flat',
+      viewerDiscordUserId: '123 456',
+    });
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      'http://api:3000/api/internal/leaderboard?guildId=guild-1&mode=flat&viewerDiscordUserId=123+456',
+    );
+  });
+
   it('resolves a Discord account with the id encoded', async () => {
     const fetchMock = vi
       .fn()
