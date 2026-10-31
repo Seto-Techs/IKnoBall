@@ -339,7 +339,15 @@ export class MissingPermissionsError extends Error {
  * not do. Threads are only required when the slate is wide enough to need one.
  */
 function missingPermissions(channel: SendableChannels, threads: boolean): string[] {
-  const me = 'guild' in channel ? channel.guild.members.me : null;
+  // `client.user` is null when the bot runs as a REST-only client (e.g.
+  // `force:slate`, which never logs in so it cannot flap the live session): in
+  // that shape there is no member object to preflight against, so the check is
+  // a no-op and a bad channel surfaces as the send's own error. Reading
+  // `channel.guild.members.me` directly would otherwise dereference the null
+  // `client.user.id` and throw before we ever reached the send.
+  if (!channel.client?.user) return [];
+
+  const me = 'guild' in channel && channel.guild ? channel.guild.members.me : null;
   if (!me || !('permissionsFor' in channel)) return [];
 
   const permissions = channel.permissionsFor(me);
