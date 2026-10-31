@@ -29,6 +29,29 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.2',
+    date: '2026-10-31',
+    headline: 'The card tells you how each side is going, and the board knows your name.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Each side of a matchup now shows its record, its last five results, and what a correct pick is worth — so the card is something to decide on, not just a fixture.',
+      },
+      {
+        kind: 'improved',
+        text: 'The card is tighter: the teams, the tip-off and both sides’ numbers, with the clutter gone so a long tip-off no longer wraps.',
+      },
+      {
+        kind: 'fixed',
+        text: 'Every game on the slate posts as its own card above its own buttons, so you no longer have to work out which pair of buttons belongs to which game.',
+      },
+      {
+        kind: 'fixed',
+        text: '/leaderboard now ranks everyone in the server, including the people who signed in with Discord and never typed /link. If you are outside the top ten, your own row is added underneath.',
+      },
+    ],
+  },
+  {
     version: '0.3.1',
     date: '2026-10-31',
     headline: 'The slate comes to you, and the site tells you it is on Discord.',
