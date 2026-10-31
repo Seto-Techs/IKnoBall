@@ -109,7 +109,7 @@ describe('day arithmetic', () => {
     expect(shiftEtDate(1, new Date('2026-10-28T02:00:00.000Z'))).toBe('2026-10-28');
   });
 
-  it('labels a key for a thread title', () => {
+  it('labels a slot key for a header', () => {
     expect(formatDayKey('2026-10-27')).toBe('Oct 27');
     expect(formatDayKey('2026-01-01')).toBe('Jan 1');
   });

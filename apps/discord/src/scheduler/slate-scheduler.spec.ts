@@ -32,7 +32,6 @@ function posted(overrides: Partial<PostResult> = {}): PostResult {
     etKey: '2026-10-27',
     games: 2,
     messageIds: ['message-1'],
-    threadId: null,
     ...overrides,
   };
 }

@@ -2,17 +2,17 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Message } from 'discord.js';
 import type { CardTeam } from '../cards/types';
 import type { Infrastructure } from './infrastructure';
-import { CARDS_PER_MESSAGE, type SlateGame } from './slate';
+import type { SlateGame } from './slate';
 import { SlatePoster } from './slate-poster';
 import type { CardClaim, SlateStore } from './slate-store';
 
 /**
  * Posting one day's slate, against a fake gateway and a fake store.
  *
- * The order of the three steps is the thing under test — claim the cards, send the
- * message, attach the ids — because that order is what makes a restart at 9:05
- * harmless. Everything Discord does is a fake; the real SQL is exercised by the
- * chunk's live proof.
+ * The order of the steps is the thing under test — claim the cards, send each card
+ * as its own message, attach the id — because that order is what makes a restart
+ * at 9:05 harmless. Everything Discord does is a fake; the real SQL is exercised by
+ * the chunk's live proof.
  */
 
 function game(index: number, overrides: Partial<SlateGame> = {}): SlateGame {
@@ -34,67 +34,38 @@ function game(index: number, overrides: Partial<SlateGame> = {}): SlateGame {
 
 const MORNING = new Date('2026-10-27T13:00:00.000Z');
 
-interface FakeMessage {
-  id: string;
-  inGuild: () => boolean;
-  startThread: ReturnType<typeof vi.fn>;
-}
-
 interface FakeChannel {
   id: string;
   isSendable: () => boolean;
   send: ReturnType<typeof vi.fn>;
-  thread?: FakeChannel;
 }
 
 /**
- * A channel that hands back `messages` on successive sends, and opens one thread
- * if asked. `order` records what the poster did, so a test can assert the claim
- * came first.
+ * A channel whose every send returns a new message, as the real one does — the
+ * poster posts one message per card, so a fake that returns the same message twice
+ * would hide a bookkeeping bug.
  */
-function fakeDiscord(options: { thread?: boolean; sendable?: boolean; trace?: string[] } = {}) {
+function fakeDiscord(options: { sendable?: boolean; trace?: string[]; messages?: string[] } = {}) {
   const order: string[] = options.trace ?? [];
+  const messageIds: string[] = options.messages ?? [];
   let counter = 0;
-  const messageIds: string[] = [];
-
-  const thread: FakeChannel = {
-    id: 'thread-1',
-    isSendable: () => true,
-    send: vi.fn(async () => {
-      counter += 1;
-      const id = `thread-message-${counter}`;
-      messageIds.push(id);
-      return { id };
-    }),
-  };
-
-  const first: FakeMessage = {
-    id: 'message-1',
-    inGuild: () => true,
-    startThread: vi.fn(async () => {
-      order.push('startThread');
-      if (!options.thread) throw new Error('Missing Permissions');
-      return thread;
-    }),
-  };
 
   const channel: FakeChannel = {
     id: 'channel-1',
     isSendable: () => options.sendable ?? true,
     send: vi.fn(async () => {
       order.push('channelSend');
-      messageIds.unshift('message-1');
-      return first;
+      counter += 1;
+      const id = `message-${counter}`;
+      messageIds.push(id);
+      return { id } as Message;
     }),
-    thread,
   };
 
   const client = { channels: { fetch: vi.fn(async () => channel) } };
 
   return {
     channel,
-    first,
-    thread,
     order,
     messageIds,
     client,
@@ -161,7 +132,6 @@ describe('an empty day', () => {
       etKey: '2026-10-27',
       games: 0,
       messageIds: [],
-      threadId: null,
     });
     expect(order).toEqual(['findGames:2026-10-27']);
     expect(discord.client.channels.fetch).not.toHaveBeenCalled();
@@ -183,7 +153,9 @@ describe('the claim comes before the send', () => {
       'findGames:2026-10-27',
       'claimCards',
       'channelSend',
-      'attachCards:message-1|message-1',
+      'attachCards:message-1',
+      'channelSend',
+      'attachCards:message-2',
     ]);
     expect(attachments).toEqual([
       [
@@ -193,25 +165,32 @@ describe('the claim comes before the send', () => {
           channelId: 'channel-1',
           messageId: 'message-1',
         },
+      ],
+      [
         {
           gameId: '0022600121',
           guildId: 'guild-1',
           channelId: 'channel-1',
-          messageId: 'message-1',
+          messageId: 'message-2',
         },
       ],
     ]);
   });
 
-  it('claims every game in the slate, including the ones that go to a thread', async () => {
-    const discord = fakeDiscord({ thread: true });
-    const { store, claims } = fakeStore(Array.from({ length: 6 }, (_, index) => game(index)));
+  it('claims every game in the slate before it sends the first card', async () => {
+    const trace: string[] = [];
+    const discord = fakeDiscord({ trace });
+    const { store, claims } = fakeStore(
+      Array.from({ length: 6 }, (_, index) => game(index)),
+      { trace },
+    );
     const poster = new SlatePoster(store, discord.infra);
 
     await poster.post(TARGET, MORNING);
 
     expect(claims).toHaveLength(1);
     expect(claims[0]).toHaveLength(6);
+    expect(trace.indexOf('claimCards')).toBeLessThan(trace.indexOf('channelSend'));
   });
 });
 
@@ -240,13 +219,12 @@ describe('a slate that is already claimed', () => {
 
     expect(result.status).toBe('posted');
     expect(result.games).toBe(2);
-    const [payload] = discord.channel.send.mock.calls[0] as [{ embeds: unknown[] }];
-    expect(payload.embeds).toHaveLength(2);
+    expect(discord.channel.send).toHaveBeenCalledTimes(2);
   });
 });
 
-describe('four cards or fewer', () => {
-  it('sends one message with one embed and one action row per game', async () => {
+describe('one message per card', () => {
+  it('sends each game as its own message, card above its own buttons', async () => {
     const discord = fakeDiscord();
     const { store } = fakeStore([game(0), game(1), game(2), game(3)]);
     const poster = new SlatePoster(store, discord.infra);
@@ -254,62 +232,35 @@ describe('four cards or fewer', () => {
     const result = await poster.post(TARGET, MORNING);
 
     expect(result.status).toBe('posted');
-    expect(result.games).toBe(CARDS_PER_MESSAGE);
-    expect(result.threadId).toBeNull();
-    expect(discord.channel.send).toHaveBeenCalledTimes(1);
+    expect(result.games).toBe(4);
+    expect(discord.channel.send).toHaveBeenCalledTimes(4);
+    expect(result.messageIds).toEqual(['message-1', 'message-2', 'message-3', 'message-4']);
 
-    const [payload] = discord.channel.send.mock.calls[0] as [
-      { embeds: unknown[]; components: unknown[] },
-    ];
-    expect(payload.embeds).toHaveLength(4);
-    expect(payload.components).toHaveLength(4);
-    expect(discord.first.startThread).not.toHaveBeenCalled();
+    // The whole point of the split: one card and one action row, so Discord has
+    // nothing to stack in between them.
+    for (const call of discord.channel.send.mock.calls) {
+      const [payload] = call as [{ embeds: unknown[]; components: unknown[] }];
+      expect(payload.embeds).toHaveLength(1);
+      expect(payload.components).toHaveLength(1);
+    }
   });
-});
 
-describe('more than four cards', () => {
-  it('threads the remainder instead of a second channel message', async () => {
-    const discord = fakeDiscord({ thread: true });
-    const { store, attachments } = fakeStore(Array.from({ length: 6 }, (_, index) => game(index)));
-    const poster = new SlatePoster(store, discord.infra);
-
-    const result = await poster.post(TARGET, MORNING);
-
-    expect(result.status).toBe('posted');
-    expect(result.games).toBe(6);
-    expect(result.threadId).toBe('thread-1');
-    expect(result.messageIds).toEqual(['message-1', 'thread-message-1']);
-
-    // The channel gets the first four, the thread the last two.
-    expect(discord.channel.send).toHaveBeenCalledTimes(1);
-    const [first] = discord.channel.send.mock.calls[0] as [{ embeds: unknown[] }];
-    expect(first.embeds).toHaveLength(4);
-
-    expect(discord.first.startThread).toHaveBeenCalledWith(
-      expect.objectContaining({ autoArchiveDuration: 1440, name: 'Slate — Oct 27' }),
-    );
-    expect(discord.thread.send).toHaveBeenCalledTimes(1);
-    const [tail] = discord.thread.send.mock.calls[0] as [{ embeds: unknown[] }];
-    expect(tail.embeds).toHaveLength(2);
-
-    // The thread's cards are recorded against the thread, not the channel.
-    expect(attachments[1].map((attachment) => attachment.channelId)).toEqual([
-      'thread-1',
-      'thread-1',
+  it('keeps the tip-off order the selection produced', async () => {
+    const discord = fakeDiscord();
+    const { store, attachments } = fakeStore([
+      game(2),
+      game(0),
+      game(1, { gameDateTimeUTC: new Date('2026-10-27T23:00:00.000Z') }),
     ]);
-  });
-
-  it('keeps the channel post when the thread cannot be opened', async () => {
-    const discord = fakeDiscord({ thread: false });
-    const { store } = fakeStore(Array.from({ length: 6 }, (_, index) => game(index)));
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    await poster.post(TARGET, MORNING);
 
-    expect(result.status).toBe('posted');
-    expect(result.threadId).toBeNull();
-    expect(result.messageIds).toEqual(['message-1']);
-    expect(discord.thread.send).not.toHaveBeenCalled();
+    expect(attachments.map((batch) => batch[0]?.gameId)).toEqual([
+      '0022600121',
+      '0022600120',
+      '0022600122',
+    ]);
   });
 });
 
@@ -372,7 +323,7 @@ describe('selection inside a post', () => {
 
 describe('the /setup preview', () => {
   it('shows today’s cards with the buttons inert and claims nothing', async () => {
-    const discord = fakeDiscord({ thread: true });
+    const discord = fakeDiscord();
     const { store, claims } = fakeStore(Array.from({ length: 6 }, (_, index) => game(index)));
     const poster = new SlatePoster(store, discord.infra);
 
@@ -380,8 +331,8 @@ describe('the /setup preview', () => {
 
     expect(preview.etKey).toBe('2026-10-27');
     expect(preview.games).toBe(6);
-    expect(preview.threaded).toBe(2);
-    expect(preview.payloads).toHaveLength(4);
+    // Three fit in the ephemeral reply's embed budget; the count above them says 6.
+    expect(preview.payloads).toHaveLength(3);
     expect(claims).toHaveLength(0);
     expect(discord.channel.send).not.toHaveBeenCalled();
 
@@ -403,19 +354,17 @@ describe('the /setup preview', () => {
       etKey: '2026-10-27',
       games: 0,
       payloads: [],
-      threaded: 0,
     });
   });
 
-  it('does not thread a four-game day', async () => {
+  it('shows every card of a short day', async () => {
     const discord = fakeDiscord();
-    const { store } = fakeStore([game(0), game(1), game(2), game(3)]);
+    const { store } = fakeStore([game(0), game(1)]);
     const poster = new SlatePoster(store, discord.infra);
 
     const preview = await poster.preview(MORNING);
 
-    expect(preview.payloads).toHaveLength(4);
-    expect(preview.threaded).toBe(0);
+    expect(preview.payloads).toHaveLength(2);
   });
 });
 
@@ -432,18 +381,5 @@ describe('the message shape', () => {
     ];
     expect(payload.embeds[0].title).toBe('BKN @ BOS');
     expect(payload.embeds[0].description).toContain('**Tip-off** <t:');
-  });
-});
-
-describe('types', () => {
-  it('posts a Message the gateway would hand back', async () => {
-    const discord = fakeDiscord();
-    const { store } = fakeStore([game(0)]);
-    const poster = new SlatePoster(store, discord.infra);
-
-    await poster.post(TARGET, MORNING);
-
-    const sent = discord.channel.send.mock.results[0].value as Promise<Message>;
-    expect(await sent).toBe(discord.first);
   });
 });

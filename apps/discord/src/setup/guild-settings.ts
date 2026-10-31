@@ -101,21 +101,6 @@ export function channelProblem(
   return null;
 }
 
-/**
- * Thread permissions, which are a warning rather than a rejection.
- *
- * Posting the first four cards only needs Send Messages and Embed Links; the
- * thread is what a day with more than four games needs, and an admin who grants
- * only the basics still gets a working (if truncated) slate. `/setup` says so
- * instead of refusing the channel.
- */
-export function missingThreadPermissions(botPermissions: PermissionsBitField | null): string[] {
-  if (!botPermissions) return [];
-  return [PermissionFlagsBits.CreatePublicThreads, PermissionFlagsBits.SendMessagesInThreads]
-    .filter((permission) => !botPermissions.has(permission))
-    .map(permissionName);
-}
-
 function requiredPermissions(): bigint[] {
   return [PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks];
 }
@@ -124,8 +109,6 @@ function requiredPermissions(): bigint[] {
 function permissionName(permission: bigint): string {
   if (permission === PermissionFlagsBits.SendMessages) return 'Send Messages';
   if (permission === PermissionFlagsBits.EmbedLinks) return 'Embed Links';
-  if (permission === PermissionFlagsBits.CreatePublicThreads) return 'Create Public Threads';
-  if (permission === PermissionFlagsBits.SendMessagesInThreads) return 'Send Messages in Threads';
   return 'that permission';
 }
 

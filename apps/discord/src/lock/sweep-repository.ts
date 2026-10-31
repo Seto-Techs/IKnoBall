@@ -110,12 +110,13 @@ export interface CardRow {
  * cap the run so one very old backlog cannot hold the event loop for minutes, and
  * both skip cards the caller has marked dead.
  *
- * Work is returned per *message*, because that is the unit Discord can patch: a
- * message holds up to four cards, so the payload is rebuilt from every card row in
- * it (see `messagePayload`). Stamping is a conditional update (`... and lockedAt is
- * null`) rather than a blind one: if two processes ever run a sweep, the second
- * write is a no-op and the card still carries the timestamp of the edit that
- * actually happened.
+ * Work is returned per *message*, because that is the unit Discord can patch: the
+ * payload is rebuilt from every card row in that message (see `messagePayload`), so
+ * a message holding one card — the shape every post has now — and one holding four
+ * from before that change both rebuild correctly. Stamping is a conditional update
+ * (`... and lockedAt is null`) rather than a blind one: if two processes ever run a
+ * sweep, the second write is a no-op and the card still carries the timestamp of
+ * the edit that actually happened.
  */
 export class CardSweepRepository {
   private readonly stats: TeamStats;
@@ -353,6 +354,10 @@ function recordKey(season: string | null, tricode: string): string {
  * `renderCard`, which decides open / locked / settled from the game itself — so a
  * rebuild never depends on what the message currently holds, and two sweeps that
  * touch the same message in the same minute compute the same bytes.
+ *
+ * A row each: the cards a message holds, in posting order. A card is its own
+ * message now, so that list usually has one member; a message sent before that
+ * change still has four, and rebuilding it has to keep the other three intact.
  *
  * Built with `cardPayload` and the scheduler's own `toCardGame` / `toCardTeams`, so
  * a rebuilt card is the card that was posted, not a second rendering of it. The

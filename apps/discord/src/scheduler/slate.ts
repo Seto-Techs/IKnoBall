@@ -1,20 +1,16 @@
 /**
- * Which games are on a guild's slate today, and how they fit into messages.
+ * Which games are on a guild's slate today.
  *
  * Pure: no database, no gateway, no clock. The scheduler hands in rows and an
  * instant, so a test can pin the selection at any hour of any day.
  *
- * Two Discord limits shape the second half. A message may carry at most 10
- * embeds but only **5 action rows**, and every card spends one row on its three
- * buttons, so four cards is the widest slate that fits one message. Past that the
- * remainder goes to a thread rather than a second message in the channel, which
- * keeps one day's slate in one conversation (DISC-10).
+ * A card is one message. Discord renders every embed in a message before any of
+ * its components, so two cards in one message put both cards above both button
+ * rows, and the reader cannot tell which buttons pick which game. One card per
+ * message puts each game's buttons directly under its card (DISC-10).
  */
 import type { CardGame, CardStake, CardTeam, CardTeams } from '../cards/types';
 import { slateDateKey } from './slate-date';
-
-/** Cards per message: one action row each, under Discord's cap of five. */
-export const CARDS_PER_MESSAGE = 4;
 
 /** A `schedule_games` row, as far as a card is concerned. */
 export interface SlateGame {
@@ -67,26 +63,6 @@ export function selectSlateGames(
     .filter((game) => tipOff(game) > now.getTime())
     .filter((game) => slateDay(game) === etKey)
     .sort((left, right) => tipOff(left) - tipOff(right));
-}
-
-/**
- * Split a slate into one message's worth of cards at a time.
- *
- * `[[a,b,c,d], [e,f]]` for six games: the first chunk is the channel message and
- * every later chunk belongs in its thread. An empty slate is no chunks at all,
- * which is how "post nothing on an empty day" stays a single rule.
- */
-export function splitSlate(
-  games: readonly SlateGame[],
-  perMessage: number = CARDS_PER_MESSAGE,
-): SlateGame[][] {
-  if (perMessage < 1) throw new RangeError('perMessage must be at least 1');
-
-  const chunks: SlateGame[][] = [];
-  for (let index = 0; index < games.length; index += perMessage) {
-    chunks.push(games.slice(index, index + perMessage));
-  }
-  return chunks;
 }
 
 /** `Boston Celtics`, falling back to the tricode when the schedule has no name. */

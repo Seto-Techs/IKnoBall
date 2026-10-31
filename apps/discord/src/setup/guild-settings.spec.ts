@@ -8,7 +8,6 @@ import {
   formatPostHour,
   isSupportedPostHour,
   isSupportedTimezone,
-  missingThreadPermissions,
   supportedTimezones,
 } from './guild-settings';
 
@@ -88,12 +87,7 @@ describe('post hour validation', () => {
 });
 
 describe('channel validation', () => {
-  const all = permissions(
-    PermissionFlagsBits.SendMessages,
-    PermissionFlagsBits.EmbedLinks,
-    PermissionFlagsBits.CreatePublicThreads,
-    PermissionFlagsBits.SendMessagesInThreads,
-  );
+  const all = permissions(PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks);
 
   it('accepts a text channel the bot can post in', () => {
     expect(channelProblem(CHANNEL, 'guild-1', all)).toBeNull();
@@ -130,26 +124,6 @@ describe('channel validation', () => {
 
   it('does not invent a permission problem when it cannot compute them', () => {
     expect(channelProblem(CHANNEL, 'guild-1', null)).toBeNull();
-  });
-});
-
-describe('thread permissions', () => {
-  it('warns only about the thread permissions, which are optional', () => {
-    const warnings = missingThreadPermissions(
-      permissions(PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks),
-    );
-    expect(warnings).toEqual(['Create Public Threads', 'Send Messages in Threads']);
-  });
-
-  it('says nothing when the bot can thread', () => {
-    expect(
-      missingThreadPermissions(
-        permissions(
-          PermissionFlagsBits.CreatePublicThreads,
-          PermissionFlagsBits.SendMessagesInThreads,
-        ),
-      ),
-    ).toEqual([]);
   });
 });
 

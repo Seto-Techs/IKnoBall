@@ -14,7 +14,6 @@ import {
   formatPostHour,
   isSupportedPostHour,
   isSupportedTimezone,
-  missingThreadPermissions,
 } from './guild-settings';
 
 /**
@@ -137,8 +136,7 @@ export class SetupCommand implements CommandHandler {
       )} ${saved.timezone}`,
     );
 
-    const warnings = channel ? missingThreadPermissions(botPermissions) : [];
-    await reply(interaction, confirmation(saved, warnings));
+    await reply(interaction, confirmation(saved));
   }
 
   /** The no-argument form: current config, then today's cards. */
@@ -176,21 +174,12 @@ export class SetupCommand implements CommandHandler {
   }
 }
 
-function confirmation(settings: GuildSettings, warnings: readonly string[]): string {
-  const lines = [
+function confirmation(settings: GuildSettings): string {
+  return [
     '**Slate configured for this server.**',
     `**Channel:** <#${settings.channelId}>`,
     `**Posts:** every day at ${formatPostHour(settings.postHour)} ${settings.timezone}`,
-  ];
-
-  if (warnings.length > 0) {
-    lines.push(
-      '',
-      `Heads up: I am missing ${warnings.join(' and ')} there, so a day with more than four games will only post the first four in the channel.`,
-    );
-  }
-
-  return lines.join('\n');
+  ].join('\n');
 }
 
 /** What today's slate would look like, in one line. */
@@ -201,15 +190,9 @@ function previewLine(preview: SlatePreview): string {
     return `**Today's slate — ${day} (ET):** no games, so nothing would be posted.`;
   }
 
-  if (preview.threaded === 0) {
-    return `**Today's slate — ${day} (ET):** ${preview.games} game${
-      preview.games === 1 ? '' : 's'
-    } — one message.`;
-  }
-
   return (
-    `**Today's slate — ${day} (ET):** ${preview.games} games — ` +
-    `${preview.games - preview.threaded} cards in the channel, the other ${preview.threaded} in a thread.`
+    `**Today's slate — ${day} (ET):** ${preview.games} game${preview.games === 1 ? '' : 's'} — ` +
+    'one message each, so every card sits above its own buttons.'
   );
 }
 

@@ -348,6 +348,12 @@ A guild set to 9 a.m. local receives exactly one message containing today's card
 **Tradeoffs**
 
 - The 5-action-row cap forces a split above 4 games per message. Threading keeps the channel tidy but splits the conversation.
+
+**Superseded on grouping.** Threading was built and then removed: four cards in one message
+renders all four cards and then all four button rows, so the reader cannot tell which buttons
+pick which game. A card is now one message — card, buttons, card, buttons — whatever the slate
+size. Nothing is threaded, and the bot no longer asks for thread permissions.
+
 - Posting is driven by the guild's wall clock, so a DST shift can skip or duplicate a minute. The Redis idempotency key absorbs the duplicate; a skipped minute is caught by a 5-minute catch-up window.
 
 ---

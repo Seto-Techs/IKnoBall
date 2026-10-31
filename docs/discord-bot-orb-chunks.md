@@ -396,8 +396,9 @@ day's cards.
   `guildId:YYYY-MM-DD` is not in Redis, post. Write `discord_cards` rows **before** sending so
   a restart cannot double-post.
 - Select games with `gameStatus = 1` and `gameDateTimeUTC > now`, mapped to the guild's local
-  day via the same ET date-key logic the web slate uses. Up to 4 cards per message (5 action
-  rows cap); beyond that, thread the remainder. Post nothing on an empty day.
+  day via the same ET date-key logic the web slate uses. One card per message: a message's
+  embeds all render above its components, so cards can only sit above their own buttons if they
+  are separate messages. Post nothing on an empty day.
 
 **Must not touch.** `cards/**`, `lock/**`, `packages/database`.
 
