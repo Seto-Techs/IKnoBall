@@ -29,6 +29,45 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.0',
+    date: '2026-10-30',
+    headline: 'IKnoBall is on Discord, so picking comes to you.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'The day’s slate posts in your server as one card per game — both teams, their records and form, and a tip-off that shows in your own timezone.',
+      },
+      {
+        kind: 'added',
+        text: 'Tap a team to pick. The confirmation is yours alone and disappears on its own, so the channel stays a channel and not a wall of receipts.',
+      },
+      {
+        kind: 'added',
+        text: 'Cards lock at tip-off. Once a game starts its buttons stop working, so nobody picks a side with the result already in hand.',
+      },
+      {
+        kind: 'added',
+        text: '/picks shows what you have open and what has settled, without leaving Discord.',
+      },
+      {
+        kind: 'added',
+        text: '/leaderboard ranks the members of the server you are in — its own board, not the whole site’s.',
+      },
+      {
+        kind: 'added',
+        text: 'Your Discord picks land on your IKnoBall account. Sign in with Discord and it is already done; otherwise /link connects the two, and the points show up on the web with everything else.',
+      },
+      {
+        kind: 'added',
+        text: 'Server admins pick the channel and the hour the slate arrives with /setup, so the bot posts where you want it and nowhere else.',
+      },
+      {
+        kind: 'added',
+        text: 'A Discord page in your settings to link and unlink the account from the web.',
+      },
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-10-28',
     headline: 'IKnoBall gets a version, and tells you what changed.',
