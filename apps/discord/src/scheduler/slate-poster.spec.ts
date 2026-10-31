@@ -126,6 +126,9 @@ function fakeStore(
     async findTeams() {
       return teams;
     },
+    async findStakes() {
+      return new Map();
+    },
     async claimCards(batch) {
       order.push('claimCards');
       claims.push([...batch]);
@@ -357,10 +360,13 @@ describe('selection inside a post', () => {
     const result = await poster.post(TARGET, MORNING);
 
     expect(result.games).toBe(1);
+    // Only game 0 survives the filter, and the tip-off is the one field that says
+    // which game the card is: 15:00 ET on the 27th, in the reader's clock.
     const [payload] = discord.channel.send.mock.calls[0] as [
-      { embeds: { footer?: { text?: string } }[] },
+      { embeds: { description?: string }[] },
     ];
-    expect(payload.embeds[0].footer?.text).toBe('IKnoBall · 0022600120');
+    const unix = Math.floor(Date.parse('2026-10-27T23:30:00.000Z') / 1000);
+    expect(payload.embeds[0].description).toContain(`<t:${unix}:f>`);
   });
 });
 
@@ -422,10 +428,10 @@ describe('the message shape', () => {
     await poster.post(TARGET, MORNING);
 
     const [payload] = discord.channel.send.mock.calls[0] as [
-      { embeds: { title?: string; author?: { name?: string } }[] },
+      { embeds: { title?: string; description?: string }[] },
     ];
-    expect(payload.embeds[0].author?.name).toBe('IKnoBall');
     expect(payload.embeds[0].title).toBe('BKN @ BOS');
+    expect(payload.embeds[0].description).toContain('**Tip-off** <t:');
   });
 });
 

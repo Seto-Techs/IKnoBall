@@ -13,11 +13,18 @@ import {
   type SQL,
 } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { discordCards, scheduleGames, teams, type Database } from '@iknoball/database';
+import {
+  discordCards,
+  scheduleDays,
+  scheduleGames,
+  teams,
+  type Database,
+} from '@iknoball/database';
 import { cardPayload, type CardPayload } from '../cards/card-payload';
-import type { CardTeam } from '../cards/types';
+import { TeamStats } from '../cards/team-stats';
+import type { CardStake, CardTeam, CardTeamRecord } from '../cards/types';
 import { toCardGame, toCardTeams, type SlateGame } from '../scheduler/slate';
-import { STATUS_FINAL, renderCard, type CardState } from './card-edit';
+import { STATUS_FINAL, cardLook, renderCard, type CardState } from './card-edit';
 import type { SweepJob } from './card-sweep';
 
 const homeTeams = alias(teams, 'home_team');
@@ -29,7 +36,8 @@ const awayTeams = alias(teams, 'away_team');
  *
  * The teams joins are `left`: a preseason or All-Star opponent has no `teams` row,
  * and the schedule's own name for that side is the fallback — the same rule the
- * scheduler's `toCardTeams` uses for the same reason.
+ * scheduler's `toCardTeams` uses for the same reason. The day join is `left` for
+ * the same kind of reason: a row with no day still yields a card, just no record.
  */
 const selection = {
   id: discordCards.id,
@@ -42,6 +50,7 @@ const selection = {
   gameDate: scheduleGames.gameDate,
   gameDateTimeUTC: scheduleGames.gameDateTimeUTC,
   seriesText: scheduleGames.seriesText,
+  seasonYear: scheduleDays.seasonYear,
   homeTricode: scheduleGames.homeTeamTricode,
   homeCity: scheduleGames.homeTeamCity,
   homeScheduleName: scheduleGames.homeTeamName,
@@ -76,6 +85,7 @@ export interface CardRow {
   gameDate: string | null;
   gameDateTimeUTC: Date | null;
   seriesText: string | null;
+  seasonYear: string | null;
   homeTricode: string | null;
   homeCity: string | null;
   homeScheduleName: string | null;
@@ -108,7 +118,11 @@ export interface CardRow {
  * actually happened.
  */
 export class CardSweepRepository {
-  constructor(private readonly db: Database) {}
+  private readonly stats: TeamStats;
+
+  constructor(private readonly db: Database) {
+    this.stats = new TeamStats(db);
+  }
 
   async dueForLock(
     now: Date,
@@ -198,6 +212,7 @@ export class CardSweepRepository {
       asc(scheduleGames.gameId),
     ]);
     const byMessage = groupByMessage(siblings);
+    const stats = await this.cardStats([...due, ...siblings]);
 
     return [...groups.entries()].map(([key, group]) => ({
       channelId: group.channelId,
@@ -205,8 +220,35 @@ export class CardSweepRepository {
       cardIds: group.rows.map((row) => row.id),
       // The due rows are their own fallback: a sibling query that returns nothing
       // for this message still leaves a payload that contains the due cards.
-      payload: messagePayload(byMessage.get(key)?.rows ?? group.rows, now),
+      payload: messagePayload(byMessage.get(key)?.rows ?? group.rows, now, stats),
     }));
+  }
+
+  /**
+   * The record and price lookups the rebuilt payloads are made of.
+   *
+   * Read once for the whole run rather than per card: one sweep's cards are a
+   * handful of games, and two queries beat two per message. The season comes from
+   * the cards' own days, so a card rebuilt after midnight still counts the season
+   * it was posted in.
+   */
+  private async cardStats(rows: readonly CardRow[]): Promise<CardStats> {
+    const tricodes = rows
+      .flatMap((row) => [row.awayTricode, row.homeTricode])
+      .filter((tricode): tricode is string => Boolean(tricode?.trim()));
+    const seasons = new Set<string>();
+    for (const row of rows) {
+      if (row.seasonYear) seasons.add(row.seasonYear);
+    }
+
+    const form = new Map<string, CardTeamRecord>();
+    for (const season of seasons) {
+      for (const [tricode, record] of await this.stats.seasonForm(tricodes, season)) {
+        form.set(recordKey(season, tricode), record);
+      }
+    }
+
+    return { form, stakes: await this.stats.stakes(rows.map((row) => row.gameId)) };
   }
 
   private async selectRows(
@@ -218,6 +260,7 @@ export class CardSweepRepository {
       .select(selection)
       .from(discordCards)
       .innerJoin(scheduleGames, eq(scheduleGames.gameId, discordCards.gameId))
+      .leftJoin(scheduleDays, eq(scheduleDays.id, scheduleGames.scheduleDayId))
       .leftJoin(homeTeams, eq(homeTeams.abbreviation, scheduleGames.homeTeamTricode))
       .leftJoin(awayTeams, eq(awayTeams.abbreviation, scheduleGames.awayTeamTricode))
       .where(where)
@@ -282,6 +325,26 @@ function inMessages(groups: ReadonlyMap<string, MessageGroup>): SQL | undefined 
 }
 
 /**
+ * The lookups a rebuilt card needs, resolved from the database before the payload
+ * is built: the card's paint stays pure.
+ *
+ * `form` is keyed by season *and* tricode (`recordKey`), because one message is
+ * normally one season but nothing enforces it, and a lookup that ignored the season
+ * would show last year's record on a card from October's opening night.
+ */
+export interface CardStats {
+  /** Season record with recent form, by `recordKey(season, tricode)`. */
+  form: ReadonlyMap<string, CardTeamRecord>;
+  /** What each side pays, by game id. */
+  stakes: ReadonlyMap<string, CardStake>;
+}
+
+/** The `form` key for a tricode in a season. */
+function recordKey(season: string | null, tricode: string): string {
+  return `${season ?? ''}:${tricode.trim().toUpperCase()}`;
+}
+
+/**
  * The whole message, rebuilt from its cards' rows.
  *
  * This is the payload a PATCH sends, and it is why the sweep works per message:
@@ -292,16 +355,20 @@ function inMessages(groups: ReadonlyMap<string, MessageGroup>): SQL | undefined 
  * touch the same message in the same minute compute the same bytes.
  *
  * Built with `cardPayload` and the scheduler's own `toCardGame` / `toCardTeams`, so
- * a rebuilt card is the card that was posted, not a second rendering of it.
+ * a rebuilt card is the card that was posted, not a second rendering of it. The
+ * records and prices are read from the same tables the post read them from
+ * (`TeamStats`), which is what keeps the two halves agreeing.
  */
-export function messagePayload(rows: readonly CardRow[], now: Date): CardPayload {
-  const index = teamIndex(rows);
+export function messagePayload(rows: readonly CardRow[], now: Date, stats: CardStats): CardPayload {
+  const index = teamIndex(rows, stats.form);
 
   const payloads = rows.map((row) => {
     const game = slateGame(row);
     const card: CardState = cardState(row);
+    // A card past tip-off has nothing left to pick, so the payout would be noise.
+    const stake = cardLook(card, now) === 'open' ? stats.stakes.get(row.gameId) : undefined;
 
-    return renderCard(cardPayload(toCardGame(game), toCardTeams(game, index)), card, now);
+    return renderCard(cardPayload(toCardGame(game), toCardTeams(game, index, stake)), card, now);
   });
 
   return {
@@ -324,6 +391,7 @@ function slateGame(row: CardRow): SlateGame {
     homeTeamCity: row.homeCity,
     homeTeamName: row.homeScheduleName,
     seriesText: row.seriesText,
+    seasonYear: row.seasonYear,
   };
 }
 
@@ -353,14 +421,25 @@ function tricode(schedule: string | null, abbreviation: string | null, fallback:
 
 /**
  * The `teams` rows of every card in the message, keyed the way `toCardTeams`
- * looks them up (upper-case tricode).
+ * looks them up: by the *schedule's* tricode, upper-cased, because that is what
+ * the card prints, emojis, and looks its record up by.
+ *
+ * A schedule row and its `teams` row disagree for one team (BKN vs BRK), so the
+ * schedule's code wins and the `teams` row is only there for the full name and the
+ * logo. Record is attached from `form` under the season of the row that named the
+ * team, so a card rebuilt after midnight still counts the season it was posted in.
  */
-function teamIndex(rows: readonly CardRow[]): Map<string, CardTeam> {
+function teamIndex(
+  rows: readonly CardRow[],
+  form: ReadonlyMap<string, CardTeamRecord>,
+): Map<string, CardTeam> {
   const index = new Map<string, CardTeam>();
 
   for (const row of rows) {
-    addTeam(index, row.homeAbbreviation, row.homeFullName, row.homeLogoUrl);
-    addTeam(index, row.awayAbbreviation, row.awayFullName, row.awayLogoUrl);
+    addTeam(index, row.homeTricode, row.homeAbbreviation, row.homeFullName, row.homeLogoUrl);
+    addTeam(index, row.awayTricode, row.awayAbbreviation, row.awayFullName, row.awayLogoUrl);
+    addRecord(index, form, row.seasonYear, row.homeTricode, row.homeAbbreviation);
+    addRecord(index, form, row.seasonYear, row.awayTricode, row.awayAbbreviation);
   }
 
   return index;
@@ -368,14 +447,32 @@ function teamIndex(rows: readonly CardRow[]): Map<string, CardTeam> {
 
 function addTeam(
   index: Map<string, CardTeam>,
+  scheduleTricode: string | null,
   abbreviation: string | null,
   fullName: string | null,
   logoUrl: string | null,
 ): void {
-  const tricode = abbreviation?.trim().toUpperCase();
+  const tricode = code(scheduleTricode, abbreviation);
   if (!tricode || index.has(tricode)) return;
 
-  // No record: the bot has no standings source, and the card renders a dash for a
-  // missing record rather than a guess (the scheduler makes the same call).
-  index.set(tricode, { tricode, name: fullName ?? tricode, logoUrl, record: null });
+  index.set(tricode, { tricode, name: fullName?.trim() || tricode, logoUrl });
+}
+
+function addRecord(
+  index: Map<string, CardTeam>,
+  form: ReadonlyMap<string, CardTeamRecord>,
+  season: string | null,
+  scheduleTricode: string | null,
+  abbreviation: string | null,
+): void {
+  const tricode = code(scheduleTricode, abbreviation);
+  const team = tricode ? index.get(tricode) : undefined;
+  if (!team || !tricode) return;
+
+  team.record = form.get(recordKey(season, tricode)) ?? null;
+}
+
+/** The schedule's tricode for a side, falling back to its `teams` abbreviation. */
+function code(scheduleTricode: string | null, abbreviation: string | null): string {
+  return (scheduleTricode?.trim() || abbreviation?.trim() || '').toUpperCase();
 }

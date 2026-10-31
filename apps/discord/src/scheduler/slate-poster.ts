@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { PermissionFlagsBits } from 'discord.js';
 import type { Message, PublicThreadChannel, SendableChannels } from 'discord.js';
 import { cardPayload, type CardPayload } from '../cards/card-payload';
-import type { CardTeam } from '../cards/types';
+import type { CardStake, CardTeam } from '../cards/types';
 import type { Pace } from '../infrastructure/rate-limiter';
 import { Infrastructure } from './infrastructure';
 import {
@@ -130,6 +130,7 @@ export class SlatePoster {
     }
 
     const teams = await this.teamLookup(posting);
+    const stakes = await this.store.findStakes(posting.map((game) => game.gameId));
     const channel = await this.sendableChannel(target.channelId);
     const chunks = splitSlate(posting);
 
@@ -145,7 +146,7 @@ export class SlatePoster {
     }
 
     const first: Message = await this.pace<Message>(
-      () => channel.send(messagePayload(chunks[0], teams)),
+      () => channel.send(messagePayload(chunks[0], teams, stakes)),
       `POST /channels/${channel.id}/messages`,
     );
     const messageIds = [first.id];
@@ -158,7 +159,7 @@ export class SlatePoster {
         threadId = thread.id;
         for (const chunk of chunks.slice(1)) {
           const message = await this.pace(
-            () => thread.send(messagePayload(chunk, teams)),
+            () => thread.send(messagePayload(chunk, teams, stakes)),
             `POST /channels/${thread.id}/messages`,
           );
           messageIds.push(message.id);
@@ -197,12 +198,15 @@ export class SlatePoster {
     const etKey = etDateKey(now);
     const games = await this.slateGames(etKey, now);
     const teams = await this.teamLookup(games);
+    const stakes = await this.store.findStakes(games.map((game) => game.gameId));
     const shown = games.slice(0, CARDS_PER_MESSAGE);
 
     return {
       etKey,
       games: games.length,
-      payloads: shown.map((game) => inert(cardPayload(toCardGame(game), toCardTeams(game, teams)))),
+      payloads: shown.map((game) =>
+        inert(cardPayload(toCardGame(game), toCardTeams(game, teams, stakes.get(game.gameId)))),
+      ),
       threaded: Math.max(0, games.length - CARDS_PER_MESSAGE),
     };
   }
@@ -211,11 +215,19 @@ export class SlatePoster {
     return selectSlateGames(await this.store.findGames(etKey), etKey, now);
   }
 
+  /**
+   * The `teams` rows for these games, with their record for the slate's season.
+   *
+   * The season comes from the games themselves rather than from the clock: a slate
+   * posted on the ET evening of the last day of a season would otherwise look up
+   * the new season's empty record for every card.
+   */
   private async teamLookup(games: readonly SlateGame[]): Promise<Map<string, CardTeam>> {
     const tricodes = games
       .flatMap((game) => [game.awayTeamTricode, game.homeTeamTricode])
       .filter((tricode): tricode is string => Boolean(tricode));
-    const rows = await this.store.findTeams(tricodes);
+    const season = games.find((game) => game.seasonYear)?.seasonYear ?? null;
+    const rows = await this.store.findTeams(tricodes, season);
     return new Map(rows.map((team) => [team.tricode, team]));
   }
 
@@ -360,8 +372,14 @@ function missingPermissions(channel: SendableChannels, threads: boolean): string
 }
 
 /** One message's worth of cards: four embeds and four action rows at most. */
-function messagePayload(games: readonly SlateGame[], teams: Map<string, CardTeam>): CardPayload {
-  const payloads = games.map((game) => cardPayload(toCardGame(game), toCardTeams(game, teams)));
+function messagePayload(
+  games: readonly SlateGame[],
+  teams: ReadonlyMap<string, CardTeam>,
+  stakes: ReadonlyMap<string, CardStake>,
+): CardPayload {
+  const payloads = games.map((game) =>
+    cardPayload(toCardGame(game), toCardTeams(game, teams, stakes.get(game.gameId))),
+  );
   return {
     embeds: payloads.flatMap((payload) => payload.embeds),
     components: payloads.flatMap((payload) => payload.components),

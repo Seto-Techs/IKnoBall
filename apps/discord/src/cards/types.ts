@@ -32,6 +32,21 @@ export interface CardTeam {
   /** SVG on cdn.nba.com. Kept for reference; Discord will not render it. */
   logoUrl?: string | null;
   record?: CardTeamRecord | null;
+  /**
+   * What a weighted pick on this side pays if it is right, at the de-vigged price
+   * on record when the card was built.
+   *
+   * Absent or null when the feed had no price for the game, and absent on a card
+   * that has been rebuilt after tip-off: once the card is locked there is nothing
+   * left to pick, so the number would be noise.
+   */
+  points?: number | null;
+}
+
+/** Both sides' payouts for one game. A side with no price is null. */
+export interface CardStake {
+  away: number | null;
+  home: number | null;
 }
 
 /** One record per side, so nothing has to be looked up by tricode. */

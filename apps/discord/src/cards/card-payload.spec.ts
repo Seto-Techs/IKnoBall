@@ -24,12 +24,14 @@ const teams: CardTeams = {
     name: 'Memphis Grizzlies',
     logoUrl: 'https://cdn.nba.com/logos/nba/1610612763/global/L/logo.svg',
     record: { wins: 34, losses: 27, form: ['W', 'L', 'W', 'W', 'L', 'W'] },
+    points: 26,
   },
   home: {
     tricode: 'DAL',
     name: 'Dallas Mavericks',
     logoUrl: 'https://cdn.nba.com/logos/nba/1610612742/global/L/logo.svg',
     record: { wins: 42, losses: 19, form: ['L', 'L', 'W', 'W', 'W'] },
+    points: 8,
   },
 };
 
@@ -82,7 +84,7 @@ describe('cardPayload', () => {
     expect('label' in link && link.label).toBe('Open on web');
   });
 
-  it('renders label-only buttons and no thumbnail before the emojis are uploaded', () => {
+  it('renders label-only buttons and bare field names before the emojis are uploaded', () => {
     const [row] = cardPayload(game, teams, { emojis: NO_EMOJIS }).components;
     const [embed] = cardPayload(game, teams, { emojis: NO_EMOJIS }).embeds;
 
@@ -91,14 +93,7 @@ describe('cardPayload', () => {
     }
     expect(row.components[0]).toMatchObject({ label: 'MEM' });
     expect(row.components[1]).toMatchObject({ label: 'DAL' });
-    expect(embed.thumbnail).toBeUndefined();
-    expect(embed.fields?.map((field) => field.name)).toEqual([
-      'Away · MEM',
-      'Away · Last 5',
-      '\u200b',
-      'Home · DAL',
-      'Home · Last 5',
-    ]);
+    expect(embed.fields?.map((field) => field.name)).toEqual(['MEM · 34-27', 'DAL · 42-19']);
   });
 
   it('puts the team marks in the fields and buttons once the ids exist', () => {
@@ -110,34 +105,91 @@ describe('cardPayload', () => {
       emoji: { id: '111111111111111111', name: 'MEM' },
     });
     expect(embeds[0].fields?.map((field) => field.name)).toEqual([
-      '<:MEM:111111111111111111> Away · MEM',
-      '<:MEM:111111111111111111> Away · Last 5',
-      '\u200b',
-      '<:DAL:222222222222222222> Home · DAL',
-      '<:DAL:222222222222222222> Home · Last 5',
+      '<:MEM:111111111111111111> MEM · 34-27',
+      '<:DAL:222222222222222222> DAL · 42-19',
     ]);
-    // The uploaded emoji is the only 128px PNG of a team mark: `logoUrl` is SVG,
-    // which Discord does not render in a thumbnail.
-    expect(embeds[0].thumbnail).toEqual({
-      url: 'https://cdn.discordapp.com/emojis/222222222222222222.png?size=128',
-    });
+    // Every field is inline, so the pair sits side by side like the web card.
+    expect(embeds[0].fields?.map((field) => field.inline)).toEqual([true, true]);
   });
 
-  it('shows records and the last five, capped at five results', () => {
+  it('spends no space on an author line, a thumbnail, or a footer', () => {
     const [embed] = cardPayload(game, teams).embeds;
-    const values = embed.fields?.map((field) => field.value);
 
-    expect(values).toEqual(['34-27', 'W L W W L', '\u200b', '42-19', 'L L W W W']);
+    // Each of those pushes the 432px body wide enough to wrap the tip-off line.
+    expect(embed.author).toBeUndefined();
+    expect(embed.thumbnail).toBeUndefined();
+    expect(embed.footer).toBeUndefined();
+    expect(embed.title).toBe('MEM @ DAL');
   });
 
-  it('still renders a card for a team with no record yet', () => {
-    const [embed] = cardPayload(game, {
-      ...teams,
-      away: { tricode: 'MEM', name: 'Memphis Grizzlies' },
-    }).embeds;
+  it('carries the season record, the last five, and what the pick pays', () => {
+    const [embed] = cardPayload(game, teams).embeds;
 
+    // MEM is 6-0 in the fixture's form; only the last five are shown.
+    expect(embed.fields?.map((field) => field.value)).toEqual([
+      'W L W W L\n**+26 pts**',
+      'L L W W W\n**+8 pts**',
+    ]);
+  });
+
+  it('says — for a side with a record but no form or price', () => {
+    const [embed] = cardPayload(
+      game,
+      {
+        away: { tricode: 'MEM', name: 'Memphis Grizzlies', record: { wins: 0, losses: 0 } },
+        home: { tricode: 'DAL', name: 'Dallas Mavericks' },
+      },
+      { emojis: FIXTURE_EMOJIS },
+    ).embeds;
+
+    expect(embed.fields?.map((field) => field.name)).toEqual([
+      '<:MEM:111111111111111111> MEM · 0-0',
+    ]);
     expect(embed.fields?.[0].value).toBe('—');
-    expect(embed.fields?.[1].value).toBe('—');
+  });
+
+  it('shows the price alone when the feed has no record yet', () => {
+    const [embed] = cardPayload(
+      game,
+      {
+        away: { tricode: 'MEM', name: 'Memphis Grizzlies', points: 26 },
+        home: { tricode: 'DAL', name: 'Dallas Mavericks', points: 8 },
+      },
+      { emojis: FIXTURE_EMOJIS },
+    ).embeds;
+
+    expect(embed.fields?.map((field) => field.name)).toEqual([
+      '<:MEM:111111111111111111> MEM',
+      '<:DAL:222222222222222222> DAL',
+    ]);
+    expect(embed.fields?.map((field) => field.value)).toEqual(['**+26 pts**', '**+8 pts**']);
+  });
+
+  it('drops the side that has neither a record nor a price', () => {
+    const [embed] = cardPayload(
+      game,
+      { ...teams, away: { tricode: 'MEM', name: 'Memphis Grizzlies' } },
+      { emojis: FIXTURE_EMOJIS },
+    ).embeds;
+
+    expect(embed.fields).toHaveLength(1);
+    expect(embed.fields?.[0].name).toBe('<:DAL:222222222222222222> DAL · 42-19');
+  });
+
+  it('keeps the matchup in the description when no side has anything to show', () => {
+    const [embed] = cardPayload(
+      game,
+      {
+        away: { tricode: 'MEM', name: 'Memphis Grizzlies' },
+        home: { tricode: 'DAL', name: 'Dallas Mavericks' },
+      },
+      { emojis: FIXTURE_EMOJIS },
+    ).embeds;
+
+    expect(embed.fields).toBeUndefined();
+    expect(embed.description?.split('\n')[0]).toBe(
+      '<:MEM:111111111111111111> **MEM** @ **DAL** <:DAL:222222222222222222>',
+    );
   });
 
   it('says TBD rather than rendering an unparseable tip-off', () => {

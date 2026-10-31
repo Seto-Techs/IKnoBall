@@ -10,7 +10,7 @@
  * remainder goes to a thread rather than a second message in the channel, which
  * keeps one day's slate in one conversation (DISC-10).
  */
-import type { CardGame, CardTeam, CardTeams } from '../cards/types';
+import type { CardGame, CardStake, CardTeam, CardTeams } from '../cards/types';
 import { slateDateKey } from './slate-date';
 
 /** Cards per message: one action row each, under Discord's cap of five. */
@@ -29,6 +29,8 @@ export interface SlateGame {
   homeTeamCity: string | null;
   homeTeamName: string | null;
   seriesText: string | null;
+  /** The season the row's day belongs to, which is the season the record is for. */
+  seasonYear: string | null;
 }
 
 /**
@@ -109,7 +111,12 @@ export function toCardGame(game: SlateGame): CardGame {
   };
 }
 
-function sideTeam(game: SlateGame, side: 'away' | 'home', teams: ReadonlyMap<string, CardTeam>) {
+function sideTeam(
+  game: SlateGame,
+  side: 'away' | 'home',
+  teams: ReadonlyMap<string, CardTeam>,
+  stake: CardStake | undefined,
+) {
   const tricode =
     (side === 'away' ? game.awayTeamTricode : game.homeTeamTricode)?.trim().toUpperCase() ?? '';
   const row = tricode ? teams.get(tricode) : undefined;
@@ -123,15 +130,26 @@ function sideTeam(game: SlateGame, side: 'away' | 'home', teams: ReadonlyMap<str
     tricode: row?.tricode ?? tricode,
     name: row?.name ?? fallbackName,
     logoUrl: row?.logoUrl ?? null,
-    // No season record on this side of the wire: the W-L column comes from the
-    // backend's standings/teams controllers, which this chunk does not own, and
-    // the card already renders a dash when a record is absent. Guessing one from
-    // final games would fork the standings logic into the bot.
-    record: null,
+    // Absent when the team has no `teams` row or no completed games yet: the card
+    // drops that side's field rather than printing a dash where the record goes.
+    record: row?.record ?? null,
+    points: stake?.[side] ?? null,
   };
 }
 
-/** Both sides of a card, using the `teams` rows where they exist. */
-export function toCardTeams(game: SlateGame, teams: ReadonlyMap<string, CardTeam>): CardTeams {
-  return { away: sideTeam(game, 'away', teams), home: sideTeam(game, 'home', teams) };
+/**
+ * Both sides of a card, using the `teams` rows where they exist.
+ *
+ * `stake` is what each side pays if picked right; a card built after tip-off has
+ * none, because there is nothing left to pick.
+ */
+export function toCardTeams(
+  game: SlateGame,
+  teams: ReadonlyMap<string, CardTeam>,
+  stake?: CardStake | null,
+): CardTeams {
+  return {
+    away: sideTeam(game, 'away', teams, stake ?? undefined),
+    home: sideTeam(game, 'home', teams, stake ?? undefined),
+  };
 }

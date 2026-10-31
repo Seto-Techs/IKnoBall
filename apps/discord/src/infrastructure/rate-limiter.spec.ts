@@ -411,6 +411,9 @@ function slateStore(games: SlateGame[]): SlateStore {
     async findTeams() {
       return TEAMS;
     },
+    async findStakes() {
+      return new Map();
+    },
     async claimCards(batch) {
       const fresh = batch.filter((claim) => !claimed.has(`${claim.guildId}:${claim.gameId}`));
       for (const claim of fresh) claimed.add(`${claim.guildId}:${claim.gameId}`);

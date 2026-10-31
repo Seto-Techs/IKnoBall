@@ -193,6 +193,7 @@ describe('a schedule row as a card', () => {
       name: 'Boston Celtics',
       logoUrl: 'https://cdn/BOS.svg',
       record: null,
+      points: null,
     });
     // Brooklyn is not in the table: the card still renders, from the schedule.
     expect(sides.away).toEqual({
@@ -200,6 +201,7 @@ describe('a schedule row as a card', () => {
       name: 'Brooklyn Nets',
       logoUrl: null,
       record: null,
+      points: null,
     });
   });
 
