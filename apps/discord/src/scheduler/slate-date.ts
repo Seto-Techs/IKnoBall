@@ -55,6 +55,22 @@ export function shiftEtDate(days: number, from: Date): string {
   return shiftDateKey(etDateKey(from), days);
 }
 
+/** `YYYY-MM-DD` and nothing else. */
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Is this a real calendar day, spelled as a key?
+ *
+ * The shape check alone accepts `2026-02-31`, which would select nothing and look
+ * like an empty slate day. Round-tripping through `Date` rejects it: the parse
+ * rolls to March and the reformatted key no longer matches.
+ */
+export function isDateKey(key: string): boolean {
+  if (!DATE_KEY.test(key)) return false;
+  const anchor = new Date(`${key}T12:00:00.000Z`);
+  return !Number.isNaN(anchor.getTime()) && anchor.toISOString().slice(0, 10) === key;
+}
+
 /** `days` after a `YYYY-MM-DD` key. */
 export function shiftDateKey(key: string, days: number): string {
   const anchor = new Date(`${key}T12:00:00.000Z`);

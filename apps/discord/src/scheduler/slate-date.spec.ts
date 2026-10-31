@@ -3,6 +3,7 @@ import {
   dateKeyIn,
   etDateKey,
   formatDayKey,
+  isDateKey,
   localClock,
   localHour,
   shiftDateKey,
@@ -111,5 +112,17 @@ describe('day arithmetic', () => {
   it('labels a key for a thread title', () => {
     expect(formatDayKey('2026-10-27')).toBe('Oct 27');
     expect(formatDayKey('2026-01-01')).toBe('Jan 1');
+  });
+
+  it('accepts only keys that are real calendar days', () => {
+    expect(isDateKey('2026-10-31')).toBe(true);
+    expect(isDateKey('2028-02-29')).toBe(true);
+    // The shape is right and the day is not: a date that parses to something else
+    // must not be treated as a day with no games.
+    expect(isDateKey('2026-02-31')).toBe(false);
+    expect(isDateKey('2026-13-01')).toBe(false);
+    expect(isDateKey('2026-10-31T00:00')).toBe(false);
+    expect(isDateKey('31-10-2026')).toBe(false);
+    expect(isDateKey('tomorrow')).toBe(false);
   });
 });

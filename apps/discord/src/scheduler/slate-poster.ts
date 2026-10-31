@@ -176,6 +176,17 @@ export class SlatePoster {
   }
 
   /**
+   * The games a post for `etKey` would send, with nothing claimed and nothing sent.
+   *
+   * The selection half of `postFor`, on its own: `bun run force:slate --dry-run`
+   * uses it to show an operator what is about to go into a channel before it goes,
+   * and it is the only caller that needs the two halves apart.
+   */
+  async plan(etKey: string, now: Date = new Date()): Promise<SlateGame[]> {
+    return this.slateGames(etKey, now);
+  }
+
+  /**
    * Today's cards as `/setup` would show them.
    *
    * The same selection and the same payload builder as a real post, with the
