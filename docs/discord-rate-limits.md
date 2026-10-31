@@ -7,31 +7,36 @@ in the cost tables and in §3 comes from `apps/discord/src/infrastructure/rate-l
 which runs the real `RateLimiter` against a fake Discord that enforces the published
 limits. §9 says exactly what that simulation does and does not prove.
 
-Short version: **one guild's day costs four REST calls** (a channel fetch, a message,
-a lock edit, a settlement edit) and **100 guilds finish a slate post plus a full lock
-pass in 7.4 seconds** of a 60-second window, with no 429 and no invalid request. The
-global 50-per-second bucket is the wall, not the per-route buckets, and it is hit at
-around 800 guilds posting _and_ locking in the same minute.
+Short version: **one guild's four-game day costs thirteen REST calls** (a channel
+fetch, four card messages, four lock edits, four settlement edits) and **100 guilds
+finish a slate post plus a full lock pass in 22.4 seconds** of a 60-second window, with
+no 429 and no invalid request. The global 50-per-second bucket is the wall, not the
+per-route buckets, and it is hit at around 180 guilds posting _and_ locking in the same
+minute.
+
+The cost is what it is because a card is one message (§1): Discord draws every embed in
+a message above every action row, so cards can only sit above their own buttons if each
+card is its own message.
 
 ## 1. What one slate post costs
 
-`SlatePoster.post()` fetches the channel, then sends. Four cards fit one message (four
-embeds and four action rows, under Discord's five-row cap), so a wider slate opens a
-thread on the first message and puts the rest of the cards in it.
+`SlatePoster.post()` fetches the channel, then sends one message per card. A card and
+its action row have to share a message: a message's embeds all render above all of its
+components, so two cards in one message shows both cards and then both button rows, and
+a reader cannot tell which buttons pick which game.
 
-| Cards | Calls | What they are                                                                           |
-| ----: | ----: | --------------------------------------------------------------------------------------- |
-|   1–4 |     2 | `GET /channels/{c}`, `POST /channels/{c}/messages`                                      |
-|   5–8 |     4 | the two above, `POST /channels/{c}/messages/{m}/threads`, `POST /channels/{t}/messages` |
-|  9–12 |     5 | the two above, one thread, two messages in it                                           |
+| Cards | Calls | What they are                                                 |
+| ----: | ----: | ------------------------------------------------------------- |
+|     1 |     2 | `GET /channels/{c}`, `POST /channels/{c}/messages`            |
+|     4 |     5 | the two above, then three more `POST /channels/{c}/messages`  |
+|    12 |    13 | the two above, then eleven more `POST /channels/{c}/messages` |
 
-General form: **2 calls for up to four cards, then `2 + ceil(cards / 4)`** — the
-channel fetch and the first message are fixed, and every four cards past the first
-cost one message plus, once, one thread creation. The channel fetch is real: `channels.fetch`
-is a `GET`, even when the channel is about to be used for a send.
+General form: **`1 + cards`** — one channel fetch, then one message per card. The
+channel fetch is real: `channels.fetch` is a `GET`, even when the channel is about to be
+used for a send.
 
-Measured by the `cost table` test, which posts slates of 1, 4, 5, 6, 8 and 12 cards and
-counts the calls the fake Discord received: 2, 2, 4, 4, 4, 5.
+Measured by the `cost table` test, which posts slates of 1, 4, 6, 8 and 12 cards and
+counts the calls the fake Discord received: 2, 5, 7, 9, 13.
 
 A guild whose channel the bot cannot post in costs **zero** calls: the permission
 preflight (`missingPermissions` in `apps/discord/src/scheduler/slate-poster.ts`) runs on
@@ -41,66 +46,72 @@ the difference between a skip and a 403, and a 403 is an invalid request against
 
 ## 2. What one lock pass costs
 
-A lock is **one `PATCH /channels/{c}/messages/{m}` per message**, not per card:
-`lock/card-sweep.ts` groups due cards by message, and `lock/card-editor.ts` sends the
-rebuilt payload in a single call. Four cards to a message, so:
+A lock is **one `PATCH /channels/{c}/messages/{m}` per message**, and a message holds
+one card: `lock/card-sweep.ts` groups due cards by message, and `lock/card-editor.ts`
+sends the rebuilt payload in a single call. So:
 
-- **0.25 calls per card**;
-- 1 call per guild for a four-card slate, 2 for a five-to-eight-card slate, 3 for a
-  nine-to-twelve-card one — the same `ceil(cards / 4)` messages a post creates.
+- **1 call per card** — the price of each card having its own buttons;
+- 4 calls per guild for a four-card slate, 12 for a twelve-card one.
 
 The settlement pass is the same shape and the same cost.
 
-A guild's whole day, four games: 2 (post) + 1 (lock) + 1 (settlement) = **4 calls**.
-A twelve-game day: 5 + 3 + 3 = **11 calls**. Nobody is close to anything.
+A guild's whole day, four games: 5 (post) + 4 (lock) + 4 (settlement) = **13 calls**.
+A twelve-game day: 13 + 12 + 12 = **37 calls**. Nobody is close to anything.
 
 ## 3. 100 guilds in one minute
 
 The load test posts a four-card slate to 100 guilds and then runs a full lock pass over
-all of them — 300 REST calls — on the real queue with the default 40 requests/second
+all of them — 900 REST calls — on the real queue with the default 40 requests/second
 and a burst of 5:
 
 |                                       |                                                                                                              |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| REST calls                            | **300** (100 `GET /channels/{c}`, 100 `POST /channels/{c}/messages`, 100 `PATCH /channels/{c}/messages/{m}`) |
+| REST calls                            | **900** (100 `GET /channels/{c}`, 400 `POST /channels/{c}/messages`, 400 `PATCH /channels/{c}/messages/{m}`) |
 | 429s                                  | **0**                                                                                                        |
 | invalid requests (401/403/404)        | **0**                                                                                                        |
-| wall time on the queue's clock        | **7,375 ms**                                                                                                 |
+| wall time on the queue's clock        | **22,375 ms**                                                                                                |
 | longest single wait the queue imposed | **25 ms**                                                                                                    |
 | retries                               | 0                                                                                                            |
 
-That is the queue running at its own cap, not Discord's: 300 calls in 7.4 seconds is
-~41 a second, **81% of the 50/s ceiling**, and the whole fan-out spends 12% of the
-minute. The ceiling is what the work is paced to, so the same work would take ~6 s at
+That is the queue running at its own cap, not Discord's: 900 calls in 22.4 seconds is
+~40 a second, **81% of the 50/s ceiling**, and the whole fan-out spends 37% of the
+minute. The ceiling is what the work is paced to, so the same work would take ~18 s at
 Discord's full 50/s — the point of sitting at 40 is that nothing has to be discovered
-with a 429. The same test with twelve-card slates (100 guilds, 500 calls) finishes in
-**12,375 ms** (~40/s), still well inside the minute.
+with a 429. The same test with twelve-card slates (100 guilds, 1,300 calls) finishes in
+**32,375 ms** (~40/s), still well inside the minute.
 
 The bucket sets the ceiling at 40 calls a second, so a minute holds **2,400 calls**.
-A post is two of them, so the post fan-out fits **1,200 guilds in one minute** at 40/s
-and **1,500** at Discord's 50/s; adding the lock pass in the same minute (three calls
-per guild) brings those down to 800 and 1,000. Nothing in the design is near that
-today, and the shape of the answer matters more than the number: the cost is linear in
-guilds, so the fan-out is a throughput question, not a per-route one.
+A four-game guild's whole day is thirteen of them (five to post, four to lock, four to
+settle), so the fan-out fits **~180 guilds in one minute** at 40/s and **~230** at
+Discord's 50/s. One card per message is 3.25× the calls of the four-up message it
+replaced, which is the price of every card keeping its own buttons. Nothing in the
+design is near that today, and the shape of the answer matters more than the number:
+the cost is linear in guilds, so the fan-out is a throughput question, not a per-route
+one.
 
 ## 4. Where the bottleneck actually is
 
 **The global bucket, not the per-route buckets.** Discord keys per-route limits on the
 top-level resource in the path — the channel, for every call the bot makes — so 100
-guilds are 100 _independent_ buckets with one call each. They never bind. The per-route
-table only holds anything back when a single channel receives a burst, which happens
-in exactly one place: a wide slate, where one channel gets the message and up to
-`ceil(n/4) - 1` more messages in the thread (3 calls for twelve cards). Even that is
-three calls in a few milliseconds against a bucket of at least five.
+guilds are 100 _independent_ buckets. They never bind while the guilds outnumber the
+calls per channel in a burst. The per-route table only holds anything back when a single
+channel receives a burst, and one card per message makes that the one place worth
+watching: a four-game slate is now four `POST`s to one channel where it used to be one.
+Four is under the fake's stand-in bucket of five per five seconds, which is why the load
+test measures no per-route wait at all; a twelve-card slate is twelve, which a real
+bucket of that shape would hold back once. The queue reads `X-RateLimit-*` off every
+response (§5), so that wait is learned rather than paid as a 429, and it stays inside one
+guild's slate — the other 99 channels keep their own buckets.
 
 So the ordering is:
 
-1. **Global bucket** — 40/s as configured, 50/s as Discord allows. Binds first: ~1,200
-   guilds posting in the same minute at 40/s, ~800 posting and locking. This is the
-   wall.
+1. **Global bucket** — 40/s as configured, 50/s as Discord allows. Binds first: ~180
+   guilds doing a whole four-game day in the same minute at 40/s, ~230 at 50/s. This is
+   the wall.
 2. **Per-route buckets** — invisible until they are hit (Discord publishes no numbers),
-   and only reachable by a single guild's wide slate. Cheap to stay under, expensive to
-   discover the hard way, which is why the queue learns them from headers (§5).
+   and only reachable by a single guild's slate, where one channel now takes one message
+   per card. Cheap to stay under, expensive to discover the hard way, which is why the
+   queue learns them from headers (§5).
 3. **Invalid requests** — not a throughput limit at all, a cliff: 10,000 in ten minutes
    is a sustained 16.7 invalid requests a second, or one bad token retrying everything
    it is given. That is why a 401 halts the process (§8) rather than backing off.
@@ -143,45 +154,44 @@ same place, and they are not the same limit:
 - **Gateway**: ~2,500 guilds per shard, so at 2,500 guilds the bot needs a second
   shard — a second process.
 - **REST**: the 50/s global limit is **per bot, not per shard**. At 2,500 guilds a
-  four-card post is 5,000 calls, which takes 125 seconds at 40/s and cannot be made
-  faster by adding a process: two processes each running their own 40/s bucket would
-  ask Discord for 80/s and start collecting global 429s.
+  four-card post is 12,500 calls, which takes 312 seconds at 40/s — five minutes of
+  window for a one-minute fan-out — and cannot be made faster by adding a process: two
+  processes each running their own 40/s bucket would ask Discord for 80/s and start
+  collecting global 429s.
 
-So the fan-out ceiling is **~1,500 guilds posting in the same minute** at 50/s, and it
-is a property of the bot, not of the shard count. When the bot reaches that, the fix is
+So the fan-out ceiling is **~230 guilds doing a whole day in the same minute** at 50/s
+(~180 at the configured 40/s), and it is a property of the bot, not of the shard count.
+One card per message is what moved that number down by a factor of about three; the
+alternative was cards whose buttons belong to some other card. When the bot reaches that, the fix is
 a budget shared across processes (a Redis token bucket behind `RateLimiter`, or one
 process owning outbound REST for all shards) — not more shards. Writing that down now is
 the point of the question; nothing here needs it below a thousand guilds, and today the
 bot is in zero.
 
-## 7. Per-card lock edits, or one "all games locked" follow-up message?
+## 7. The lock edit, and the "all games locked" follow-up that was rejected
 
-**Keep the message-level edit that is already implemented. Reject both alternatives.**
-The numbers, for a 100-guild fan-out of four-card slates:
+**Keep the message edit.** Before one card per message, this section had to defend
+editing a four-card message once instead of each card separately; that question is gone
+now — a message holds one card, so a message edit _is_ a card edit, at one call each.
+
+The alternative that is still worth refusing is an "all games locked" follow-up message.
 
 | Approach                                |   Calls | Time at 40/s | What it costs beyond that                                                                                                                                                          |
 | --------------------------------------- | ------: | -----------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| One `PATCH` per message (today)         | **100** |    **2.4 s** | none                                                                                                                                                                               |
-| One `PATCH` per card                    |     400 |         10 s | 4× the calls, and each `PATCH` replaces the whole payload — a per-card edit has to rebuild all four embeds and can delete the siblings if it gets that wrong                       |
-| One "all games locked" follow-up `POST` |     100 |        2.4 s | the buttons on the card stay enabled (component state belongs to the message), a second message in the channel, a message id to store, and the settlement edit is still owed later |
+| One `PATCH` per message (today)         | **400** |     **10 s** | none                                                                                                                                                                               |
+| One "all games locked" follow-up `POST` |     400 |         10 s | the buttons on the card stay enabled (component state belongs to the message), a second message in the channel, a message id to store, and the settlement edit is still owed later |
 
-The follow-up message is the interesting one, because it _looks_ cheaper and is not:
-it is the same single call as the edit, and it buys strictly less. A lock's whole
-visible effect is `disabled` on the pick buttons, and a message's components are
-per-message — a new message cannot disable the buttons on the old one. So the follow-up
-would announce "all games locked" above a card whose buttons still look pressable. The
-edit changes what a reader sees for the same one call.
-
-Per-card edits are worse on every axis. A message holds four cards, so per-card is
-exactly four calls where the code makes one; and because `PATCH` replaces the payload,
-"edit one card" means "rebuild the message with one card changed", which is four
-payload constructions and four chances to drop a sibling's embed. `lock/card-sweep.ts`
-already says this in the `SweepJob` doc comment; this is the measurement behind it.
+The follow-up is the interesting one, because it _looks_ equivalent and is not: it is
+the same single call as the edit, and it buys strictly less. A lock's whole visible
+effect is `disabled` on the pick buttons, and a message's components are per-message — a
+new message cannot disable the buttons on the old one. So the follow-up would announce
+"all games locked" above a card whose buttons still look pressable. The edit changes
+what a reader sees for the same one call.
 
 It also does not matter much if a lock edit fails. Tip-off is enforced server-side
 (`PredictionsService.placePick` → `requireOpenGame`), so a stale-looking card is
 cosmetic, which is why the sweep may stop a run on a transient error instead of
-retrying hard — and why 0.25 calls per card is the right amount to spend on it.
+retrying hard.
 
 ## 8. What the queue does with a failure
 
@@ -223,20 +233,21 @@ that enforces:
   drives 10,001 403s to prove the fake really does it, so "zero invalid" in the load
   test means something.
 
-Everything runs on an injected virtual clock, so 300 calls of pacing take milliseconds
+Everything runs on an injected virtual clock, so 900 calls of pacing take milliseconds
 of real time while the queue still waits exactly as long as it would have. Tests cover
 the bucket (burst, pacing, `depth()`), a 429 being waited out and retried, a 429
 blocking its route for the sibling task, a 401 halting the queue, a 404 never being
 retried, a per-route bucket holding one channel back with **no** 429, `attachRest`
 learning a bucket from an emitted response, the cost table above, and a second
-100-guild fan-out of twelve-card slates (500 calls, one thread per guild) to prove the
-thread path is paced too.
+100-guild fan-out of twelve-card slates (1,300 calls, one message per card) to prove a
+wide slate is paced as well as a normal one.
 
 **This is a simulation of 100 guilds, not a live run.** The bot is in zero guilds and
 cannot post to real Discord. What the simulation cannot tell you: real network latency
 and Discord-side queueing; how discord.js's own internal bucket handling interacts with
 ours in production (the fake replaces discord.js's REST layer entirely); the true
-per-route limits, which are unpublished; the thread-creation bucket; and whether
+per-route limits, which are unpublished, including whether a real per-channel bucket
+is tighter than the fake's 5-per-5-seconds stand-in for a wide slate; and whether
 Discord's own invalid-request counter agrees with ours over ten minutes. The first live
 day in a real guild is the measurement that closes those gaps, and `stats()` is what to
 read when it happens.

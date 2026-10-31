@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CARDS_PER_MESSAGE,
-  selectSlateGames,
-  splitSlate,
-  toCardGame,
-  toCardTeams,
-  type SlateGame,
-} from './slate';
+import { selectSlateGames, toCardGame, toCardTeams, type SlateGame } from './slate';
 
 /**
- * Which games a slate day contains, and how they are packed into messages.
+ * Which games a slate day contains, and how a row becomes a card.
  *
  * Pure functions, so every case here is an exact set of rows and an exact instant.
  */
@@ -111,43 +104,6 @@ describe('slate selection', () => {
   });
 });
 
-describe('splitting a slate into messages', () => {
-  const games = (count: number) =>
-    Array.from({ length: count }, (_, index) =>
-      game({
-        gameId: `g${index}`,
-        gameDateTimeUTC: new Date(Date.parse('2026-10-27T23:30:00.000Z') + index * 900_000),
-      }),
-    );
-
-  it('is four cards per message, one action row each', () => {
-    expect(CARDS_PER_MESSAGE).toBe(4);
-  });
-
-  it('sends an empty slate as no messages at all', () => {
-    expect(splitSlate([])).toEqual([]);
-  });
-
-  it('keeps up to four games in one message', () => {
-    expect(splitSlate(games(4)).map((chunk) => chunk.length)).toEqual([4]);
-  });
-
-  it('threads the remainder past four', () => {
-    expect(splitSlate(games(5)).map((chunk) => chunk.length)).toEqual([4, 1]);
-    expect(splitSlate(games(6)).map((chunk) => chunk.length)).toEqual([4, 2]);
-    expect(splitSlate(games(12)).map((chunk) => chunk.length)).toEqual([4, 4, 4]);
-  });
-
-  it('keeps the order the selection produced', () => {
-    const chunks = splitSlate(games(6));
-    expect(chunks.flat().map((row) => row.gameId)).toEqual(games(6).map((row) => row.gameId));
-  });
-
-  it('refuses a chunk size that cannot hold a card', () => {
-    expect(() => splitSlate(games(2), 0)).toThrow(RangeError);
-  });
-});
-
 describe('a schedule row as a card', () => {
   it('carries the names, tricodes, and tip-off the card renders', () => {
     expect(toCardGame(game({ gameId: 'g1' }))).toEqual({
@@ -193,6 +149,7 @@ describe('a schedule row as a card', () => {
       name: 'Boston Celtics',
       logoUrl: 'https://cdn/BOS.svg',
       record: null,
+      points: null,
     });
     // Brooklyn is not in the table: the card still renders, from the schedule.
     expect(sides.away).toEqual({
@@ -200,6 +157,7 @@ describe('a schedule row as a card', () => {
       name: 'Brooklyn Nets',
       logoUrl: null,
       record: null,
+      points: null,
     });
   });
 

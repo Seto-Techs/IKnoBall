@@ -31,7 +31,6 @@ function posted(overrides: Partial<PostResult> = {}): PostResult {
     etKey: '2026-10-31',
     games: 7,
     messageIds: ['333333333333333333', '444444444444444444'],
-    threadId: '555555555555555555',
     ...overrides,
   };
 }
@@ -118,7 +117,7 @@ describe('forceSlate', () => {
       `https://discord.com/channels/${GUILD.guildId}/${GUILD.channelId}/333333333333333333`,
     );
     expect(said.join('\n')).toContain(
-      `thread <https://discord.com/channels/${GUILD.guildId}/555555555555555555>`,
+      `https://discord.com/channels/${GUILD.guildId}/${GUILD.channelId}/444444444444444444`,
     );
   });
 
@@ -171,7 +170,7 @@ describe('forceSlate', () => {
   it('explains an already-posted day instead of posting it twice', async () => {
     const { deps, said } = harness();
     deps.poster.postFor = async () =>
-      posted({ status: 'already-posted', games: 0, messageIds: [], threadId: null });
+      posted({ status: 'already-posted', games: 0, messageIds: [] });
 
     await expect(forceSlate(args(), deps, NOW)).resolves.toBe(0);
 
@@ -183,8 +182,7 @@ describe('forceSlate', () => {
 
   it('reports an empty day without calling it a failure', async () => {
     const { deps, said } = harness();
-    deps.poster.postFor = async () =>
-      posted({ status: 'empty', games: 0, messageIds: [], threadId: null });
+    deps.poster.postFor = async () => posted({ status: 'empty', games: 0, messageIds: [] });
 
     await expect(forceSlate(args(), deps, NOW)).resolves.toBe(0);
 

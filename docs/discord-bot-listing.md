@@ -260,15 +260,13 @@ this one.
 > users, and above that a written justification is required, with review renewed each year
 > (<https://docs.discord.com/developers/gateway/getting-started-with-privileged-intent-review>).
 
-**Bot permissions: the minimum that lets a card post, update, and thread a long slate.**
+**Bot permissions: the minimum that lets a card post and update.**
 
-| Permission               | Why                                                            |
-| ------------------------ | -------------------------------------------------------------- |
-| View Channels            | To see the one channel an admin chose in `/setup`              |
-| Send Messages            | To post the slate and to reply to commands                     |
-| Embed Links              | Each game on the slate is an embed                             |
-| Create Public Threads    | A slate longer than four games threads the remainder (DISC-10) |
-| Send Messages in Threads | The card and its pick buttons live in that thread              |
+| Permission    | Why                                                |
+| ------------- | -------------------------------------------------- |
+| View Channels | To see the one channel an admin chose in `/setup`  |
+| Send Messages | To post one message per card and reply to commands |
+| Embed Links   | Each game on the slate is an embed                 |
 
 Not requested, and not needed: Administrator, Manage Server, Manage Channels, Manage Roles,
 Manage Messages, Kick/Ban Members, Read Message History, Attach Files, Mention Everyone. Three of

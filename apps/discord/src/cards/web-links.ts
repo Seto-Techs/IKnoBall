@@ -29,15 +29,3 @@ export function messageJumpUrl(
   if (!guildId || !channelId || !messageId) return null;
   return `https://discord.com/channels/${guildId}/${channelId}/${messageId}`;
 }
-
-/**
- * The PNG Discord generated for an application emoji.
- *
- * This is the only 128px PNG of a team mark we have: `teams.logoUrl` is an SVG
- * and Discord does not render SVG in an embed thumbnail, and cdn.nba.com serves
- * no PNG variant. Before the upload script has run there is no id, so the card
- * has no thumbnail — which is fine, the emoji marks are missing too.
- */
-export function emojiImageUrl(emojiId: string): string {
-  return `https://cdn.discordapp.com/emojis/${emojiId}.png?size=128`;
-}

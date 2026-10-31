@@ -39,7 +39,6 @@ function posted(guildId: string): PostResult {
     etKey: '2026-10-27',
     games: 2,
     messageIds: [`message-${guildId}`],
-    threadId: null,
   };
 }
 

@@ -411,6 +411,9 @@ function slateStore(games: SlateGame[]): SlateStore {
     async findTeams() {
       return TEAMS;
     },
+    async findStakes() {
+      return new Map();
+    },
     async claimCards(batch) {
       const fresh = batch.filter((claim) => !claimed.has(`${claim.guildId}:${claim.gameId}`));
       for (const claim of fresh) claimed.add(`${claim.guildId}:${claim.gameId}`);
@@ -429,22 +432,8 @@ function slateStore(games: SlateGame[]): SlateStore {
 function fakeGateway(rest: FakeDiscord) {
   const channels = new Map<string, unknown>();
 
-  /** A sent message: one more send, and the thread Discord would open on it. */
-  const message = (channelId: string, id: string) => ({
-    id,
-    channelId,
-    inGuild: () => true,
-    startThread: async () => {
-      const thread = await rest.request('POST', `/channels/${channelId}/messages/${id}/threads`);
-      return {
-        id: thread.id,
-        send: async () => {
-          const sent = await rest.request('POST', `/channels/${thread.id}/messages`);
-          return message(thread.id, sent.id);
-        },
-      };
-    },
-  });
+  /** A sent message: the poster only ever reads its id back. */
+  const message = (channelId: string, id: string) => ({ id, channelId, inGuild: () => true });
 
   const fetch = async (channelId: string) => {
     const cached = channels.get(channelId);
@@ -509,17 +498,23 @@ describe('100 simulated guilds', () => {
       ),
     );
 
-    for (const post of posts) expect(post.status).toBe('posted');
-    // 2 calls per guild: GET /channels/{c}, POST /channels/{c}/messages.
-    expect(rest.requests).toBe(200);
+    for (const post of posts) {
+      expect(post.status).toBe('posted');
+      expect(post.messageIds).toHaveLength(4);
+    }
+    // 5 calls per guild: GET /channels/{c}, then one POST per card.
+    expect(rest.requests).toBe(500);
 
-    // ---- a full lock pass: one PATCH per message, 4 cards per message.
-    const jobs: SweepJob[] = posts.map((post, index) => ({
-      channelId: guilds100[index]!.channelId,
-      messageId: post.messageIds[0]!,
-      cardIds: games.map((g) => `${guilds100[index]!.guildId}:${g.gameId}`),
-      payload: { embeds: [], components: [] },
-    }));
+    // ---- a full lock pass: one PATCH per message, and a card is its own message,
+    // so a four-game guild is four jobs rather than one.
+    const jobs: SweepJob[] = posts.flatMap((post, index) =>
+      post.messageIds.map((messageId, card) => ({
+        channelId: guilds100[index]!.channelId,
+        messageId,
+        cardIds: [`${guilds100[index]!.guildId}:${games[card]!.gameId}`],
+        payload: { embeds: [], components: [] },
+      })),
+    );
 
     const source: SweepSource = {
       name: 'tip-off lock',
@@ -551,18 +546,18 @@ describe('100 simulated guilds', () => {
 
     expect(report).toMatchObject({
       candidates: 400,
-      messages: 100,
+      messages: 400,
       edited: 400,
       dead: 0,
       failed: 0,
     });
-    expect(rest.requests).toBe(300);
+    expect(rest.requests).toBe(900);
 
     // ---- the acceptance: nothing over-sent, nothing invalid.
     expect(rest.rateLimited).toBe(0);
     expect(rest.invalid).toBe(0);
     expect(limiter.stats()).toMatchObject({
-      sent: 300,
+      sent: 900,
       rateLimited: 0,
       invalid: 0,
       retries: 0,
@@ -571,29 +566,28 @@ describe('100 simulated guilds', () => {
       halted: false,
     });
 
-    // 300 calls at 40/s after a burst of 5 is 7.4s of bucket time — inside the
+    // 900 calls at 40/s after a burst of 5 is 22.4s of bucket time — inside the
     // minute the fan-out has, and far inside Discord's 50/s.
-    expect(clock.elapsed()).toBeGreaterThanOrEqual(7_000);
-    expect(clock.elapsed()).toBeLessThanOrEqual(8_000);
+    expect(clock.elapsed()).toBeGreaterThanOrEqual(22_000);
+    expect(clock.elapsed()).toBeLessThanOrEqual(23_000);
 
     expect([...rest.byRoute.entries()].sort()).toEqual([
       ['GET /channels/:id', 100],
-      ['PATCH /channels/:id/messages/:id', 100],
-      ['POST /channels/:id/messages', 100],
+      ['PATCH /channels/:id/messages/:id', 400],
+      ['POST /channels/:id/messages', 400],
     ]);
   });
 
-  it('the cost table: one post is two calls, plus one per message past the first', async () => {
+  it('the cost table: one post is one channel read plus one message per card', async () => {
     // The numbers `docs/discord-rate-limits.md` quotes, measured rather than
-    // reasoned: GET the channel and POST the first message, then one thread and
-    // one message per four cards past the first.
+    // reasoned: GET the channel once, then POST a message for each card, because a
+    // card and its buttons have to be one message.
     const cases: Array<[cards: number, calls: number]> = [
       [1, 2],
-      [4, 2],
-      [5, 4],
-      [6, 4],
-      [8, 4],
-      [12, 5],
+      [4, 5],
+      [6, 7],
+      [8, 9],
+      [12, 13],
     ];
 
     for (const [cards, expected] of cases) {
@@ -622,7 +616,7 @@ describe('100 simulated guilds', () => {
     }
   });
 
-  it('a 12-card slate costs five calls per guild: a thread is not free', async () => {
+  it('a 12-card slate costs thirteen calls per guild: one read and twelve sends', async () => {
     const clock = new VirtualClock();
     const limiter = limiterOn(clock);
     const rest = new FakeDiscord(clock, {
@@ -631,8 +625,7 @@ describe('100 simulated guilds', () => {
     const gateway = fakeGateway(rest);
     const pace = <T>(task: () => Promise<T>, route?: string) => limiter.schedule(task, route);
 
-    // Twelve games is three messages: four in the channel, four in a thread, four
-    // in a second message in that thread.
+    // Twelve games is twelve messages, each with its own card and button row.
     const poster = new SlatePoster(
       slateStore(Array.from({ length: 12 }, (_, index) => game(index))),
       { client: gateway.client } as unknown as Infrastructure,
@@ -648,22 +641,20 @@ describe('100 simulated guilds', () => {
 
     for (const post of posts) {
       expect(post.status).toBe('posted');
-      expect(post.messageIds).toHaveLength(3);
-      expect(post.threadId).not.toBeNull();
+      expect(post.messageIds).toHaveLength(12);
     }
 
-    // GET the channel, POST the message, POST the thread, then two POSTs in it.
-    expect(rest.requests).toBe(500);
+    // GET the channel once, then twelve POSTs.
+    expect(rest.requests).toBe(1_300);
     expect(rest.rateLimited).toBe(0);
     expect(rest.invalid).toBe(0);
     expect([...rest.byRoute.entries()].sort()).toEqual([
       ['GET /channels/:id', 100],
-      ['POST /channels/:id/messages', 300],
-      ['POST /channels/:id/messages/:id/threads', 100],
+      ['POST /channels/:id/messages', 1_200],
     ]);
-    // 500 calls is 5 + 495/40 = 12.4s of bucket time.
-    expect(clock.elapsed()).toBeGreaterThanOrEqual(12_000);
-    expect(clock.elapsed()).toBeLessThanOrEqual(13_000);
+    // 1,300 calls is 5 + 1,295/40 = 32.4s of bucket time.
+    expect(clock.elapsed()).toBeGreaterThanOrEqual(32_000);
+    expect(clock.elapsed()).toBeLessThanOrEqual(33_000);
   });
 
   it('the fake enforces the 10,000-invalid-request ban, so "zero invalid" means something', async () => {

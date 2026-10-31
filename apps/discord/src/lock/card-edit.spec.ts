@@ -99,9 +99,7 @@ describe('the tip-off lock', () => {
     const locked = lockedCard(original);
 
     expect(locked.embeds[0]).toMatchObject({
-      author: { name: 'IKnoBall' },
       title: 'GSW @ DEN',
-      footer: { text: 'IKnoBall · 0022600127' },
       fields: original.embeds[0]?.fields,
     });
     expect(locked.embeds[0]?.timestamp).toBe(original.embeds[0]?.timestamp);

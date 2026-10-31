@@ -37,43 +37,21 @@ exports[`cardPayload > pins the whole payload for a real game 1`] = `
   ],
   "embeds": [
     {
-      "author": {
-        "name": "IKnoBall",
-      },
       "description": "**Tip-off** <t:1807489800:f> · <t:1807489800:R>",
       "fields": [
         {
           "inline": true,
-          "name": "<:MEM:111111111111111111> Away · MEM",
-          "value": "34-27",
+          "name": "<:MEM:111111111111111111> MEM · 34-27",
+          "value": "W L W W L
+**+26 pts**",
         },
         {
           "inline": true,
-          "name": "<:MEM:111111111111111111> Away · Last 5",
-          "value": "W L W W L",
-        },
-        {
-          "inline": false,
-          "name": "​",
-          "value": "​",
-        },
-        {
-          "inline": true,
-          "name": "<:DAL:222222222222222222> Home · DAL",
-          "value": "42-19",
-        },
-        {
-          "inline": true,
-          "name": "<:DAL:222222222222222222> Home · Last 5",
-          "value": "L L W W W",
+          "name": "<:DAL:222222222222222222> DAL · 42-19",
+          "value": "L L W W W
+**+8 pts**",
         },
       ],
-      "footer": {
-        "text": "IKnoBall · 0022601194",
-      },
-      "thumbnail": {
-        "url": "https://cdn.discordapp.com/emojis/222222222222222222.png?size=128",
-      },
       "timestamp": "2027-04-12T00:30:00.000Z",
       "title": "MEM @ DAL",
     },
