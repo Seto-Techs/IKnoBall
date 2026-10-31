@@ -32,12 +32,14 @@ function commandInteraction(
     guildId?: string | null;
     guildName?: string;
     mode?: PredictionMode | null;
+    userId?: string;
   } = {},
 ) {
   const guildId = options.guildId === undefined ? 'guild-1' : options.guildId;
   const interaction = {
     guildId,
     guild: guildId ? { name: options.guildName ?? 'Hoops HQ' } : null,
+    user: { id: options.userId ?? 'viewer-1' },
     deferred: false,
     replied: false,
     options: { getString: (name: string) => (name === 'mode' ? (options.mode ?? null) : null) },
@@ -94,8 +96,16 @@ describe('LeaderboardCommand', () => {
     expect(interaction.deferReply.mock.calls[0]).toEqual([]);
     expect(interaction.reply).not.toHaveBeenCalled();
     expect(leaderboard).toHaveBeenCalledTimes(2);
-    expect(leaderboard).toHaveBeenCalledWith({ guildId: 'guild-1', mode: 'flat' });
-    expect(leaderboard).toHaveBeenCalledWith({ guildId: 'guild-1', mode: 'weighted' });
+    expect(leaderboard).toHaveBeenCalledWith({
+      guildId: 'guild-1',
+      mode: 'flat',
+      viewerDiscordUserId: 'viewer-1',
+    });
+    expect(leaderboard).toHaveBeenCalledWith({
+      guildId: 'guild-1',
+      mode: 'weighted',
+      viewerDiscordUserId: 'viewer-1',
+    });
 
     const embed = embedOf(interaction);
     expect(embed.title).toBe('Leaderboard');
@@ -108,6 +118,23 @@ describe('LeaderboardCommand', () => {
     );
     expect(embed.fields[1].value).toBe('1. **Gangsit** · 234 pts · 42 picks');
     expect(embed.footer.text).toContain('Top 10');
+  });
+
+  it("asks for the caller's own row, by their Discord id", async () => {
+    const { client, leaderboard } = fakeClient();
+    const interaction = commandInteraction({ mode: 'flat', userId: 'discord-42' });
+
+    await new LeaderboardCommand(client).execute(
+      interaction as unknown as ChatInputCommandInteraction,
+    );
+
+    // Without this the API cannot tell whose row to append, and a viewer ranked
+    // eleventh sees a board that does not mention them.
+    expect(leaderboard).toHaveBeenCalledWith({
+      guildId: 'guild-1',
+      mode: 'flat',
+      viewerDiscordUserId: 'discord-42',
+    });
   });
 
   it("appends the caller's own row when the API returns one past the cut", async () => {
@@ -139,7 +166,11 @@ describe('LeaderboardCommand', () => {
     );
 
     expect(leaderboard).toHaveBeenCalledTimes(1);
-    expect(leaderboard).toHaveBeenCalledWith({ guildId: 'guild-1', mode: 'weighted' });
+    expect(leaderboard).toHaveBeenCalledWith({
+      guildId: 'guild-1',
+      mode: 'weighted',
+      viewerDiscordUserId: 'viewer-1',
+    });
     expect(embedOf(interaction).fields.map((field) => field.name)).toEqual(['Weighted points']);
   });
 

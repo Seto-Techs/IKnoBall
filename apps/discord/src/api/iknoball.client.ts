@@ -78,6 +78,10 @@ export class IknoballClient {
    */
   async leaderboard(query: LeaderboardQuery): Promise<LeaderboardEntry[]> {
     const params = new URLSearchParams({ guildId: query.guildId, mode: query.mode });
+    if (query.viewerDiscordUserId) {
+      params.set('viewerDiscordUserId', query.viewerDiscordUserId);
+    }
+
     return this.request<LeaderboardEntry[]>('GET', `/internal/leaderboard?${params.toString()}`);
   }
 
