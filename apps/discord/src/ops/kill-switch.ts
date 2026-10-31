@@ -5,9 +5,11 @@ import { markPaused } from './interaction-log';
  * reads the same and nothing drifts.
  *
  * `DISCORD_ENABLED=false` has to *stop* the bot, not just change a log line. The
- * three things it stops, and the one thing it does not:
+ * four things it stops, and the one thing it does not:
  *
  * - **No slate posts.** `SlateScheduler.tick` returns before it looks at a guild.
+ * - **No rollover, no recaps.** `RolloverScheduler.tick` returns the same way, so a
+ *   guild with no slate to roll onto is not posted one at midnight either.
  * - **No tip-off locks, no settlement edits.** Both sweeps return before `run()`,
  *   so nothing is edited in Discord and no card is stamped.
  * - **No picks.** A click is answered with `PAUSED_REPLY` and nothing is written.

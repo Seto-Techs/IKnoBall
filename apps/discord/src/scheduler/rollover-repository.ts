@@ -1,71 +1,96 @@
 /**
- * The database half of the rollover prototype (0.3.1).
+ * The database half of the rollover (0.3.1).
  *
- * `rollover.ts` decides; this asks the two questions that decision needs, plus the
- * one the recap needs, and nothing else. It is deliberately separate from
+ * `rollover.ts` decides; this asks the three questions that decision needs, plus
+ * the one the recap needs, and nothing else. It is deliberately separate from
  * `SlateStore` and `CardSweepRepository`: those two own the posting and editing
- * paths, and a prototype should not widen them before the shape is agreed.
+ * paths, and a scheduling question should not widen them.
  *
- * **Prototype scope.** These queries are written against the real tables and the
- * real ET slate key, so they are the queries the feature would ship with. What is
- * *not* here is the scheduler that calls them on a cron, the store method that
- * posts the next day, and the "have I already recapped this day" guard — see the
- * notes at the bottom for why each is a decision rather than typing.
+ * Three queries per minute, whatever the guild count: the last day each guild was
+ * posted, the state of each league day since a week ago, and the upcoming days.
+ * Every guild rolls onto the same league schedule, so the last two are shared.
+ *
+ * **Duplication worth knowing about.** The ET slate day is derived here with the
+ * same rule the schedule crawler uses: the feed's `gameDate`, else the tip-off's
+ * date. There is no shared constant because the worker must not depend on the
+ * bot's module, so if that rule changes, both copies change.
  */
-import { and, asc, count, eq, isNull, sql } from 'drizzle-orm';
-import {
-  discordCards,
-  discordGuilds,
-  predictionPicks,
-  scheduleGames,
-  type Database,
-} from '@iknoball/database';
+import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { discordCards, predictionPicks, scheduleGames, type Database } from '@iknoball/database';
 import { STATUS_FINAL } from '../lock/card-edit';
 import type { RolloverState } from './rollover';
-import { shiftDateKey } from './slate-date';
+import { Infrastructure } from './infrastructure';
+import { etDateKey, shiftDateKey } from './slate-date';
 
-/** DI token, matching the style of `SLATE_STORE` and `DAY_KEY_GUARD`. */
-export const ROLLOVER_REPOSITORY = 'ROLLOVER_REPOSITORY';
+/**
+ * How long after the last scheduled tip-off a league day counts as over, even if
+ * the feed has not marked every game final.
+ *
+ * The primary signal is `gameStatus = 3` on every game. This is the backstop for
+ * the feed going quiet or a postponed game that keeps its original tip-off: a
+ * 22:00 ET tip-off ends around 00:30, so four hours is late enough that nothing is
+ * still in progress and early enough that a stuck day delays tomorrow's slate by
+ * hours rather than a whole day. It is a *lower* bound on correctness — posting
+ * tomorrow's slate early costs nothing, since its games are still hours away.
+ */
+const DAY_OVER_GRACE_MS = 4 * 60 * 60 * 1000;
+
+/** How far back the per-day query looks; a guild idle for longer than this is long done. */
+const DAY_WINDOW_DAYS = 7;
 
 /** Everything the rollover decision needs about one guild, from Postgres. */
 export interface GuildRolloverState extends RolloverState {
   guildId: string;
 }
 
+/** One league day, as `schedule_games` sees it. */
+export interface DayState {
+  slateKey: string;
+  games: number;
+  finals: number;
+  lastTipOff: Date | null;
+}
+
 /**
  * The ET slate day of a `schedule_games` row, in SQL.
  *
  * `gameDate` is the feed's own answer and is what the rest of the bot trusts, so
- * this only falls back to the tip-off's date when it is missing. The `- 1 day`
+ * this only falls back to the tip-off's date when it is missing. The `- 6 hours`
  * handles a tip-off that is late evening ET but already the next day UTC: an ET
  * slate day runs from ~19:00 ET to ~02:00 ET the following morning UTC.
  */
 const slateDaySql = sql<string>`
   coalesce(
-    ${scheduleGames.gameDate},
+    ${scheduleGames.gameDate}::text,
     to_char((${scheduleGames.gameDateTimeUTC} - interval '6 hours') at time zone 'UTC', 'YYYY-MM-DD')
   )
 `;
 
 export class RolloverRepository {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly infra: Infrastructure) {}
+
+  /**
+   * Resolved on use, not on construction: `DatabaseService` is a provider of the
+   * root module, which exports nothing, so this goes through `Infrastructure` the
+   * way every other data-backed provider here does — including `DrizzleSlateStore`.
+   */
+  private get db(): Database {
+    return this.infra.db;
+  }
 
   /**
    * The state of every guild that has ever been posted to.
    *
    * One query per guild would be a sweep of N+1; this does it in three, and the
-   * caller decides what to do with the rows. A guild with no cards is not
-   * returned at all, which is what `rolloverDecision` would answer anyway.
+   * caller decides what to do with the rows. A guild with no cards is not returned
+   * at all — it has no finished day to roll over from.
    */
   async statesForAllGuilds(now: Date = new Date()): Promise<GuildRolloverState[]> {
-    // 1. The latest slate day each guild was posted, and how many cards it got.
+    // 1. The latest slate day each guild was posted.
     const posted = await this.db
       .select({
         guildId: discordCards.guildId,
-        // The card row's own `createdAt` is the post time; the slate day is the
-        // ET day of the game it was posted for.
         lastPostedKey: sql<string>`max(${slateDaySql})`,
-        totalCards: count(),
       })
       .from(discordCards)
       .innerJoin(scheduleGames, eq(scheduleGames.id, discordCards.gameId))
@@ -73,68 +98,32 @@ export class RolloverRepository {
 
     if (posted.length === 0) return [];
 
-    // 2. How many of each guild's latest-day cards are still unsettled. Counted
-    //    over the same join so a card whose game row vanished cannot look settled.
-    const unsettled = await this.db
-      .select({
-        guildId: discordCards.guildId,
-        slateKey: slateDaySql,
-        open: count(),
-      })
-      .from(discordCards)
-      .innerJoin(scheduleGames, eq(scheduleGames.id, discordCards.gameId))
-      .where(isNull(discordCards.settledAt))
-      .groupBy(discordCards.guildId, slateDaySql);
-
-    const openByGuildAndDay = new Map<string, number>();
-    for (const row of unsettled) {
-      openByGuildAndDay.set(`${row.guildId}:${row.slateKey}`, Number(row.open));
-    }
-
-    // 3. The next slate day with games, per guild's last day. Asked once for the
-    //    earliest upcoming day rather than per guild: every guild rolls onto the
-    //    same league schedule, so one answer covers all of them.
-    const upcoming = await this.upcomingDays(now);
+    // 2. How each of the last week's league days stands, and 3. which days are
+    //    still ahead. Both are league-wide, so one answer covers every guild.
+    const [days, upcoming] = await Promise.all([this.dayStates(now), this.upcomingDays(now)]);
+    const byDay = new Map(days.map((day) => [day.slateKey, day]));
+    const floor = shiftDateKey(etDateKey(now), -DAY_WINDOW_DAYS);
 
     return posted.map((row) => {
-      const guildId = row.guildId;
-      const lastPostedKey = row.lastPostedKey;
-      const nextKey = upcoming.find((day) => day > lastPostedKey) ?? null;
+      const { guildId, lastPostedKey } = row;
+      const day = byDay.get(lastPostedKey);
 
       return {
         guildId,
         lastPostedKey,
-        totalCards: Number(row.totalCards),
-        unsettledCards: openByGuildAndDay.get(`${guildId}:${lastPostedKey}`) ?? 0,
-        nextKey,
+        // A day that dropped out of the window, or out of the schedule entirely,
+        // is not a day anyone is still waiting on.
+        dayOver: lastPostedKey < floor || day === undefined || isDayOver(day, now),
+        nextKey: upcoming.find((key) => key > lastPostedKey) ?? null,
       };
     });
-  }
-
-  /**
-   * Slate days at or after today that actually have games.
-   *
-   * Ascending, capped: the rollover only ever wants the first one after a guild's
-   * last day, and a whole season of days is not worth materialising to find it.
-   */
-  async upcomingDays(now: Date, limit = 30): Promise<string[]> {
-    const from = shiftDateKey(etDayKey(now), -1);
-
-    const rows = await this.db
-      .selectDistinct({ slateKey: slateDaySql })
-      .from(scheduleGames)
-      .where(and(sql`${slateDaySql} >= ${from}`))
-      .orderBy(asc(slateDaySql))
-      .limit(limit);
-
-    return rows.map((row) => row.slateKey);
   }
 
   /**
    * How many picks settled for a guild on one slate day.
    *
    * The recap's gate: a day nobody picked is a day with nothing to show. Counted
-   * off `prediction_picks` rather than `discord_members` because the board ranks
+   * off `prediction_picks` rather than `discord_cards` because the board ranks
    * picks, and a settled pick is what a row on it represents.
    */
   async settledPickCount(guildId: string, slateKey: string): Promise<number> {
@@ -153,63 +142,71 @@ export class RolloverRepository {
     return Number(row?.settled ?? 0);
   }
 
-  /** Enabled guilds only: a paused guild gets no unprompted post of any kind. */
-  async enabledGuildIds(): Promise<string[]> {
+  /**
+   * Every league day from a week ago onwards, so a caller can answer "is this day
+   * done".
+   *
+   * Bounded backwards on purpose: a guild's last posted day is only interesting
+   * while it is recent, and a day that fell out of the window is reported as over
+   * by the caller rather than queried for. There is deliberately **no** upper
+   * bound. A rolled-over guild is already holding tomorrow's cards, so tomorrow has
+   * to be in this answer; a day missing from it reads as over, and the next tick
+   * would roll again and post a slate per minute until it caught up with the
+   * calendar.
+   */
+  private async dayStates(now: Date): Promise<DayState[]> {
+    const from = shiftDateKey(etDateKey(now), -DAY_WINDOW_DAYS);
+
     const rows = await this.db
-      .select({ guildId: discordGuilds.guildId })
-      .from(discordGuilds)
-      .where(eq(discordGuilds.enabled, true));
-
-    return rows.map((row) => row.guildId);
-  }
-
-  /** Final games on a slate day, for a caller that wants to know the day is done. */
-  async allFinal(slateKey: string): Promise<boolean> {
-    const [row] = await this.db
       .select({
-        total: count(),
+        slateKey: slateDaySql,
+        games: count(),
         finals: sql<number>`count(*) filter (where ${scheduleGames.gameStatus} = ${STATUS_FINAL})`,
+        lastTipOff: sql<Date | string | null>`max(${scheduleGames.gameDateTimeUTC})`,
       })
       .from(scheduleGames)
-      .where(sql`${slateDaySql} = ${slateKey}`);
+      .where(sql`${slateDaySql} >= ${from}`)
+      .groupBy(slateDaySql);
 
-    const total = Number(row?.total ?? 0);
-    return total > 0 && Number(row?.finals ?? 0) === total;
+    return rows.map((row) => ({
+      slateKey: row.slateKey,
+      games: Number(row.games),
+      finals: Number(row.finals),
+      // `pg` hands a `timestamp` back as a `Date`, but the column carries no zone,
+      // so it is normalised here rather than trusted.
+      lastTipOff: row.lastTipOff === null ? null : new Date(row.lastTipOff),
+    }));
   }
-}
 
-/** `YYYY-MM-DD` in US/Eastern, matching `etDateKey`. */
-function etDayKey(at: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'US/Eastern',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(at);
-  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
-  return `${value('year')}-${value('month')}-${value('day')}`;
+  /**
+   * Slate days at or after today that actually have games.
+   *
+   * Ascending, capped: the rollover only ever wants the first one after a guild's
+   * last day, and a whole season of days is not worth materialising to find it.
+   */
+  private async upcomingDays(now: Date, limit = 30): Promise<string[]> {
+    const from = shiftDateKey(etDateKey(now), -1);
+
+    const rows = await this.db
+      .selectDistinct({ slateKey: slateDaySql })
+      .from(scheduleGames)
+      .where(sql`${slateDaySql} >= ${from}`)
+      .orderBy(asc(slateDaySql))
+      .limit(limit);
+
+    return rows.map((row) => row.slateKey);
+  }
 }
 
 /**
- * What is still missing before this could ship, and why each is a decision:
+ * Whether one league day is over.
  *
- * - **A scheduler.** The natural hook is `SettlementSweepService`: it already runs
- *   every minute and already knows which cards just settled. The decision here
- *   answers "should this guild roll", but *when* to ask it (after a settle run
- *   that changed something, versus every minute regardless) changes how many
- *   queries run per minute per guild. Every minute is simpler and costs one
- *   aggregate; on-change is cheaper and needs the sweep to report a delta.
- * - **A durable recap guard.** `discord_cards` has `lockedAt`/`settledAt`; there
- *   is no column that means "this guild has been recapped for this day". Redis
- *   with a multi-day TTL would do, the way `DayKeyGuard` does, but a Redis flush
- *   would then double-post a recap. A `discord_guild_recaps` table (guildId,
- *   slateKey, postedAt, messageId) is the durable answer and is a migration.
- * - **Posting the next slate.** `SlatePoster.post` posts *today* by ET key and
- *   claims cards through `SlateStore`. Rolling to tomorrow needs either a
- *   `postFor(target, etKey)` parameter or a store that accepts the day; today's
- *   signature cannot express it.
- * - **Where the recap goes.** `SlateTarget` carries one channel. A recap after
- *   midnight in the guild's zone lands in a channel the guild configured for
- *   morning posts; whether that is the right place, or whether it needs its own
- *   `/setup` option, is a product call.
+ * Every game final, or the last tip-off far enough in the past that "final" is a
+ * formality. See `DAY_OVER_GRACE_MS` for why the second half exists.
  */
+function isDayOver(day: DayState, now: Date): boolean {
+  if (day.games === 0) return true;
+  if (day.finals === day.games) return true;
+  if (day.lastTipOff === null) return true;
+  return day.lastTipOff.getTime() + DAY_OVER_GRACE_MS <= now.getTime();
+}

@@ -2,22 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { recapIntro, recapModes, rolloverDecision, shouldPostRecap } from './rollover';
 
 /**
- * The prototype's whole claim is that "the day is over, post the next one" is a
+ * The whole claim of the rollover is that "the day is over, post the next one" is a
  * small set of cases. These tests are the cases.
  */
 
 function state(overrides: Partial<Parameters<typeof rolloverDecision>[0]> = {}) {
   return {
     lastPostedKey: '2026-10-30',
-    unsettledCards: 0,
-    totalCards: 6,
+    dayOver: true,
     nextKey: '2026-10-31',
     ...overrides,
   };
 }
 
 describe('rolloverDecision', () => {
-  it('rolls to the next day once every card has settled', () => {
+  it('rolls to the next day once the league day is over', () => {
     expect(rolloverDecision(state())).toEqual({
       roll: true,
       reason: 'roll',
@@ -25,20 +24,10 @@ describe('rolloverDecision', () => {
     });
   });
 
-  it('does not roll while a card is still unsettled', () => {
-    expect(rolloverDecision(state({ unsettledCards: 1 }))).toEqual({
+  it('does not roll while a game on the last day is still live', () => {
+    expect(rolloverDecision(state({ dayOver: false }))).toEqual({
       roll: false,
       reason: 'day-open',
-      targetKey: null,
-    });
-  });
-
-  it('does not roll a guild that was never posted, even with no unsettled cards', () => {
-    // Zero cards posted and zero unsettled is the shape of a guild the scheduler
-    // has not reached yet. Rolling would post a slate nobody configured.
-    expect(rolloverDecision(state({ totalCards: 0 }))).toEqual({
-      roll: false,
-      reason: 'nothing-posted',
       targetKey: null,
     });
   });
@@ -70,11 +59,8 @@ describe('rolloverDecision', () => {
   });
 
   it('reports the reason a reader would guess, not the first check that passed', () => {
-    // Both "nothing posted" and "day open" are false here; the answer is the
-    // season being quiet, not the day being open.
-    expect(rolloverDecision(state({ unsettledCards: 0, nextKey: null })).reason).toBe(
-      'no-next-day',
-    );
+    // The day is over, so "day open" is false; the answer is the season being quiet.
+    expect(rolloverDecision(state({ nextKey: null })).reason).toBe('no-next-day');
   });
 
   it('rolls across a month boundary, because slate keys sort as dates', () => {

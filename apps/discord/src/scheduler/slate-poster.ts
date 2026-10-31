@@ -89,7 +89,22 @@ export class SlatePoster {
 
   /** Today's slate for one guild. Posts nothing on a day with no games. */
   async post(target: SlateTarget, now: Date = new Date()): Promise<PostResult> {
-    const etKey = etDateKey(now);
+    return this.postFor(target, etDateKey(now), now);
+  }
+
+  /**
+   * The slate for a named ET day.
+   *
+   * The rollover is why this exists: after the last game of the night it posts the
+   * *next* day, which is not `etDateKey(now)` until the small hours. Everything
+   * else — the selection filter, the card claim, the send — is the same post, so
+   * `post` is this method with the day derived from the clock.
+   *
+   * `now` still bounds the selection: a game that has already tipped off is not
+   * pickable, so a late rollover posts what is left of the day rather than a slate
+   * of dead cards.
+   */
+  async postFor(target: SlateTarget, etKey: string, now: Date = new Date()): Promise<PostResult> {
     const games = await this.slateGames(etKey, now);
 
     if (games.length === 0) {

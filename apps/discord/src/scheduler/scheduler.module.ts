@@ -8,6 +8,9 @@ import { GuildLifecycle } from '../setup/guild-lifecycle';
 import { GUILD_CONFIG, SLATE_POSTER } from '../setup/tokens';
 import { DAY_KEY_GUARD, RedisDayKeyGuard } from './day-key.guard';
 import { Infrastructure } from './infrastructure';
+import { RecapPoster } from './recap-poster';
+import { RolloverRepository } from './rollover-repository';
+import { RolloverScheduler } from './rollover-scheduler';
 import { SlatePoster, SLATE_PACE } from './slate-poster';
 import { SlateScheduler } from './slate-scheduler';
 import { DrizzleSlateStore, SLATE_STORE } from './slate-store';
@@ -55,6 +58,11 @@ function bindPace(moduleRef: ModuleRef) {
  * and exports none of them, and this chunk may not edit that file. Everything here
  * takes its database, Redis, and client through it.
  *
+ * `RolloverScheduler` is the second trigger on the same post (0.3.1): when the last
+ * game of a league day goes final it posts the *next* day's slate early and recaps
+ * the finished one, through the same `SlatePoster` and the same day-key guard. It
+ * adds a trigger; it does not replace `SlateScheduler`'s hour.
+ *
  * `GuildConfigService` and `SlatePoster` are also bound to the tokens `GUILD_CONFIG`
  * and `SLATE_POSTER` and exported, because `SetupCommand` is a provider of
  * `AppModule` and injects both: `/setup` writes the row the scheduler reads and
@@ -77,6 +85,10 @@ function bindPace(moduleRef: ModuleRef) {
     { provide: SLATE_POSTER, useExisting: SlatePoster },
     { provide: SLATE_PACE, useFactory: bindPace, inject: [ModuleRef] },
     SlateScheduler,
+    // The rollover (0.3.1): the second trigger on the same post, plus the recap.
+    RolloverRepository,
+    RecapPoster,
+    RolloverScheduler,
   ],
   exports: [GUILD_CONFIG, SLATE_POSTER],
 })
