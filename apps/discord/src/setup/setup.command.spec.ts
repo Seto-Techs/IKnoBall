@@ -27,12 +27,7 @@ function permissions(...granted: bigint[]): PermissionsBitField {
 const ADMIN = permissions(PermissionFlagsBits.ManageGuild);
 const MEMBER = permissions(PermissionFlagsBits.ViewChannel);
 
-const CAN_POST = permissions(
-  PermissionFlagsBits.SendMessages,
-  PermissionFlagsBits.EmbedLinks,
-  PermissionFlagsBits.CreatePublicThreads,
-  PermissionFlagsBits.SendMessagesInThreads,
-);
+const CAN_POST = permissions(PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks);
 
 function channel(
   overrides: {
@@ -91,7 +86,7 @@ function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
 }
 
 function preview(overrides: Partial<SlatePreview> = {}): SlatePreview {
-  return { etKey: '2026-10-27', games: 0, payloads: [], threaded: 0, ...overrides };
+  return { etKey: '2026-10-27', games: 0, payloads: [], ...overrides };
 }
 
 function harness(options: { existing?: GuildSettings | null; preview?: SlatePreview } = {}) {
@@ -252,7 +247,7 @@ describe('saving', () => {
     expect(replyText(reply)).toContain('07:00 America/New_York');
   });
 
-  it('warns about the thread permissions without refusing the channel', async () => {
+  it('accepts a channel with just the posting permissions it needs', async () => {
     const { command, save } = harness({ existing: null });
     const { interaction: fake, reply } = interaction({
       channel: channel({
@@ -263,8 +258,9 @@ describe('saving', () => {
     await command.execute(fake);
 
     expect(save).toHaveBeenCalledTimes(1);
-    expect(replyText(reply)).toContain('Create Public Threads');
-    expect(replyText(reply)).toContain('first four');
+    const text = replyText(reply);
+    expect(text).toContain('Slate configured for this server');
+    expect(text).not.toContain('Heads up');
   });
 });
 
@@ -283,7 +279,7 @@ describe('no arguments', () => {
     expect(text).toContain('<#channel-1>');
     expect(text).toContain('09:00 America/New_York');
     expect(text).toContain('enabled');
-    expect(text).toContain("**Today's slate — Oct 27 (ET):** 2 games — one message.");
+    expect(text).toContain("**Today's slate — Oct 27 (ET):** 2 games — one message each");
     expect(previewCards).toHaveBeenCalledTimes(1);
 
     const [replyPayload] = reply.mock.calls[0] as unknown as [
@@ -306,15 +302,23 @@ describe('no arguments', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('previews a threaded day as channel cards plus a thread', async () => {
-    const { command } = harness({
-      existing: settings(),
-      preview: preview({ games: 6, threaded: 2 }),
-    });
+  it('says a slate goes out one card per message', async () => {
+    const { command } = harness({ existing: settings(), preview: preview({ games: 6 }) });
     const { interaction: fake, reply } = interaction();
 
     await command.execute(fake);
 
-    expect(replyText(reply)).toContain('4 cards in the channel, the other 2 in a thread');
+    const text = replyText(reply);
+    expect(text).toContain('6 games');
+    expect(text).toContain('one message each');
+  });
+
+  it('says one message for a single-game day', async () => {
+    const { command } = harness({ existing: settings(), preview: preview({ games: 1 }) });
+    const { interaction: fake, reply } = interaction();
+
+    await command.execute(fake);
+
+    expect(replyText(reply)).toContain('1 game —');
   });
 });

@@ -1,19 +1,12 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { PermissionFlagsBits } from 'discord.js';
-import type { Message, PublicThreadChannel, SendableChannels } from 'discord.js';
+import type { Message, SendableChannels } from 'discord.js';
 import { cardPayload, type CardPayload } from '../cards/card-payload';
-import type { CardTeam } from '../cards/types';
+import type { CardStake, CardTeam } from '../cards/types';
 import type { Pace } from '../infrastructure/rate-limiter';
 import { Infrastructure } from './infrastructure';
-import {
-  CARDS_PER_MESSAGE,
-  selectSlateGames,
-  splitSlate,
-  toCardGame,
-  toCardTeams,
-  type SlateGame,
-} from './slate';
-import { etDateKey, formatDayKey } from './slate-date';
+import { selectSlateGames, toCardGame, toCardTeams, type SlateGame } from './slate';
+import { etDateKey } from './slate-date';
 import { SLATE_STORE, type CardAttachment, type CardClaim, type SlateStore } from './slate-store';
 
 /** Where a guild's slate goes. */
@@ -32,6 +25,9 @@ export interface SlateTarget {
  */
 export const SLATE_PACE = 'SLATE_PACE';
 
+/** Cards `/setup` prints before it stops: a preview shares one message's embeds. */
+const PREVIEW_CARDS = 3;
+
 export type PostStatus = 'posted' | 'empty' | 'already-posted';
 
 export interface PostResult {
@@ -40,19 +36,16 @@ export interface PostResult {
   etKey: string;
   /** Cards actually sent. */
   games: number;
-  /** Message ids in send order: the channel message first, then the thread's. */
+  /** One message id per card, in tip-off order. */
   messageIds: string[];
-  threadId: string | null;
 }
 
-/** What `/setup` shows: today's cards, with the buttons inert. */
+/** What `/setup` shows: today's first cards, with the buttons inert. */
 export interface SlatePreview {
   etKey: string;
-  /** Games on the day, which may be more than were previewed. */
+  /** Games on the day, which can be more than were previewed. */
   games: number;
   payloads: CardPayload[];
-  /** How many games a real post would put in a thread. */
-  threaded: number;
 }
 
 /**
@@ -64,15 +57,20 @@ export interface SlatePreview {
  * rows attached to the real messages, so the retry finds every game claimed and
  * sends nothing (DISC-10).
  *
+ * One card per message. Discord draws every embed in a message above every action
+ * row, so a message holding several cards shows all of them and then all of their
+ * button rows, leaving the reader to guess which buttons pick which game. Sending
+ * each card separately is the only shape where a game's buttons sit under that
+ * game's card.
+ *
  * The day key in Redis is the scheduler's cheap check; this class does not touch
  * it, because "did this guild get its post" and "did these cards get sent" are
  * different questions and only the second one has to be crash-safe.
  *
- * Every REST call — the channel fetch, the send, the thread, the thread's sends —
- * goes through `pace`, which the module wires to DISC-12's shared queue. Before the
- * first send the channel's permissions are checked, so a guild the bot cannot post
- * in is skipped instead of paying a 403 (one invalid request against a 10,000-per-
- * ten-minutes ban).
+ * Every REST call — the channel fetch and each send — goes through `pace`, which
+ * the module wires to DISC-12's shared queue. Before the first send the channel's
+ * permissions are checked, so a guild the bot cannot post in is skipped instead of
+ * paying a 403 (one invalid request against a 10,000-per-ten-minutes ban).
  */
 @Injectable()
 export class SlatePoster {
@@ -108,7 +106,7 @@ export class SlatePoster {
     const games = await this.slateGames(etKey, now);
 
     if (games.length === 0) {
-      return { status: 'empty', etKey, games: 0, messageIds: [], threadId: null };
+      return { status: 'empty', etKey, games: 0, messageIds: [] };
     }
 
     const claimed = await this.store.claimCards(
@@ -126,17 +124,17 @@ export class SlatePoster {
     if (posting.length === 0) {
       // Every card already has a row: an earlier tick posted this slate (or
       // claimed it and died before sending). Either way there is nothing to send.
-      return { status: 'already-posted', etKey, games: 0, messageIds: [], threadId: null };
+      return { status: 'already-posted', etKey, games: 0, messageIds: [] };
     }
 
     const teams = await this.teamLookup(posting);
+    const stakes = await this.store.findStakes(posting.map((game) => game.gameId));
     const channel = await this.sendableChannel(target.channelId);
-    const chunks = splitSlate(posting);
 
     // Preflight, not a probe: the permission set is computed from the guild the
     // gateway already has cached, so this costs no REST call — and a guild the bot
     // cannot post in costs one skipped slate instead of a 403.
-    const missing = missingPermissions(channel, chunks.length > 1);
+    const missing = missingPermissions(channel);
     if (missing.length > 0) {
       this.logger.warn(
         `Slate for guild ${target.guildId} skipped: channel ${channel.id} is missing ${missing.join(', ')}.`,
@@ -144,35 +142,21 @@ export class SlatePoster {
       throw new MissingPermissionsError(channel.id, missing);
     }
 
-    const first: Message = await this.pace<Message>(
-      () => channel.send(messagePayload(chunks[0], teams)),
-      `POST /channels/${channel.id}/messages`,
-    );
-    const messageIds = [first.id];
-    await this.attach(chunks[0], target, channel.id, first.id);
-
-    let threadId: string | null = null;
-    if (chunks.length > 1) {
-      const thread = await this.startThread(first, etKey);
-      if (thread) {
-        threadId = thread.id;
-        for (const chunk of chunks.slice(1)) {
-          const message = await this.pace(
-            () => thread.send(messagePayload(chunk, teams)),
-            `POST /channels/${thread.id}/messages`,
-          );
-          messageIds.push(message.id);
-          await this.attach(chunk, target, thread.id, message.id);
-        }
-      }
+    const messageIds: string[] = [];
+    for (const game of posting) {
+      const message: Message = await this.pace<Message>(
+        () => channel.send(cardPayloadFor(game, teams, stakes)),
+        `POST /channels/${channel.id}/messages`,
+      );
+      messageIds.push(message.id);
+      await this.attach(game, target, channel.id, message.id);
     }
 
     this.logger.log(
-      `Slate posted for guild ${target.guildId}: ${posting.length} card(s) for ${etKey}` +
-        (threadId ? `, thread ${threadId}` : ''),
+      `Slate posted for guild ${target.guildId}: ${posting.length} card(s) for ${etKey}`,
     );
 
-    return { status: 'posted', etKey, games: posting.length, messageIds, threadId };
+    return { status: 'posted', etKey, games: posting.length, messageIds };
   }
 
   /**
@@ -192,18 +176,24 @@ export class SlatePoster {
    * The same selection and the same payload builder as a real post, with the
    * buttons disabled: a preview must not look pickable, and its message is not in
    * `discord_cards`, so the lock sweep would never come back to freeze it.
+   *
+   * Capped at three cards because the preview puts them in one ephemeral reply, and
+   * a message holds ten embeds. The line above the cards still reports the day's
+   * full count.
    */
   async preview(now: Date = new Date()): Promise<SlatePreview> {
     const etKey = etDateKey(now);
     const games = await this.slateGames(etKey, now);
     const teams = await this.teamLookup(games);
-    const shown = games.slice(0, CARDS_PER_MESSAGE);
+    const stakes = await this.store.findStakes(games.map((game) => game.gameId));
+    const shown = games.slice(0, PREVIEW_CARDS);
 
     return {
       etKey,
       games: games.length,
-      payloads: shown.map((game) => inert(cardPayload(toCardGame(game), toCardTeams(game, teams)))),
-      threaded: Math.max(0, games.length - CARDS_PER_MESSAGE),
+      payloads: shown.map((game) =>
+        inert(cardPayload(toCardGame(game), toCardTeams(game, teams, stakes.get(game.gameId)))),
+      ),
     };
   }
 
@@ -211,11 +201,19 @@ export class SlatePoster {
     return selectSlateGames(await this.store.findGames(etKey), etKey, now);
   }
 
+  /**
+   * The `teams` rows for these games, with their record for the slate's season.
+   *
+   * The season comes from the games themselves rather than from the clock: a slate
+   * posted on the ET evening of the last day of a season would otherwise look up
+   * the new season's empty record for every card.
+   */
   private async teamLookup(games: readonly SlateGame[]): Promise<Map<string, CardTeam>> {
     const tricodes = games
       .flatMap((game) => [game.awayTeamTricode, game.homeTeamTricode])
       .filter((tricode): tricode is string => Boolean(tricode));
-    const rows = await this.store.findTeams(tricodes);
+    const season = games.find((game) => game.seasonYear)?.seasonYear ?? null;
+    const rows = await this.store.findTeams(tricodes, season);
     return new Map(rows.map((team) => [team.tricode, team]));
   }
 
@@ -229,55 +227,16 @@ export class SlatePoster {
     return channel;
   }
 
-  /**
-   * The thread the rest of the slate goes in.
-   *
-   * A failure here is logged and swallowed: the first message is already out, and
-   * losing the tail of a 12-game slate is better than losing the post and
-   * re-running the whole thing. The unthreaded cards stay in `discord_cards`
-   * holding the pending marker, which the lock sweep treats as a dead card.
-   */
-  private async startThread(
-    first: Message,
-    etKey: string,
-  ): Promise<PublicThreadChannel<false> | null> {
-    if (!first.inGuild()) {
-      this.logger.warn('Slate overflow needs a thread, but the message is not in a guild.');
-      return null;
-    }
-
-    try {
-      return await this.pace(
-        () =>
-          first.startThread({
-            name: `Slate — ${formatDayKey(etKey)}`,
-            autoArchiveDuration: 1440,
-            reason: 'Daily slate: more than four cards',
-          }),
-        `POST /channels/${first.channelId}/messages/${first.id}/threads`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Could not open the slate thread: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      return null;
-    }
-  }
-
   /** Record the ids that only exist once a message does. */
   private async attach(
-    games: readonly SlateGame[],
+    game: SlateGame,
     target: SlateTarget,
     channelId: string,
     messageId: string,
   ): Promise<void> {
-    const attachments: CardAttachment[] = games.map((game) => ({
-      gameId: game.gameId,
-      guildId: target.guildId,
-      channelId,
-      messageId,
-    }));
+    const attachments: CardAttachment[] = [
+      { gameId: game.gameId, guildId: target.guildId, channelId, messageId },
+    ];
 
     try {
       await this.store.attachCards(attachments);
@@ -301,15 +260,11 @@ const POST_PERMISSIONS = [
   PermissionFlagsBits.EmbedLinks,
 ] as const;
 
-/** A slate wider than one message also opens a thread for the rest. */
-const THREAD_PERMISSIONS = [...POST_PERMISSIONS, PermissionFlagsBits.CreatePublicThreads] as const;
-
 /** Discord's names for the flags, so a skip log names what an admin has to grant. */
 const PERMISSION_NAMES: Readonly<Record<string, string>> = {
   [String(PermissionFlagsBits.ViewChannel)]: 'View Channel',
   [String(PermissionFlagsBits.SendMessages)]: 'Send Messages',
   [String(PermissionFlagsBits.EmbedLinks)]: 'Embed Links',
-  [String(PermissionFlagsBits.CreatePublicThreads)]: 'Create Public Threads',
 };
 
 /**
@@ -336,9 +291,9 @@ export class MissingPermissionsError extends Error {
  * `permissionsFor` computes from the guild the gateway already cached — no REST
  * call — and a channel that cannot answer (a DM, or a test's fake) yields an empty
  * list, because attempting the send is better than refusing on a lookup we could
- * not do. Threads are only required when the slate is wide enough to need one.
+ * not do.
  */
-function missingPermissions(channel: SendableChannels, threads: boolean): string[] {
+function missingPermissions(channel: SendableChannels): string[] {
   // `client.user` is null when the bot runs as a REST-only client (e.g.
   // `force:slate`, which never logs in so it cannot flap the live session): in
   // that shape there is no member object to preflight against, so the check is
@@ -353,19 +308,18 @@ function missingPermissions(channel: SendableChannels, threads: boolean): string
   const permissions = channel.permissionsFor(me);
   if (!permissions) return [];
 
-  const required = threads ? THREAD_PERMISSIONS : POST_PERMISSIONS;
-  return required
-    .filter((permission) => !permissions.has(permission))
-    .map((permission) => PERMISSION_NAMES[String(permission)] ?? String(permission));
+  return POST_PERMISSIONS.filter((permission) => !permissions.has(permission)).map(
+    (permission) => PERMISSION_NAMES[String(permission)] ?? String(permission),
+  );
 }
 
-/** One message's worth of cards: four embeds and four action rows at most. */
-function messagePayload(games: readonly SlateGame[], teams: Map<string, CardTeam>): CardPayload {
-  const payloads = games.map((game) => cardPayload(toCardGame(game), toCardTeams(game, teams)));
-  return {
-    embeds: payloads.flatMap((payload) => payload.embeds),
-    components: payloads.flatMap((payload) => payload.components),
-  };
+/** One game's card: an embed and its own action row. */
+function cardPayloadFor(
+  game: SlateGame,
+  teams: ReadonlyMap<string, CardTeam>,
+  stakes: ReadonlyMap<string, CardStake>,
+): CardPayload {
+  return cardPayload(toCardGame(game), toCardTeams(game, teams, stakes.get(game.gameId)));
 }
 
 /** The same payload with every button disabled, for the `/setup` preview. */

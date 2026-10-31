@@ -92,6 +92,7 @@ function row(table: Table, entry: Card): CardRow {
     gameStatus: match.gameStatus,
     gameDate: match.gameDate,
     gameDateTimeUTC: match.gameDateTimeUTC,
+    seasonYear: '2026-27',
     seriesText: match.seriesText,
     homeTricode: match.homeTeamTricode,
     homeCity: match.homeTeamCity,
@@ -150,6 +151,12 @@ class Table {
 
 type Kind = 'lock' | 'settlement';
 
+/**
+ * No standings and no prices: the sweeps under test are about which message is
+ * edited and what state its cards end up in, not about the numbers on them.
+ */
+const NO_STATS = { form: new Map(), stakes: new Map() };
+
 /** The two SQL predicates, in memory, plus the stamp. */
 function source(table: Table, kind: Kind): SweepSource {
   return {
@@ -192,7 +199,7 @@ function source(table: Table, kind: Kind): SweepSource {
         channelId: group[0]!.channelId,
         messageId: group[0]!.messageId,
         cardIds: group.map((entry) => entry.id),
-        payload: messagePayload(table.rows(table.siblings(group[0]!)), now),
+        payload: messagePayload(table.rows(table.siblings(group[0]!)), now, NO_STATS),
       }));
     },
 
@@ -428,7 +435,7 @@ describe('the tip-off lock sweep', () => {
 
     const sent = message.edits[0]!;
     expect(sent.embeds).toHaveLength(2);
-    expect(sent.embeds[1]?.footer?.text).toBe('IKnoBall · 0022600128');
+    expect(sent.embeds[1]?.title).toBe('GSW @ DEN');
     expect(pickButtons(sent, 1).every((button) => !('disabled' in button))).toBe(true);
 
     expect(table.byId('card-1').lockedAt).toEqual(NOW);

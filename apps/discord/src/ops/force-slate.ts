@@ -11,7 +11,7 @@
  * the automatic ones:
  *
  * 1. **It is the same post.** Everything after the day key — selection, claim,
- *    send, thread — is `SlatePoster.postFor`, the method both crons call. This file
+ *    send — is `SlatePoster.postFor`, the method both crons call. This file
  *    adds an entry point, not a second implementation.
  * 2. **It cannot double-post.** The cards are claimed in `discord_cards` with
  *    `on conflict do nothing` before anything is sent, so a day that is already
@@ -217,8 +217,7 @@ async function preview(etKey: string, target: Target, deps: ForceDeps, now: Date
   }
 
   deps.out(
-    `  ${target.guildId} → channel ${target.channelId}: ${count(games.length)} would go out` +
-      `${games.length > 4 ? ' (the rest in a thread)' : ''}`,
+    `  ${target.guildId} → channel ${target.channelId}: ${count(games.length)} would go out`,
   );
   for (const game of games) deps.out(`    ${tipOff(game)}  ${matchup(game)}  ${game.gameId}`);
 }
@@ -239,15 +238,10 @@ function report(result: PostResult, target: Target): string[] {
     ];
   }
 
-  const lines = [
-    `${where}posted ${count(result.games)}${result.threadId ? ', the rest in a thread' : ''}.`,
-  ];
+  const lines = [`${where}posted ${count(result.games)}.`];
 
-  const [first] = result.messageIds;
-  if (first)
-    lines.push(`    <https://discord.com/channels/${target.guildId}/${target.channelId}/${first}>`);
-  if (result.threadId) {
-    lines.push(`    thread <https://discord.com/channels/${target.guildId}/${result.threadId}>`);
+  for (const id of result.messageIds) {
+    lines.push(`    <https://discord.com/channels/${target.guildId}/${target.channelId}/${id}>`);
   }
 
   return lines;

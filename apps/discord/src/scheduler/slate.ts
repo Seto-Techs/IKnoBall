@@ -1,20 +1,16 @@
 /**
- * Which games are on a guild's slate today, and how they fit into messages.
+ * Which games are on a guild's slate today.
  *
  * Pure: no database, no gateway, no clock. The scheduler hands in rows and an
  * instant, so a test can pin the selection at any hour of any day.
  *
- * Two Discord limits shape the second half. A message may carry at most 10
- * embeds but only **5 action rows**, and every card spends one row on its three
- * buttons, so four cards is the widest slate that fits one message. Past that the
- * remainder goes to a thread rather than a second message in the channel, which
- * keeps one day's slate in one conversation (DISC-10).
+ * A card is one message. Discord renders every embed in a message before any of
+ * its components, so two cards in one message put both cards above both button
+ * rows, and the reader cannot tell which buttons pick which game. One card per
+ * message puts each game's buttons directly under its card (DISC-10).
  */
-import type { CardGame, CardTeam, CardTeams } from '../cards/types';
+import type { CardGame, CardStake, CardTeam, CardTeams } from '../cards/types';
 import { slateDateKey } from './slate-date';
-
-/** Cards per message: one action row each, under Discord's cap of five. */
-export const CARDS_PER_MESSAGE = 4;
 
 /** A `schedule_games` row, as far as a card is concerned. */
 export interface SlateGame {
@@ -29,6 +25,8 @@ export interface SlateGame {
   homeTeamCity: string | null;
   homeTeamName: string | null;
   seriesText: string | null;
+  /** The season the row's day belongs to, which is the season the record is for. */
+  seasonYear: string | null;
 }
 
 /**
@@ -67,26 +65,6 @@ export function selectSlateGames(
     .sort((left, right) => tipOff(left) - tipOff(right));
 }
 
-/**
- * Split a slate into one message's worth of cards at a time.
- *
- * `[[a,b,c,d], [e,f]]` for six games: the first chunk is the channel message and
- * every later chunk belongs in its thread. An empty slate is no chunks at all,
- * which is how "post nothing on an empty day" stays a single rule.
- */
-export function splitSlate(
-  games: readonly SlateGame[],
-  perMessage: number = CARDS_PER_MESSAGE,
-): SlateGame[][] {
-  if (perMessage < 1) throw new RangeError('perMessage must be at least 1');
-
-  const chunks: SlateGame[][] = [];
-  for (let index = 0; index < games.length; index += perMessage) {
-    chunks.push(games.slice(index, index + perMessage));
-  }
-  return chunks;
-}
-
 /** `Boston Celtics`, falling back to the tricode when the schedule has no name. */
 function displayName(city: string | null, name: string | null, tricode: string | null): string {
   const full = [city, name]
@@ -109,7 +87,12 @@ export function toCardGame(game: SlateGame): CardGame {
   };
 }
 
-function sideTeam(game: SlateGame, side: 'away' | 'home', teams: ReadonlyMap<string, CardTeam>) {
+function sideTeam(
+  game: SlateGame,
+  side: 'away' | 'home',
+  teams: ReadonlyMap<string, CardTeam>,
+  stake: CardStake | undefined,
+) {
   const tricode =
     (side === 'away' ? game.awayTeamTricode : game.homeTeamTricode)?.trim().toUpperCase() ?? '';
   const row = tricode ? teams.get(tricode) : undefined;
@@ -123,15 +106,26 @@ function sideTeam(game: SlateGame, side: 'away' | 'home', teams: ReadonlyMap<str
     tricode: row?.tricode ?? tricode,
     name: row?.name ?? fallbackName,
     logoUrl: row?.logoUrl ?? null,
-    // No season record on this side of the wire: the W-L column comes from the
-    // backend's standings/teams controllers, which this chunk does not own, and
-    // the card already renders a dash when a record is absent. Guessing one from
-    // final games would fork the standings logic into the bot.
-    record: null,
+    // Absent when the team has no `teams` row or no completed games yet: the card
+    // drops that side's field rather than printing a dash where the record goes.
+    record: row?.record ?? null,
+    points: stake?.[side] ?? null,
   };
 }
 
-/** Both sides of a card, using the `teams` rows where they exist. */
-export function toCardTeams(game: SlateGame, teams: ReadonlyMap<string, CardTeam>): CardTeams {
-  return { away: sideTeam(game, 'away', teams), home: sideTeam(game, 'home', teams) };
+/**
+ * Both sides of a card, using the `teams` rows where they exist.
+ *
+ * `stake` is what each side pays if picked right; a card built after tip-off has
+ * none, because there is nothing left to pick.
+ */
+export function toCardTeams(
+  game: SlateGame,
+  teams: ReadonlyMap<string, CardTeam>,
+  stake?: CardStake | null,
+): CardTeams {
+  return {
+    away: sideTeam(game, 'away', teams, stake ?? undefined),
+    home: sideTeam(game, 'home', teams, stake ?? undefined),
+  };
 }

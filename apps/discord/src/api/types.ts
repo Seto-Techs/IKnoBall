@@ -69,6 +69,11 @@ export interface LeaderboardEntry {
 export interface LeaderboardQuery {
   guildId: string;
   mode: PredictionMode;
+  /**
+   * The caller's Discord user id, so the board can append their own row when the
+   * top ten does not contain it. `/leaderboard` always sends it.
+   */
+  viewerDiscordUserId?: string;
 }
 
 export interface ResolveLinkQuery {

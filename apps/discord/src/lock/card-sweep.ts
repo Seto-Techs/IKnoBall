@@ -6,13 +6,13 @@ import type { DeadCards } from './dead-cards';
 /**
  * One *message* that is due an edit, with the exact payload Discord will receive.
  *
- * The unit of work is the message, not the card, because a posted message can hold
- * up to four cards (DISC-10: one embed and one action row per card, four rows under
- * Discord's five-row cap). `PATCH /channels/{c}/messages/{m}` replaces the whole
- * payload, so editing "one card" means rebuilding the message with that card
- * changed and its siblings as they should look — a per-card edit would delete the
- * siblings' embeds. It is also fewer REST calls than the brief assumed: a message
- * whose four games all tip off in the same minute costs one call, not four.
+ * The unit of work is the message, not the card, because
+ * `PATCH /channels/{c}/messages/{m}` replaces the whole payload: editing "one
+ * card" means rebuilding the message with that card changed and everything else it
+ * holds as it should look — a per-card edit would delete the rest. A card is its
+ * own message now (DISC-10), so a job normally holds a single card; messages posted
+ * before that change still hold four, and rebuilding them from their rows leaves
+ * them exactly as they were.
  */
 export interface SweepJob {
   channelId: string;
