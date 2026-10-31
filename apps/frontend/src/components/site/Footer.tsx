@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { Heart } from 'lucide-react';
+import { FaDiscord } from 'react-icons/fa6';
+import { DISCORD_INVITE_URL } from '../../lib/discord';
 import { Logo } from '../brand/Logo';
 
 /**
@@ -59,6 +61,15 @@ export function SiteFooter() {
         </div>
 
         <nav aria-label="Footer" className="flex items-center gap-5">
+          <a
+            href={DISCORD_INVITE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md font-semibold text-brand-navy transition-colors hover:text-basketball-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+          >
+            <FaDiscord className="h-3.5 w-3.5 text-[#5865F2]" aria-hidden="true" />
+            Add to Discord
+          </a>
           <Link
             to="/support"
             className="inline-flex items-center gap-1.5 rounded-md font-semibold text-brand-navy transition-colors hover:text-basketball-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
