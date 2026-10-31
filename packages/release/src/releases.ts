@@ -29,6 +29,29 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.1',
+    date: '2026-10-31',
+    headline: 'The slate comes to you, and the site tells you it is on Discord.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'The next slate posts itself the moment the last game of the night settles — no waiting for the morning. A card per game for the day ahead, in the channel you already set.',
+      },
+      {
+        kind: 'added',
+        text: 'A recap when the day ends: the server’s board as it stood once the last game went final, so the night’s result is the last thing in the channel rather than something you go looking for.',
+      },
+      {
+        kind: 'added',
+        text: 'The site now says so. If you have not tried the bot, the front page has an invite, and the footer has it on every page after you sign in.',
+      },
+      {
+        kind: 'improved',
+        text: 'Adding the bot asks for five permissions and nothing else: post in the channel you choose, and make a thread when a day is busy enough to need one.',
+      },
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-10-30',
     headline: 'IKnoBall is on Discord, so picking comes to you.',

@@ -3,6 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 import type { Client } from 'discord.js';
 import type IORedis from 'ioredis';
 import type { Database } from '@iknoball/database';
+import { IknoballClient } from '../api/iknoball.client';
 import { DatabaseService } from '../infrastructure/database.service';
 import { DiscordClientService } from '../infrastructure/discord-client.service';
 import { RedisService } from '../infrastructure/redis.service';
@@ -26,6 +27,7 @@ export class Infrastructure {
   private database?: Database;
   private redisClient?: IORedis;
   private discordClient?: Client;
+  private iknoball?: IknoballClient;
 
   constructor(private readonly moduleRef: ModuleRef) {}
 
@@ -50,5 +52,17 @@ export class Infrastructure {
   get client(): Client {
     this.discordClient ??= this.moduleRef.get(DiscordClientService, { strict: false }).client;
     return this.discordClient;
+  }
+
+  /**
+   * The bot → API client.
+   *
+   * Same story: `IknoballClient` is a provider of `AppModule`, which exports nothing.
+   * The rollover's recap asks the API for a guild's board, because the ranking is
+   * the API's to compute — the bot must not grow a second definition of points.
+   */
+  get api(): IknoballClient {
+    this.iknoball ??= this.moduleRef.get(IknoballClient, { strict: false });
+    return this.iknoball;
   }
 }

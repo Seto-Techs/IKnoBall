@@ -1,0 +1,72 @@
+name: CI
+
+# The checks CD does not run. CD only fires on `pull_request: types: [closed]`
+# with `merged == true`, so today nothing looks at a push or an open PR.
+#
+# Step order is load-bearing. Both traps below were reproduced on a clean clone:
+#
+#   1. Format before build. `bun run build` regenerates
+#      `apps/frontend/src/routeTree.gen.ts` in the route generator's own style
+#      (no semicolons), which then fails `oxfmt --check`. Building first turns a
+#      green run red over a file nobody edited.
+#   2. Build before test. The `test` task has no `dependsOn: ["^build"]`, and
+#      `@iknoball/release` and `@iknoball/shot-zones` are imported through their
+#      built `dist/`, which a clean checkout does not have. Test-first fails
+#      `src/app.controller.spec.ts` and `src/players.controller.spec.ts` with
+#      "Failed to resolve entry for package".
+#
+# No secrets, no Postgres, no Redis: every check runs against mocks. `bun run
+# test` passes with DATABASE_URL, REDIS_*, DISCORD_*, AWS_* and VITE_* unset.
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version input: setup-bun reads `packageManager` from package.json,
+      # so `bun@1.3.14` there stays the single source of truth.
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
+      # `--ignore-scripts` matches the Dockerfiles and `.agents/setup`: it skips
+      # the root `prepare`, which installs lefthook hooks a runner never uses.
+      - name: Install
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Format
+        run: bun run format:check
+
+      - name: Lint
+        run: bun run lint
+
+      # `version:sync` is the only writer of the version, so a hand-edited
+      # manifest or a forgotten changelog shows up here.
+      - name: Version
+        run: bun run version:check
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun run test

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { FaDiscord } from 'react-icons/fa6';
 import {
   ArrowRight,
   CalendarDays,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { VERSION } from '@iknoball/release';
 import { useSession } from '../../lib/use-auth';
+import { DISCORD_INVITE_URL } from '../../lib/discord';
 import { Logo as BrandLogo } from '../brand/Logo';
 import { navLinkClass } from '../brand/nav';
 import { seasonLabel, weekStartKey } from '../predict/week';
@@ -31,6 +33,7 @@ import { seasonLabel, weekStartKey } from '../predict/week';
 const NAV_LINKS = [
   { href: '#how', label: 'How it works' },
   { href: '#features', label: 'Features' },
+  { href: '#discord', label: 'Discord' },
   { href: '#scoring', label: 'Scoring' },
   { href: '#board', label: 'Standings' },
 ];
@@ -273,6 +276,20 @@ function Hero() {
             {season} season · 30 teams
           </span>
 
+          <a
+            href={DISCORD_INVITE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="group mt-4 flex w-fit items-center gap-2 rounded-full border border-[#5865F2]/45 bg-[#5865F2]/15 px-3.5 py-1.5 text-[13px] font-semibold text-white/90 transition-colors hover:bg-[#5865F2]/30"
+          >
+            <FaDiscord className="h-4 w-4 text-[#8f97f7]" aria-hidden="true" />
+            New — the slate now posts in Discord
+            <ArrowRight
+              className="h-3.5 w-3.5 text-white/60 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </a>
+
           <h1 className="mt-6 font-heading text-5xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl">
             Pick every game.
             <br />
@@ -406,6 +423,82 @@ function Features() {
               <p className="mt-2 text-[15px] leading-relaxed text-stone-600">{feature.body}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The Discord band.
+ *
+ * Sits between Features and Scoring, because it answers "where do I actually do
+ * this" — the page had no answer for a visitor who does not want another tab to
+ * remember. A band rather than a Features card: it carries the one action the
+ * page is missing, an invite to a server, and a card is the wrong size for that.
+ *
+ * Light surface on purpose. Features above it is `court-50` and Scoring below is
+ * navy, so a dark band here would have run into Scoring with no break.
+ */
+function DiscordBand() {
+  const points = [
+    'The day’s slate posts in the channel you pick — one card per game, tip-off in your own clock.',
+    'Tap a team to call it. The buttons go dead at tip-off, so nobody picks with the result in hand.',
+    'Leaderboard ranks your server, /picks shows what you have open. Same account as the site.',
+  ];
+
+  return (
+    <section id="discord" className="scroll-mt-20 bg-white py-16 sm:py-20">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="rounded-2xl border border-brand-line bg-court-50 p-8 sm:p-10">
+          <div className="grid items-center gap-10 lg:grid-cols-[1fr_auto]">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#5865F2]">
+                  <FaDiscord className="h-6 w-6 text-white" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+                    Now on Discord
+                  </p>
+                  <h2 className="font-heading text-xl font-black uppercase tracking-tight text-brand-ink sm:text-2xl">
+                    Pick from the channel you are already in
+                  </h2>
+                </div>
+              </div>
+
+              <ul className="mt-6 max-w-2xl space-y-3">
+                {points.map((point) => (
+                  <li key={point} className="flex gap-3 text-[15px] leading-relaxed text-stone-600">
+                    <Check
+                      className="mt-1 h-4 w-4 shrink-0 text-basketball-500"
+                      aria-hidden="true"
+                    />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="lg:justify-self-end">
+              <a
+                href={DISCORD_INVITE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="group inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#5865F2] px-6 py-4 text-base font-semibold text-white transition-colors hover:bg-[#4752c4] sm:w-auto"
+              >
+                <FaDiscord className="h-5 w-5" aria-hidden="true" />
+                Add to your server
+                <ArrowRight
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </a>
+              <p className="mt-3 text-center text-xs text-stone-500 lg:text-right">
+                Free · you need Manage Server on it
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -588,6 +681,16 @@ function LandingFooter() {
           <p className="mt-4 max-w-sm text-sm leading-relaxed">
             Stats, schedules and a prediction game for people who watch the whole fourth quarter.
           </p>
+
+          <a
+            href={DISCORD_INVITE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/15 px-3.5 py-2 text-sm font-semibold text-white/80 transition-colors hover:border-white/30 hover:bg-white/5 hover:text-white"
+          >
+            <FaDiscord className="h-4 w-4 text-[#8f97f7]" aria-hidden="true" />
+            Add the bot to your server
+          </a>
         </div>
 
         <div>
@@ -712,6 +815,7 @@ export default function LandingPage() {
       <Hero />
       <HowItWorks />
       <Features />
+      <DiscordBand />
       <ScoringModes />
       <LeaderboardPreview />
       <FinalCta />

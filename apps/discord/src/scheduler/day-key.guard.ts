@@ -24,6 +24,22 @@ export function dayKey(guildId: string, etKey: string): string {
 }
 
 /**
+ * `recap:guildId:YYYY-MM-DD` — one key per guild per recapped slate day.
+ *
+ * Prefixed so the two keyspaces cannot collide: a guild that recaps a day it was
+ * never posted cannot block that day's slate, and the post key keeps its documented
+ * shape.
+ *
+ * Unlike `dayKey`, this one has no durable twin — `discord_cards` proves a slate was
+ * sent, nothing proves a recap was. A Redis flush therefore costs one duplicate
+ * recap, which is why the durable answer when this earns its keep is a
+ * `discord_guild_recaps` table rather than a longer TTL.
+ */
+export function recapKey(guildId: string, etKey: string): string {
+  return `recap:${guildId}:${etKey}`;
+}
+
+/**
  * The "already posted today" check.
  *
  * Redis is the cheap guard; `discord_cards` is the durable one. This exists so a
