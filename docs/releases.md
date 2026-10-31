@@ -48,6 +48,40 @@ packages/release/src/releases.ts   ← the only hand-written version
 half-applied bump cannot be committed. It also rejects a changelog that is
 unordered, duplicated, not plain semver, or missing a headline or changes.
 
+## How a release reaches `main`
+
+`main` only ever receives commits from `dev`. Nothing is pushed to it directly and
+no release branch is merged into it — a release branch targets `dev`, and the
+release itself is the `dev → main` pull request.
+
+```
+changelog + version:sync  ──▶  dev  ──▶  main  ──▶  tag vX.Y.Z
+   (a branch, PR)          (integration)  (release PR)   (the marker)
+```
+
+So the order is:
+
+1. Open a pull request from the release branch into **`dev`**.
+2. Once `dev` is where it should be, open **`dev` → `main`**. That pull request is
+   the release: its merge is what CD builds and deploys as `:prod`.
+3. Tag the **merge commit on `main`** with the version from the changelog:
+
+   ```bash
+   git fetch origin main
+   git tag -a v0.3.0 origin/main -m "IKnoBall 0.3.0"
+   git push origin v0.3.0
+   ```
+
+**The tag is a marker, not a trigger.** `.github/workflows/cd.yml` fires on a
+merged pull request into `dev` or `main`, and it tags images by environment
+(`:staging`, `:prod`), not by version. Pushing `v0.3.0` therefore deploys nothing
+and publishes no image tag. It exists so a released commit can be found and
+checked out by version later. If release-gated deploys are ever wanted, that is a
+change to `cd.yml`, not something the tag does on its own.
+
+Tag the _merge commit_, not the head of `dev`: the merge commit is what `main`
+actually holds and what a deployed image was built from.
+
 ## What a player sees
 
 - **What's New** — a modal over whatever page they land on, showing the newest
