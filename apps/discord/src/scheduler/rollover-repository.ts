@@ -87,13 +87,18 @@ export class RolloverRepository {
    */
   async statesForAllGuilds(now: Date = new Date()): Promise<GuildRolloverState[]> {
     // 1. The latest slate day each guild was posted.
+    //
+    // `gameId`, never `id`: a card stores the feed's game id (`0022600123`), and
+    // `schedule_games.id` is an unrelated UUID. Joining on `id` matches nothing,
+    // which reads as "no guild has ever been posted" and silently stops every
+    // rollover — the failure this code shipped with once.
     const posted = await this.db
       .select({
         guildId: discordCards.guildId,
         lastPostedKey: sql<string>`max(${slateDaySql})`,
       })
       .from(discordCards)
-      .innerJoin(scheduleGames, eq(scheduleGames.id, discordCards.gameId))
+      .innerJoin(scheduleGames, eq(scheduleGames.gameId, discordCards.gameId))
       .groupBy(discordCards.guildId);
 
     if (posted.length === 0) return [];
@@ -127,10 +132,13 @@ export class RolloverRepository {
    * picks, and a settled pick is what a row on it represents.
    */
   async settledPickCount(guildId: string, slateKey: string): Promise<number> {
+    // Same rule as above: `prediction_picks.gameId` is the feed's id, so the join
+    // is on `scheduleGames.gameId`. On `id` this counts zero for every day and the
+    // recap never posts.
     const [row] = await this.db
       .select({ settled: count() })
       .from(predictionPicks)
-      .innerJoin(scheduleGames, eq(scheduleGames.id, predictionPicks.gameId))
+      .innerJoin(scheduleGames, eq(scheduleGames.gameId, predictionPicks.gameId))
       .where(
         and(
           eq(predictionPicks.guildId, guildId),
