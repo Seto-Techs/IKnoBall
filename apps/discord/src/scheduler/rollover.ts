@@ -39,7 +39,7 @@ export interface RolloverState {
    * which is what gating on `settledAt` would do.
    */
   dayOver: boolean;
-  /** The next ET slate day that has games, or null when the season is quiet. */
+  /** The next ET slate day that still has a game to pick, or null when none does. */
   nextKey: string | null;
 }
 
@@ -67,7 +67,8 @@ export interface RolloverDecision {
  * first `false` wins:
  *
  * - `!dayOver` — a game is still live. Rolling now would replace a slate mid-day.
- * - `nextKey === null` — the season is quiet. Nothing to roll to.
+ * - `nextKey === null` — nothing ahead is still pickable. The season is quiet, or
+ *   every game left today has tipped off; either way there is no slate to send.
  * - `nextKey <= lastPostedKey` — the scheduler already posted it (or a previous
  *   rollover did), so this is the "already posted" no-op rather than a second post.
  *
