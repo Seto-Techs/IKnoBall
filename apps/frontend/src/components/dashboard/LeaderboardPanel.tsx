@@ -74,10 +74,10 @@ function ListRow({
 
   return (
     <div
-      className={`flex h-12 items-center gap-3 px-5 ${isUser ? 'bg-brand-navy' : medalRowBg} ${medal ? medalBorder : ''}`}
+      className={`flex h-12 items-center gap-2 px-5 ${isUser ? 'bg-brand-navy' : medalRowBg} ${medal ? medalBorder : ''}`}
       style={rowBg ? { backgroundColor: rowBg } : undefined}
     >
-      <span className={`w-7 shrink-0 text-right text-sm tabular-nums ${rankColor}`}>{rank}</span>
+      <span className={`w-5 shrink-0 text-right text-sm tabular-nums ${rankColor}`}>{rank}</span>
       {isUser ? (
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-gold/20"
@@ -118,7 +118,7 @@ function ListRow({
         {name}
       </span>
       <span
-        className={`w-12 shrink-0 text-right text-sm tabular-nums ${isUser ? 'text-white/85' : 'text-stone-600'}`}
+        className={`w-10 shrink-0 text-right text-sm tabular-nums ${isUser ? 'text-white/85' : 'text-stone-600'}`}
       >
         {points}
       </span>
@@ -190,11 +190,11 @@ export function LeaderboardPanel({
       ) : (
         <div>
           <div className="bg-white">
-            <div className="flex items-center gap-3 px-5 pb-1 pt-3 text-sm font-semibold uppercase tracking-wide text-stone-600">
-              <span className="w-7 shrink-0 text-right">#</span>
+            <div className="flex items-center gap-2 px-5 pb-1 pt-3 text-sm font-semibold uppercase tracking-wide text-stone-600">
+              <span className="w-5 shrink-0 text-right">#</span>
               <span className="w-8 shrink-0" aria-hidden="true" />
               <span className="min-w-0 flex-1">User</span>
-              <span className="w-12 shrink-0 text-right">Pts</span>
+              <span className="w-10 shrink-0 text-right">Pts</span>
             </div>
           </div>
 

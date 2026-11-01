@@ -85,7 +85,10 @@ function ProfilePage() {
             createdAt={user.createdAt}
           />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* Like the dashboard rails: the team card only needs its full 320px
+              once the row can spare it, so a laptop-size window keeps more of
+              the width for the settings column. */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_320px]">
             {/* The rail leads on narrow screens: which team you follow is the one
                 thing worth seeing before a long settings column, and the desktop
                 rail sits to the right regardless of source order. */}
