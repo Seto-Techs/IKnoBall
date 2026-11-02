@@ -367,7 +367,7 @@ The card is the only thing a Discord user sees. When the game settles (the worke
 
 **Change**
 
-- On settle, edit the card: final score, a ✅/❌ line for the caller... except the card is shared, so the correct surface is the final score plus "settled" and a link to `/picks`. Per-user results go to an ephemeral reply only if the user clicks a "What did I get?" button.
+- On settle, edit the card: final score, a ✅/❌ line for the caller... except the card is shared, so the correct surface is the final score alone. Per-user results go to an ephemeral reply only if the user clicks a "What did I get?" button. (A "Settled · `/picks` shows what you got" line was tried and dropped: under a result that already says what happened, it read as noise.)
 - Keep the buttons but swap them for a disabled state; never delete the card.
 - One edit per card, guarded by `discord_cards.settledAt`.
 - Batch: settlement touches many games at once, so queue edits and pace them (see DISC-12).

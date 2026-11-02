@@ -92,7 +92,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-stone-50 px-2.5 py-2">
       <dt className="text-[9px] font-bold uppercase tracking-[0.14em] text-stone-400">{label}</dt>
-      <dd className="truncate text-xs font-semibold text-brand-ink">{value}</dd>
+      {/* Wraps instead of clipping: the rail narrows on small screens, and an
+          arena name cut off at "Crypto.com Ar…" reads worse than two lines. */}
+      <dd className="break-words text-xs font-semibold leading-tight text-brand-ink">{value}</dd>
     </div>
   );
 }

@@ -187,7 +187,10 @@ function DashboardPage() {
         active="dashboard"
       />
 
-      <div className="mx-auto grid max-w-[1920px] grid-cols-1 items-start gap-6 px-6 py-6 xl:grid-cols-[288px_minmax(0,1fr)_288px]">
+      {/* The rails are narrow while the row is tight and only take their full
+          288px once there is room for it, so a 1280px monitor gives the middle
+          column 704px instead of the 608 it had with two fixed 288s. */}
+      <div className="mx-auto grid max-w-[1920px] grid-cols-1 items-start gap-6 px-6 py-6 xl:grid-cols-[240px_minmax(0,1fr)_240px] 2xl:grid-cols-[288px_minmax(0,1fr)_288px]">
         <StandingsSidebar
           selectedAbbr={team.abbreviation}
           standings={standings ?? null}

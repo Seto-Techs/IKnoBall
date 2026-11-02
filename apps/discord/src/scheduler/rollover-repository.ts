@@ -7,15 +7,16 @@
  * paths, and a scheduling question should not widen them.
  *
  * Three queries per minute, whatever the guild count: the last day each guild was
- * posted, the state of each league day since a week ago, and the upcoming days.
- * Every guild rolls onto the same league schedule, so the last two are shared.
+ * posted, the state of each league day since a week ago, and the days ahead that
+ * still have a game to pick. Every guild rolls onto the same league schedule, so
+ * the last two are shared.
  *
  * **Duplication worth knowing about.** The ET slate day is derived here with the
  * same rule the schedule crawler uses: the feed's `gameDate`, else the tip-off's
  * date. There is no shared constant because the worker must not depend on the
  * bot's module, so if that rule changes, both copies change.
  */
-import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
 import { discordCards, predictionPicks, scheduleGames, type Database } from '@iknoball/database';
 import { STATUS_FINAL } from '../lock/card-edit';
 import type { RolloverState } from './rollover';
@@ -37,6 +38,15 @@ const DAY_OVER_GRACE_MS = 4 * 60 * 60 * 1000;
 
 /** How far back the per-day query looks; a guild idle for longer than this is long done. */
 const DAY_WINDOW_DAYS = 7;
+
+/**
+ * The schedule's "scheduled" code — a game nobody has started yet.
+ *
+ * The same code `selectSlateGames` filters on, and it is duplicated here for the
+ * same reason the slate day is: this query has to know what a postable game is
+ * without asking the poster.
+ */
+const STATUS_SCHEDULED = 1;
 
 /** Everything the rollover decision needs about one guild, from Postgres. */
 export interface GuildRolloverState extends RolloverState {
@@ -87,20 +97,26 @@ export class RolloverRepository {
    */
   async statesForAllGuilds(now: Date = new Date()): Promise<GuildRolloverState[]> {
     // 1. The latest slate day each guild was posted.
+    //
+    // `gameId`, never `id`: a card stores the feed's game id (`0022600123`), and
+    // `schedule_games.id` is an unrelated UUID. Joining on `id` matches nothing,
+    // which reads as "no guild has ever been posted" and silently stops every
+    // rollover — the failure this code shipped with once.
     const posted = await this.db
       .select({
         guildId: discordCards.guildId,
         lastPostedKey: sql<string>`max(${slateDaySql})`,
       })
       .from(discordCards)
-      .innerJoin(scheduleGames, eq(scheduleGames.id, discordCards.gameId))
+      .innerJoin(scheduleGames, eq(scheduleGames.gameId, discordCards.gameId))
       .groupBy(discordCards.guildId);
 
     if (posted.length === 0) return [];
 
-    // 2. How each of the last week's league days stands, and 3. which days are
-    //    still ahead. Both are league-wide, so one answer covers every guild.
-    const [days, upcoming] = await Promise.all([this.dayStates(now), this.upcomingDays(now)]);
+    // 2. How each of the last week's league days stands, and 3. which of the days
+    //    ahead a guild could still be shown. Both are league-wide, so one answer
+    //    covers every guild.
+    const [days, postable] = await Promise.all([this.dayStates(now), this.postableDays(now)]);
     const byDay = new Map(days.map((day) => [day.slateKey, day]));
     const floor = shiftDateKey(etDateKey(now), -DAY_WINDOW_DAYS);
 
@@ -114,7 +130,7 @@ export class RolloverRepository {
         // A day that dropped out of the window, or out of the schedule entirely,
         // is not a day anyone is still waiting on.
         dayOver: lastPostedKey < floor || day === undefined || isDayOver(day, now),
-        nextKey: upcoming.find((key) => key > lastPostedKey) ?? null,
+        nextKey: postable.find((key) => key > lastPostedKey) ?? null,
       };
     });
   }
@@ -127,10 +143,13 @@ export class RolloverRepository {
    * picks, and a settled pick is what a row on it represents.
    */
   async settledPickCount(guildId: string, slateKey: string): Promise<number> {
+    // Same rule as above: `prediction_picks.gameId` is the feed's id, so the join
+    // is on `scheduleGames.gameId`. On `id` this counts zero for every day and the
+    // recap never posts.
     const [row] = await this.db
       .select({ settled: count() })
       .from(predictionPicks)
-      .innerJoin(scheduleGames, eq(scheduleGames.id, predictionPicks.gameId))
+      .innerJoin(scheduleGames, eq(scheduleGames.gameId, predictionPicks.gameId))
       .where(
         and(
           eq(predictionPicks.guildId, guildId),
@@ -179,18 +198,32 @@ export class RolloverRepository {
   }
 
   /**
-   * Slate days at or after today that actually have games.
+   * The slate days a guild can still be given, ascending and capped.
    *
-   * Ascending, capped: the rollover only ever wants the first one after a guild's
-   * last day, and a whole season of days is not worth materialising to find it.
+   * Not "days with games": a day whose games have all tipped off has nothing left
+   * to pick, and `postFor` sends it as an empty slate. Offering one to the decision
+   * layer wedges the guild — the roll succeeds as `empty`, the day key is purposely
+   * not remembered for an empty day, so the next tick makes the same choice every
+   * minute with `lastPostedKey` never moving. A guild two days behind would never
+   * catch up, and only its timed post would rescue it.
+   *
+   * So this answers the question the decision actually asks: from today on (never a
+   * day already finished), which days still have a game a reader can pick. Same
+   * rule `selectSlateGames` applies when it builds the cards.
    */
-  private async upcomingDays(now: Date, limit = 30): Promise<string[]> {
-    const from = shiftDateKey(etDateKey(now), -1);
+  private async postableDays(now: Date, limit = 30): Promise<string[]> {
+    const from = etDateKey(now);
 
     const rows = await this.db
       .selectDistinct({ slateKey: slateDaySql })
       .from(scheduleGames)
-      .where(sql`${slateDaySql} >= ${from}`)
+      .where(
+        and(
+          sql`${slateDaySql} >= ${from}`,
+          eq(scheduleGames.gameStatus, STATUS_SCHEDULED),
+          gt(scheduleGames.gameDateTimeUTC, now),
+        ),
+      )
       .orderBy(asc(slateDaySql))
       .limit(limit);
 
