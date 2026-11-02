@@ -18,13 +18,31 @@ import type { CardPayload } from '../cards/card-payload';
 export const LOCKED_LINE = '🔒 **Locked at tip-off**';
 
 /**
- * Appended when the game is final.
+ * The bar colour a card wears once picks are closed: dim grey, the same "closed"
+ * language the web panel uses for the same state.
  *
- * It points at the `/picks` command rather than at a URL: the card is shared, so
- * it cannot show what *this* reader picked, and the durable per-user answer is
- * the slash command (DISC-15). There is no web route to link to.
+ * The "🔒 Locked at tip-off" line alone was too easy to miss — it sits under the
+ * tip-off in the same weight as everything else, and buttons going grey reads as
+ * "nothing to do here" rather than "this game has started". An open card has no
+ * colour at all, so the bar appearing is the change, and it is visible from across
+ * the channel without the reader parsing any text.
+ *
+ * Settled cards keep it. Picks are still closed once a game is final, and a bar
+ * that vanished on settlement would make a finished card look open again from a
+ * glance; the `**Final**` line is what tells the two apart.
  */
-export const SETTLED_LINE = 'Settled · `/picks` shows what you got';
+export const CLOSED_COLOUR = 0x4f545c;
+
+/**
+ * Prefix the title once picks close: `🔒 GSW @ DEN`.
+ *
+ * The one place a mark goes in a title. `cards/card-payload.ts` keeps *team* marks
+ * out of it because a custom emoji (`<:MEM:123>`) renders as raw text in some
+ * clients — but this is a plain Unicode emoji, which every client draws, and the
+ * title is the largest line on the card: it is what a reader scrolling past sees
+ * before any description or button.
+ */
+export const CLOSED_TITLE_MARK = '🔒 ';
 
 /** What a final game finished on. Both scores are non-null when this exists. */
 export interface FinalScore {
@@ -111,12 +129,23 @@ export function finalScore(card: CardState): FinalScore {
 
 /** The card as it looks from tip-off until the game is final. */
 export function lockedCard(payload: CardPayload): CardPayload {
-  return withDescription(disablePickButtons(payload), LOCKED_LINE);
+  return withDescription(closePicks(payload), LOCKED_LINE);
 }
 
-/** The card as it looks once the game is final: score, settled, no picks. */
+/**
+ * The card as it looks once the game is final: the score, and nothing else.
+ *
+ * The card is shared, so it cannot show what *this* reader picked, and a line
+ * pointing at `/picks` was more noise than help under a result that already says
+ * what happened.
+ */
 export function settledCard(payload: CardPayload, score: FinalScore): CardPayload {
-  return withDescription(disablePickButtons(payload), finalLine(score), SETTLED_LINE);
+  return withDescription(closePicks(payload), finalLine(score));
+}
+
+/** Picks closed: dead buttons, a grey bar, and a mark on the title. */
+function closePicks(payload: CardPayload): CardPayload {
+  return withTitleMark(withColour(disablePickButtons(payload), CLOSED_COLOUR), CLOSED_TITLE_MARK);
 }
 
 /** `**Final** MEM 102 – 108 DAL` — away first, the same order as the title. */
@@ -153,6 +182,28 @@ function withDescription(payload: CardPayload, ...lines: string[]): CardPayload 
     .join('\n');
 
   return { ...payload, embeds: [{ ...embed, description }, ...rest] };
+}
+
+/** Tint the first embed's bar, leaving the rest of it untouched. */
+function withColour(payload: CardPayload, colour: number): CardPayload {
+  const [embed, ...rest] = payload.embeds;
+  if (!embed) return payload;
+
+  return { ...payload, embeds: [{ ...embed, color: colour }, ...rest] };
+}
+
+/**
+ * Prefix the first embed's title, once.
+ *
+ * `renderCard` always builds from a fresh `cardPayload`, so the guard is belt and
+ * braces — but a message holding several cards rebuilds every one of them, and a
+ * doubled `🔒 🔒` is the kind of thing nobody notices until it ships.
+ */
+function withTitleMark(payload: CardPayload, mark: string): CardPayload {
+  const [embed, ...rest] = payload.embeds;
+  if (!embed?.title || embed.title.startsWith(mark)) return payload;
+
+  return { ...payload, embeds: [{ ...embed, title: `${mark}${embed.title}` }, ...rest] };
 }
 
 /** Whether an edit failed in a way that will never succeed on a retry. */

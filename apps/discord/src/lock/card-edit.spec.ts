@@ -3,8 +3,9 @@ import { ButtonStyle, ComponentType } from 'discord.js';
 import { cardPayload, type CardPayload } from '../cards/card-payload';
 import type { CardGame, CardTeams } from '../cards/types';
 import {
+  CLOSED_COLOUR,
+  CLOSED_TITLE_MARK,
   LOCKED_LINE,
-  SETTLED_LINE,
   cardLook,
   classifyEditFailure,
   finalLine,
@@ -94,25 +95,36 @@ describe('the tip-off lock', () => {
     expect(text.split('\n')).toHaveLength(2);
   });
 
+  it('wears the closed bar, which an open card does not', () => {
+    expect(payload().embeds[0]?.color).toBeUndefined();
+    expect(lockedCard(payload()).embeds[0]?.color).toBe(CLOSED_COLOUR);
+  });
+
+  it('marks the title, once, keeping the matchup', () => {
+    expect(payload().embeds[0]?.title).toBe('GSW @ DEN');
+    expect(lockedCard(payload()).embeds[0]?.title).toBe(`${CLOSED_TITLE_MARK}GSW @ DEN`);
+    // Rebuilding an already-closed card must not stack the mark.
+    expect(lockedCard(lockedCard(payload())).embeds[0]?.title).toBe(
+      `${CLOSED_TITLE_MARK}GSW @ DEN`,
+    );
+  });
+
   it('changes nothing else about the card', () => {
     const original = payload();
     const locked = lockedCard(original);
 
-    expect(locked.embeds[0]).toMatchObject({
-      title: 'GSW @ DEN',
-      fields: original.embeds[0]?.fields,
-    });
+    expect(locked.embeds[0]).toMatchObject({ fields: original.embeds[0]?.fields });
     expect(locked.embeds[0]?.timestamp).toBe(original.embeds[0]?.timestamp);
     expect(locked.components[0]?.type).toBe(ComponentType.ActionRow);
   });
 });
 
 describe('the result edit', () => {
-  it('prints the final score, away first, and says it settled', () => {
+  it('prints the final score, away first, and nothing after it', () => {
     const text = description(settledCard(payload(), SCORE));
 
     expect(text).toContain('**Final** GSW 134 – 114 DEN');
-    expect(text.endsWith(SETTLED_LINE)).toBe(true);
+    expect(text.endsWith('**Final** GSW 134 – 114 DEN')).toBe(true);
     // The tip-off stays: the card is a record of the game, not just the result.
     expect(text).toContain('**Tip-off** <t:');
   });
@@ -123,6 +135,13 @@ describe('the result edit', () => {
     expect(buttons(settled)[0]).toMatchObject({ disabled: true });
     expect(buttons(settled)[1]).toMatchObject({ disabled: true });
     expect(settled.embeds).toHaveLength(1);
+  });
+
+  it('keeps the closed bar and title mark, so a finished card never reads as open', () => {
+    const settled = settledCard(payload(), SCORE);
+
+    expect(settled.embeds[0]?.color).toBe(CLOSED_COLOUR);
+    expect(settled.embeds[0]?.title).toBe(`${CLOSED_TITLE_MARK}GSW @ DEN`);
   });
 
   it('formats the score line the way the embed reads it', () => {
