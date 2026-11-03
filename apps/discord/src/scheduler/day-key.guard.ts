@@ -40,6 +40,18 @@ export function recapKey(guildId: string, etKey: string): string {
 }
 
 /**
+ * `note:guildId:YYYY-MM-DD` — one key per guild per game-less day it has been told
+ * about.
+ *
+ * Separate from `dayKey` because the two are about different days: the note is
+ * about *today*, while the post it sits next to can be for a later slate. Sharing
+ * one key would let a quiet Monday suppress Tuesday's slate, or the reverse.
+ */
+export function noteKey(guildId: string, etKey: string): string {
+  return `note:${guildId}:${etKey}`;
+}
+
+/**
  * The "already posted today" check.
  *
  * Redis is the cheap guard; `discord_cards` is the durable one. This exists so a

@@ -399,6 +399,8 @@ function game(index: number): SlateGame {
 
 const TEAMS: CardTeam[] = [{ tricode: 'BOS', name: 'Boston Celtics', logoUrl: null, record: null }];
 const MORNING = new Date('2026-10-27T13:00:00.000Z');
+/** The ET day those games belong to, which a post is now named for. */
+const DAY = '2026-10-27';
 
 /** A store that claims each (guild, game) once, like the `discord_cards` insert. */
 function slateStore(games: SlateGame[]): SlateStore {
@@ -407,6 +409,9 @@ function slateStore(games: SlateGame[]): SlateStore {
   return {
     async findGames() {
       return games;
+    },
+    async nextPickableDay() {
+      return DAY;
     },
     async findTeams() {
       return TEAMS;
@@ -494,7 +499,7 @@ describe('100 simulated guilds', () => {
 
     const posts = await Promise.all(
       guilds100.map((guild) =>
-        poster.post({ guildId: guild.guildId, channelId: guild.channelId }, MORNING),
+        poster.postFor({ guildId: guild.guildId, channelId: guild.channelId }, DAY, MORNING),
       ),
     );
 
@@ -604,8 +609,9 @@ describe('100 simulated guilds', () => {
       );
 
       const [guild] = guilds(1);
-      const result = await poster.post(
+      const result = await poster.postFor(
         { guildId: guild!.guildId, channelId: guild!.channelId },
+        DAY,
         MORNING,
       );
 
@@ -635,7 +641,7 @@ describe('100 simulated guilds', () => {
     const guilds100 = guilds(100);
     const posts = await Promise.all(
       guilds100.map((guild) =>
-        poster.post({ guildId: guild.guildId, channelId: guild.channelId }, MORNING),
+        poster.postFor({ guildId: guild.guildId, channelId: guild.channelId }, DAY, MORNING),
       ),
     );
 

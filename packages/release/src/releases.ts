@@ -29,6 +29,25 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.4',
+    date: '2026-11-03',
+    headline: 'The next slate actually arrives — every day, in every server.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'The rollover runs at all now. It shipped without the one decorator Nest needs to hand it its dependencies, so every rollover tick since 0.3.1 died before it ever read the schedule: no server rolled onto the next slate, no matter how the night ended.',
+      },
+      {
+        kind: 'fixed',
+        text: 'A server whose post hour falls east of New York gets the slate ahead, not the one that already tipped. A 9 a.m. post in Jakarta is 10 p.m. the night before in New York, and the bot used to aim at that night, whose games were all finished.',
+      },
+      {
+        kind: 'improved',
+        text: 'A day the league is off now says so — “No NBA games on Nov 3. The next slate is Nov 4.” — once, instead of leaving the channel silent next to a bot that is working fine.',
+      },
+    ],
+  },
+  {
     version: '0.3.3',
     date: '2026-11-02',
     headline: 'The slate turns over on its own, and a closed card looks closed.',
