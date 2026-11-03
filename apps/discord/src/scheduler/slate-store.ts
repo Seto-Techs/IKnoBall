@@ -4,6 +4,7 @@ import { discordCards, scheduleDays, scheduleGames, teams } from '@iknoball/data
 import { TeamStats } from '../cards/team-stats';
 import type { CardStake, CardTeam } from '../cards/types';
 import { Infrastructure } from './infrastructure';
+import { pickableDays } from './schedule-days';
 import type { SlateGame } from './slate';
 import { shiftDateKey } from './slate-date';
 
@@ -58,6 +59,11 @@ export interface CardAttachment {
 export interface SlateStore {
   /** Games whose ET date is within a day of `etKey`, earliest tip-off first. */
   findGames(etKey: string): Promise<SlateGame[]>;
+  /**
+   * The earliest ET day from `fromKey` on that still has a game a reader can pick,
+   * or null when the schedule has nothing left.
+   */
+  nextPickableDay(fromKey: string, now: Date): Promise<string | null>;
   /**
    * The `teams` rows for these schedule tricodes, with their season record and
    * last-five form for `season`.
@@ -114,6 +120,11 @@ export class DrizzleSlateStore implements SlateStore {
       .orderBy(scheduleGames.gameDateTimeUTC);
 
     return rows;
+  }
+
+  async nextPickableDay(fromKey: string, now: Date): Promise<string | null> {
+    const [next] = await pickableDays(this.infra.db, fromKey, now, 1);
+    return next ?? null;
   }
 
   async findTeams(tricodes: readonly string[], season: string | null): Promise<CardTeam[]> {

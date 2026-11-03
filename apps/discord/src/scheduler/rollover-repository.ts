@@ -11,16 +11,24 @@
  * still have a game to pick. Every guild rolls onto the same league schedule, so
  * the last two are shared.
  *
- * **Duplication worth knowing about.** The ET slate day is derived here with the
- * same rule the schedule crawler uses: the feed's `gameDate`, else the tip-off's
- * date. There is no shared constant because the worker must not depend on the
- * bot's module, so if that rule changes, both copies change.
+ * The slate-day expression and the "which days are still pickable" query live in
+ * `schedule-days.ts`, because `DrizzleSlateStore` asks the same questions and the
+ * two answers must not drift.
+ *
+ * **`@Injectable()` is load-bearing.** Nest builds a provider from the class's
+ * `design:paramtypes`, and TypeScript only emits that metadata for a decorated
+ * class. Without the decorator the constructor is called with no arguments, `infra`
+ * is `undefined`, and the failure surfaces only when a query runs — this class
+ * shipped without it and every rollover tick died on `this.infra.db` for the life
+ * of the feature. `scheduler.module.spec.ts` guards the whole module against that.
  */
-import { and, asc, count, eq, gt, sql } from 'drizzle-orm';
+import { Injectable } from '@nestjs/common';
+import { and, count, eq, sql } from 'drizzle-orm';
 import { discordCards, predictionPicks, scheduleGames, type Database } from '@iknoball/database';
 import { STATUS_FINAL } from '../lock/card-edit';
 import type { RolloverState } from './rollover';
 import { Infrastructure } from './infrastructure';
+import { pickableDays, slateDaySql } from './schedule-days';
 import { etDateKey, shiftDateKey } from './slate-date';
 
 /**
@@ -39,15 +47,6 @@ const DAY_OVER_GRACE_MS = 4 * 60 * 60 * 1000;
 /** How far back the per-day query looks; a guild idle for longer than this is long done. */
 const DAY_WINDOW_DAYS = 7;
 
-/**
- * The schedule's "scheduled" code — a game nobody has started yet.
- *
- * The same code `selectSlateGames` filters on, and it is duplicated here for the
- * same reason the slate day is: this query has to know what a postable game is
- * without asking the poster.
- */
-const STATUS_SCHEDULED = 1;
-
 /** Everything the rollover decision needs about one guild, from Postgres. */
 export interface GuildRolloverState extends RolloverState {
   guildId: string;
@@ -61,21 +60,7 @@ export interface DayState {
   lastTipOff: Date | null;
 }
 
-/**
- * The ET slate day of a `schedule_games` row, in SQL.
- *
- * `gameDate` is the feed's own answer and is what the rest of the bot trusts, so
- * this only falls back to the tip-off's date when it is missing. The `- 6 hours`
- * handles a tip-off that is late evening ET but already the next day UTC: an ET
- * slate day runs from ~19:00 ET to ~02:00 ET the following morning UTC.
- */
-const slateDaySql = sql<string>`
-  coalesce(
-    ${scheduleGames.gameDate}::text,
-    to_char((${scheduleGames.gameDateTimeUTC} - interval '6 hours') at time zone 'UTC', 'YYYY-MM-DD')
-  )
-`;
-
+@Injectable()
 export class RolloverRepository {
   constructor(private readonly infra: Infrastructure) {}
 
@@ -200,34 +185,13 @@ export class RolloverRepository {
   /**
    * The slate days a guild can still be given, ascending and capped.
    *
-   * Not "days with games": a day whose games have all tipped off has nothing left
-   * to pick, and `postFor` sends it as an empty slate. Offering one to the decision
-   * layer wedges the guild — the roll succeeds as `empty`, the day key is purposely
-   * not remembered for an empty day, so the next tick makes the same choice every
-   * minute with `lastPostedKey` never moving. A guild two days behind would never
-   * catch up, and only its timed post would rescue it.
-   *
-   * So this answers the question the decision actually asks: from today on (never a
-   * day already finished), which days still have a game a reader can pick. Same
-   * rule `selectSlateGames` applies when it builds the cards.
+   * A guild two days behind has to see every day between it and today as
+   * already-behind it, so this asks for the whole run rather than the first one —
+   * `rollover.ts` then picks the earliest day later than the guild's last. Why the
+   * days are "still pickable" rather than "has games" is in `schedule-days.ts`.
    */
   private async postableDays(now: Date, limit = 30): Promise<string[]> {
-    const from = etDateKey(now);
-
-    const rows = await this.db
-      .selectDistinct({ slateKey: slateDaySql })
-      .from(scheduleGames)
-      .where(
-        and(
-          sql`${slateDaySql} >= ${from}`,
-          eq(scheduleGames.gameStatus, STATUS_SCHEDULED),
-          gt(scheduleGames.gameDateTimeUTC, now),
-        ),
-      )
-      .orderBy(asc(slateDaySql))
-      .limit(limit);
-
-    return rows.map((row) => row.slateKey);
+    return pickableDays(this.db, etDateKey(now), now, limit);
   }
 }
 

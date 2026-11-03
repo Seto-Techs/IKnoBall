@@ -10,6 +10,7 @@ import { LockSweepService } from '../lock/lock-sweep.service';
 import { SlateScheduler } from '../scheduler/slate-scheduler';
 import type { GuildConfigService, GuildSettings } from '../setup/guild-config.service';
 import type { DayKeyGuard } from '../scheduler/day-key.guard';
+import { etDateKey } from '../scheduler/slate-date';
 import type { PostResult, SlatePoster } from '../scheduler/slate-poster';
 import { SettlementSweepService } from '../settlement/settlement-sweep.service';
 import { interactionLog } from './interaction-log';
@@ -47,18 +48,28 @@ function posted(overrides: Partial<PostResult> = {}): PostResult {
 /** 9 a.m. in New York on 27 October 2026 — the hour the guild posts at. */
 const NINE_ET = new Date('2026-10-27T13:00:00.000Z');
 
+/** The poster, with only the call this file cares about standing in for it. */
+function poster(postFor: ReturnType<typeof vi.fn>): SlatePoster {
+  return {
+    postFor,
+    postOffDay: vi.fn(async () => {}),
+    hasGames: vi.fn(async () => true),
+    nextSlateDay: vi.fn(async (now: Date) => etDateKey(now)),
+  } as unknown as SlatePoster;
+}
+
 function scheduler(enabled: boolean) {
-  const post = vi.fn(async () => posted());
+  const postFor = vi.fn(async () => posted());
   const listEnabled = vi.fn(async () => [settings()]);
 
   const instance = new SlateScheduler(
     { enabled } as unknown as DiscordConfigService,
     { listEnabled } as unknown as GuildConfigService,
-    { post } as unknown as SlatePoster,
+    poster(postFor),
     { has: async () => false, remember: async () => {} } as unknown as DayKeyGuard,
   );
 
-  return { instance, post, listEnabled };
+  return { instance, postFor, listEnabled };
 }
 
 /**
@@ -90,11 +101,11 @@ describe('paused', () => {
 
 describe('the switch stops the slate post', () => {
   it('posts nothing, and does not even ask which guilds are due', async () => {
-    const { instance, post, listEnabled } = scheduler(false);
+    const { instance, postFor, listEnabled } = scheduler(false);
 
     expect(await instance.tick(NINE_ET)).toEqual([]);
     expect(listEnabled).not.toHaveBeenCalled();
-    expect(post).not.toHaveBeenCalled();
+    expect(postFor).not.toHaveBeenCalled();
   });
 
   it('reads the flag per tick instead of caching it at construction', async () => {
@@ -103,18 +114,18 @@ describe('the switch stops the slate post', () => {
     // once at boot, so in production flipping the switch still means a restart —
     // see `docs/production-runbook.md`.)
     const config = { enabled: false };
-    const post = vi.fn(async () => posted());
+    const postFor = vi.fn(async () => posted());
     const instance = new SlateScheduler(
       config as unknown as DiscordConfigService,
       { listEnabled: async () => [settings()] } as unknown as GuildConfigService,
-      { post } as unknown as SlatePoster,
+      poster(postFor),
       { has: async () => false, remember: async () => {} } as unknown as DayKeyGuard,
     );
 
     expect(await instance.tick(NINE_ET)).toEqual([]);
     config.enabled = true;
     expect((await instance.tick(NINE_ET))[0].status).toBe('posted');
-    expect(post).toHaveBeenCalledTimes(1);
+    expect(postFor).toHaveBeenCalledTimes(1);
   });
 });
 

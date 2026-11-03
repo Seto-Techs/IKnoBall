@@ -3,7 +3,7 @@ import type { Message } from 'discord.js';
 import type { CardTeam } from '../cards/types';
 import type { Infrastructure } from './infrastructure';
 import type { SlateGame } from './slate';
-import { SlatePoster } from './slate-poster';
+import { offDayMessage, SlatePoster } from './slate-poster';
 import type { CardClaim, SlateStore } from './slate-store';
 
 /**
@@ -33,6 +33,8 @@ function game(index: number, overrides: Partial<SlateGame> = {}): SlateGame {
 }
 
 const MORNING = new Date('2026-10-27T13:00:00.000Z');
+/** The ET day those games belong to, which a post is now named for. */
+const DAY = '2026-10-27';
 
 interface FakeChannel {
   id: string;
@@ -79,6 +81,7 @@ function fakeStore(
     claim?: (gameIds: string[]) => string[];
     attachFails?: boolean;
     trace?: string[];
+    nextDay?: string | null;
   } = {},
 ) {
   const order: string[] = options.trace ?? [];
@@ -93,6 +96,10 @@ function fakeStore(
     async findGames(etKey: string) {
       order.push(`findGames:${etKey}`);
       return games;
+    },
+    async nextPickableDay(fromKey: string) {
+      order.push(`nextPickableDay:${fromKey}`);
+      return options.nextDay ?? null;
     },
     async findTeams() {
       return teams;
@@ -125,7 +132,7 @@ describe('an empty day', () => {
     const { store, order } = fakeStore([]);
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    const result = await poster.postFor(TARGET, DAY, MORNING);
 
     expect(result).toEqual({
       status: 'empty',
@@ -147,7 +154,7 @@ describe('the claim comes before the send', () => {
     const { store, attachments } = fakeStore([game(0), game(1)], { trace });
     const poster = new SlatePoster(store, discord.infra);
 
-    await poster.post(TARGET, MORNING);
+    await poster.postFor(TARGET, DAY, MORNING);
 
     expect(trace).toEqual([
       'findGames:2026-10-27',
@@ -186,7 +193,7 @@ describe('the claim comes before the send', () => {
     );
     const poster = new SlatePoster(store, discord.infra);
 
-    await poster.post(TARGET, MORNING);
+    await poster.postFor(TARGET, DAY, MORNING);
 
     expect(claims).toHaveLength(1);
     expect(claims[0]).toHaveLength(6);
@@ -200,7 +207,7 @@ describe('a slate that is already claimed', () => {
     const { store } = fakeStore([game(0), game(1)], { claim: () => [] });
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    const result = await poster.postFor(TARGET, DAY, MORNING);
 
     expect(result.status).toBe('already-posted');
     expect(result.games).toBe(0);
@@ -215,7 +222,7 @@ describe('a slate that is already claimed', () => {
     });
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    const result = await poster.postFor(TARGET, DAY, MORNING);
 
     expect(result.status).toBe('posted');
     expect(result.games).toBe(2);
@@ -229,7 +236,7 @@ describe('one message per card', () => {
     const { store } = fakeStore([game(0), game(1), game(2), game(3)]);
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    const result = await poster.postFor(TARGET, DAY, MORNING);
 
     expect(result.status).toBe('posted');
     expect(result.games).toBe(4);
@@ -254,7 +261,7 @@ describe('one message per card', () => {
     ]);
     const poster = new SlatePoster(store, discord.infra);
 
-    await poster.post(TARGET, MORNING);
+    await poster.postFor(TARGET, DAY, MORNING);
 
     expect(attachments.map((batch) => batch[0]?.gameId)).toEqual([
       '0022600121',
@@ -270,7 +277,7 @@ describe('a channel the bot cannot use', () => {
     const { store } = fakeStore([game(0)]);
     const poster = new SlatePoster(store, discord.infra);
 
-    await expect(poster.post(TARGET, MORNING)).rejects.toThrow(/cannot receive messages/);
+    await expect(poster.postFor(TARGET, DAY, MORNING)).rejects.toThrow(/cannot receive messages/);
   });
 
   it('refuses a channel the bot cannot see', async () => {
@@ -280,7 +287,7 @@ describe('a channel the bot cannot use', () => {
     } as unknown as Infrastructure;
     const poster = new SlatePoster(store, infra);
 
-    await expect(poster.post(TARGET, MORNING)).rejects.toThrow(/not available/);
+    await expect(poster.postFor(TARGET, DAY, MORNING)).rejects.toThrow(/not available/);
   });
 });
 
@@ -290,7 +297,7 @@ describe('a bookkeeping failure after the send', () => {
     const { store } = fakeStore([game(0)], { attachFails: true });
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    const result = await poster.postFor(TARGET, DAY, MORNING);
 
     expect(result.status).toBe('posted');
     expect(result.messageIds).toEqual(['message-1']);
@@ -308,7 +315,7 @@ describe('selection inside a post', () => {
     ]);
     const poster = new SlatePoster(store, discord.infra);
 
-    const result = await poster.post(TARGET, MORNING);
+    const result = await poster.postFor(TARGET, DAY, MORNING);
 
     expect(result.games).toBe(1);
     // Only game 0 survives the filter, and the tip-off is the one field that says
@@ -374,12 +381,82 @@ describe('the message shape', () => {
     const { store } = fakeStore([game(0)]);
     const poster = new SlatePoster(store, discord.infra);
 
-    await poster.post(TARGET, MORNING);
+    await poster.postFor(TARGET, DAY, MORNING);
 
     const [payload] = discord.channel.send.mock.calls[0] as [
       { embeds: { title?: string; description?: string }[] },
     ];
     expect(payload.embeds[0].title).toBe('BKN @ BOS');
     expect(payload.embeds[0].description).toContain('**Tip-off** <t:');
+  });
+});
+
+describe('the day a timed post should use', () => {
+  it('asks the schedule for the earliest day still pickable from today', async () => {
+    const discord = fakeDiscord();
+    const { store, order } = fakeStore([], { nextDay: '2026-10-28' });
+    const poster = new SlatePoster(store, discord.infra);
+
+    expect(await poster.nextSlateDay(MORNING)).toBe('2026-10-28');
+    expect(order).toEqual(['nextPickableDay:2026-10-27']);
+  });
+
+  it('falls back to today when nothing ahead is pickable', async () => {
+    // The season's last day, or a schedule crawled no further: an empty post for
+    // today is the honest answer, not a card for a day that does not exist.
+    const discord = fakeDiscord();
+    const { store } = fakeStore([], { nextDay: null });
+    const poster = new SlatePoster(store, discord.infra);
+
+    expect(await poster.nextSlateDay(MORNING)).toBe('2026-10-27');
+  });
+});
+
+describe('whether a day has any games at all', () => {
+  it('counts a day whose games have all tipped, and a day with none is not one', async () => {
+    const discord = fakeDiscord();
+    const tipped = fakeStore([game(0, { gameDateTimeUTC: new Date('2026-10-27T00:30:00.000Z') })]);
+    expect(await new SlatePoster(tipped.store, discord.infra).hasGames(DAY)).toBe(true);
+
+    const empty = fakeStore([]);
+    expect(await new SlatePoster(empty.store, discord.infra).hasGames(DAY)).toBe(false);
+  });
+});
+
+describe('the off-day note', () => {
+  it('says which day is empty and which slate follows', () => {
+    expect(offDayMessage('2026-11-03', '2026-11-04')).toBe(
+      '**No NBA games on Nov 3.** The next slate is **Nov 4**.',
+    );
+  });
+
+  it('says the schedule does not reach that far when nothing follows', () => {
+    expect(offDayMessage('2026-11-03', null)).toBe(
+      '**No NBA games on Nov 3.** The next slate is not on the schedule yet.',
+    );
+  });
+
+  it('sends one plain message and claims no card', async () => {
+    const discord = fakeDiscord();
+    const { store, claims } = fakeStore([]);
+    const poster = new SlatePoster(store, discord.infra);
+
+    await poster.postOffDay(TARGET, '2026-11-03', '2026-11-04');
+
+    expect(discord.channel.send).toHaveBeenCalledTimes(1);
+    expect(discord.channel.send).toHaveBeenCalledWith({
+      content: '**No NBA games on Nov 3.** The next slate is **Nov 4**.',
+    });
+    expect(claims).toHaveLength(0);
+  });
+
+  it('refuses a channel the bot cannot post in, like any other post', async () => {
+    const discord = fakeDiscord({ sendable: false });
+    const { store } = fakeStore([]);
+    const poster = new SlatePoster(store, discord.infra);
+
+    await expect(poster.postOffDay(TARGET, '2026-11-03', null)).rejects.toThrow(
+      /cannot receive messages/,
+    );
   });
 });

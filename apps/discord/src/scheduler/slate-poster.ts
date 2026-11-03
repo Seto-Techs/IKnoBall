@@ -5,8 +5,8 @@ import { cardPayload, type CardPayload } from '../cards/card-payload';
 import type { CardStake, CardTeam } from '../cards/types';
 import type { Pace } from '../infrastructure/rate-limiter';
 import { Infrastructure } from './infrastructure';
-import { selectSlateGames, toCardGame, toCardTeams, type SlateGame } from './slate';
-import { etDateKey } from './slate-date';
+import { hasGamesOn, selectSlateGames, toCardGame, toCardTeams, type SlateGame } from './slate';
+import { etDateKey, formatDayKey } from './slate-date';
 import { SLATE_STORE, type CardAttachment, type CardClaim, type SlateStore } from './slate-store';
 
 /** Where a guild's slate goes. */
@@ -85,9 +85,53 @@ export class SlatePoster {
     this.pace = pace ?? ((task) => task());
   }
 
-  /** Today's slate for one guild. Posts nothing on a day with no games. */
-  async post(target: SlateTarget, now: Date = new Date()): Promise<PostResult> {
-    return this.postFor(target, etDateKey(now), now);
+  /**
+   * The ET day a timed post should use at `now`.
+   *
+   * The earliest day from today that still has a game a reader can pick. That is
+   * today for a guild whose hour lands before its own slate tips off — and the
+   * *next* slate for a guild whose local morning is already the ET evening. A 9 a.m.
+   * post in Jakarta is 10 p.m. the night before in New York, so `etDateKey(now)`
+   * there is yesterday's slate and every card on it has already tipped: the timed
+   * post used to aim at it anyway and send nothing, which left every guild east of
+   * ET with no working post of its own.
+   *
+   * Falls back to today when nothing ahead is pickable, so the post is empty rather
+   * than for a day the schedule does not have.
+   */
+  async nextSlateDay(now: Date = new Date()): Promise<string> {
+    const today = etDateKey(now);
+    return (await this.store.nextPickableDay(today, now)) ?? today;
+  }
+
+  /**
+   * Whether the schedule lists any game at all on `etKey`, tipped or not.
+   *
+   * The same rows and the same day rule the cards are selected by, so "there are no
+   * games today" can never contradict "there was nothing to post today".
+   */
+  async hasGames(etKey: string): Promise<boolean> {
+    return hasGamesOn(await this.store.findGames(etKey), etKey);
+  }
+
+  /**
+   * The one line a game-less day gets.
+   *
+   * Silence on a day the league is off is indistinguishable from a bot that has
+   * died, and the rollover makes it worse: it posts the *next* slate, so nothing
+   * points at the gap. `nextKey` is null only when nothing ahead is pickable either,
+   * and then the line says so instead of naming a day.
+   */
+  async postOffDay(target: SlateTarget, day: string, nextKey: string | null): Promise<void> {
+    const channel = await this.sendableChannel(target.channelId);
+    this.assertCanPost(target, channel);
+
+    const message: Message = await this.pace<Message>(
+      () => channel.send({ content: offDayMessage(day, nextKey) }),
+      `POST /channels/${channel.id}/messages`,
+    );
+
+    this.logger.log(`Off-day note posted for guild ${target.guildId} on ${day}: ${message.id}`);
   }
 
   /**
@@ -130,17 +174,7 @@ export class SlatePoster {
     const teams = await this.teamLookup(posting);
     const stakes = await this.store.findStakes(posting.map((game) => game.gameId));
     const channel = await this.sendableChannel(target.channelId);
-
-    // Preflight, not a probe: the permission set is computed from the guild the
-    // gateway already has cached, so this costs no REST call — and a guild the bot
-    // cannot post in costs one skipped slate instead of a 403.
-    const missing = missingPermissions(channel);
-    if (missing.length > 0) {
-      this.logger.warn(
-        `Slate for guild ${target.guildId} skipped: channel ${channel.id} is missing ${missing.join(', ')}.`,
-      );
-      throw new MissingPermissionsError(channel.id, missing);
-    }
+    this.assertCanPost(target, channel);
 
     const messageIds: string[] = [];
     for (const game of posting) {
@@ -225,6 +259,23 @@ export class SlatePoster {
     if (!channel) throw new Error(`channel ${channelId} is not available to the bot`);
     if (!channel.isSendable()) throw new Error(`channel ${channelId} cannot receive messages`);
     return channel;
+  }
+
+  /**
+   * Refuse a channel the bot cannot post in, before spending a send on it.
+   *
+   * Preflight, not a probe: the permission set is computed from the guild the
+   * gateway already has cached, so this costs no REST call — and a guild the bot
+   * cannot post in costs one skipped post instead of a 403.
+   */
+  private assertCanPost(target: SlateTarget, channel: SendableChannels): void {
+    const missing = missingPermissions(channel);
+    if (missing.length === 0) return;
+
+    this.logger.warn(
+      `Post for guild ${target.guildId} skipped: channel ${channel.id} is missing ${missing.join(', ')}.`,
+    );
+    throw new MissingPermissionsError(channel.id, missing);
   }
 
   /** Record the ids that only exist once a message does. */
@@ -320,6 +371,19 @@ function cardPayloadFor(
   stakes: ReadonlyMap<string, CardStake>,
 ): CardPayload {
   return cardPayload(toCardGame(game), toCardTeams(game, teams, stakes.get(game.gameId)));
+}
+
+/**
+ * What a game-less day says.
+ *
+ * Names the day and, when the schedule knows it, the slate that follows — a reader
+ * needs a date to come back for, not an apology.
+ */
+export function offDayMessage(day: string, nextKey: string | null): string {
+  const line = `**No NBA games on ${formatDayKey(day)}.**`;
+  return nextKey === null
+    ? `${line} The next slate is not on the schedule yet.`
+    : `${line} The next slate is **${formatDayKey(nextKey)}**.`;
 }
 
 /** The same payload with every button disabled, for the `/setup` preview. */
