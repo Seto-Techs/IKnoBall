@@ -29,6 +29,29 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.3',
+    date: '2026-11-02',
+    headline: 'The slate turns over on its own, and a closed card looks closed.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'The next slate now rolls over in every server. Two of the queries behind the rollover looked up the wrong column, so a server read as though it had never posted — no slate the moment the night ended, no recap, and a pick count of zero.',
+      },
+      {
+        kind: 'fixed',
+        text: 'A server that fell a day or more behind now catches up on its own, onto the next day that still has a game to pick, instead of asking for a day that had already tipped off every minute until morning.',
+      },
+      {
+        kind: 'improved',
+        text: 'A card that has closed now looks closed: a 🔒 on the title and a grey bar, so a game that has started no longer reads like one still waiting on you. A finished card keeps both, and shows the final score.',
+      },
+      {
+        kind: 'improved',
+        text: 'The dashboard gives the middle column its width back on a 1280px screen, and leaderboard rows keep the whole username instead of squeezing it.',
+      },
+    ],
+  },
+  {
     version: '0.3.2',
     date: '2026-10-31',
     headline: 'The card tells you how each side is going, and the board knows your name.',
