@@ -65,6 +65,18 @@ export function selectSlateGames(
     .sort((left, right) => tipOff(left) - tipOff(right));
 }
 
+/**
+ * Whether any of these rows belongs to `etKey`, whether or not it can be picked.
+ *
+ * The complement of `selectSlateGames`: that one answers "what can I post", this
+ * one "was there anything to post at all". A day with neither is a day the league
+ * is off, which is worth saying out loud; a day with games but nothing pickable has
+ * its cards in the channel already.
+ */
+export function hasGamesOn(games: readonly SlateGame[], etKey: string): boolean {
+  return games.some((game) => slateDay(game) === etKey);
+}
+
 /** `Boston Celtics`, falling back to the tricode when the schedule has no name. */
 function displayName(city: string | null, name: string | null, tricode: string | null): string {
   const full = [city, name]

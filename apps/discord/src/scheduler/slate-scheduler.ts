@@ -3,9 +3,9 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { DiscordConfigService } from '../config/discord-config.service';
 import { paused } from '../ops/kill-switch';
 import { GuildConfigService, type GuildSettings } from '../setup/guild-config.service';
-import { DAY_KEY_GUARD, dayKey, type DayKeyGuard } from './day-key.guard';
+import { DAY_KEY_GUARD, dayKey, noteKey, type DayKeyGuard } from './day-key.guard';
 import { etDateKey, localHour } from './slate-date';
-import { SlatePoster } from './slate-poster';
+import { SlatePoster, type SlateTarget } from './slate-poster';
 
 /** What one guild did in one tick. */
 export type TickStatus = 'posted' | 'empty' | 'already-posted' | 'not-due' | 'failed';
@@ -95,21 +95,72 @@ export class SlateScheduler {
    * The Redis day key is written **after** the attempt, not before: a failed post
    * must be retried inside the hour, while an empty day or an already-claimed
    * slate is finished business and is recorded so the rest of the hour is quiet.
+   *
+   * Two days are in play, which is why they are named apart. `today` is the ET day
+   * the guild's wall clock is in; `etKey` is the day whose slate it should get, and
+   * for a guild east of ET — a 9 a.m. post in Jakarta is 10 p.m. the night before in
+   * New York — that is the *next* day. Keying the post on `today` there is what used
+   * to send an empty slate of already-tipped games.
    */
   async runForGuild(guild: GuildSettings, now: Date): Promise<TickStatus> {
     if (localHour(now, guild.timezone) !== guild.postHour) return 'not-due';
 
+    const target: SlateTarget = { guildId: guild.guildId, channelId: guild.channelId };
+    const today = etDateKey(now);
+    const etKey = await this.poster.nextSlateDay(now);
+
     // The slate day is the ET day, the same key the games were selected by, so
     // the key and the cards it guards can never drift apart.
-    const key = dayKey(guild.guildId, etDateKey(now));
-    if (await this.guard.has(key)) return 'already-posted';
+    const key = dayKey(guild.guildId, etKey);
+    let status: TickStatus;
 
-    const result = await this.poster.post(
-      { guildId: guild.guildId, channelId: guild.channelId },
-      now,
-    );
-    await this.guard.remember(key);
+    if (await this.guard.has(key)) {
+      status = 'already-posted';
+    } else {
+      const result = await this.poster.postFor(target, etKey, now);
+      await this.guard.remember(key);
+      status = result.status;
+    }
 
-    return result.status;
+    // After the slate, so a note can never cost one: on a day the league is off
+    // there is no slate to send, and silence is indistinguishable from a dead bot.
+    await this.noteOffDay(target, today, etKey);
+
+    return status;
+  }
+
+  /**
+   * Tell a guild its day has no games, once, with the next slate named.
+   *
+   * A day that has games needs nothing said — the cards are in the channel, and a
+   * day whose games have all tipped is equally finished business. The note is about
+   * `today`, so it keys on `today` and not on the slate day: a guild east of ET has
+   * a slate day a day ahead of its own, and the two must be able to sit in the same
+   * post hour without one suppressing the other.
+   *
+   * Swallowed on failure. A missing note is a quiet channel; a thrown note would
+   * take the tick's status with it and make the slate look failed.
+   */
+  private async noteOffDay(target: SlateTarget, today: string, etKey: string): Promise<void> {
+    const key = noteKey(target.guildId, today);
+    if (await this.guard.has(key)) return;
+
+    try {
+      if (await this.poster.hasGames(today)) {
+        await this.guard.remember(key);
+        return;
+      }
+
+      // Nothing ahead to name either: the schedule has not been crawled this far,
+      // or the season is over. `null` makes the note say so.
+      await this.poster.postOffDay(target, today, etKey === today ? null : etKey);
+      await this.guard.remember(key);
+    } catch (error) {
+      this.logger.warn(
+        `Off-day note failed for guild ${target.guildId} on ${today}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }

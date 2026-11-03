@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DiscordConfigService } from '../config/discord-config.service';
 import type { DayKeyGuard } from '../scheduler/day-key.guard';
+import { etDateKey } from '../scheduler/slate-date';
 import type { PostResult, SlatePoster } from '../scheduler/slate-poster';
 import { SlateScheduler } from '../scheduler/slate-scheduler';
 import type { GuildConfigService, GuildSettings } from '../setup/guild-config.service';
@@ -47,7 +48,7 @@ const NINE_ET = new Date('2026-10-27T13:00:00.000Z');
 
 function harness(guildIds: string[], failFor: string) {
   const keys = new Set<string>();
-  const post = vi.fn(async (target: { guildId: string }) => {
+  const postFor = vi.fn(async (target: { guildId: string }) => {
     if (target.guildId === failFor) throw forbidden();
     return posted(target.guildId);
   });
@@ -55,7 +56,12 @@ function harness(guildIds: string[], failFor: string) {
   const scheduler = new SlateScheduler(
     { enabled: true } as unknown as DiscordConfigService,
     { listEnabled: async () => guildIds.map(settings) } as unknown as GuildConfigService,
-    { post } as unknown as SlatePoster,
+    {
+      postFor,
+      postOffDay: vi.fn(async () => {}),
+      hasGames: vi.fn(async () => true),
+      nextSlateDay: vi.fn(async (now: Date) => etDateKey(now)),
+    } as unknown as SlatePoster,
     {
       has: async (key: string) => keys.has(key),
       remember: async (key: string) => {
@@ -64,12 +70,20 @@ function harness(guildIds: string[], failFor: string) {
     } as unknown as DayKeyGuard,
   );
 
-  return { scheduler, post, keys };
+  return { scheduler, postFor, keys, slateKeys: slateKeysOf(keys) };
+}
+
+/** The slate keys only: the off-day note keeps its own keyspace. */
+function slateKeysOf(keys: Set<string>): () => string[] {
+  return () => [...keys].filter((key) => !key.startsWith('note:'));
 }
 
 describe('per-guild isolation', () => {
   it('keeps the other guilds posting when one guild answers 403', async () => {
-    const { scheduler, post, keys } = harness(['locked-out', 'guild-b', 'guild-c'], 'locked-out');
+    const { scheduler, postFor, slateKeys } = harness(
+      ['locked-out', 'guild-b', 'guild-c'],
+      'locked-out',
+    );
 
     expect(await scheduler.tick(NINE_ET)).toEqual([
       { guildId: 'locked-out', status: 'failed' },
@@ -78,13 +92,13 @@ describe('per-guild isolation', () => {
     ]);
 
     // Every guild after the broken one was still attempted, in order.
-    expect(post.mock.calls.map(([target]) => target.guildId)).toEqual([
+    expect(postFor.mock.calls.map(([target]) => (target as { guildId: string }).guildId)).toEqual([
       'locked-out',
       'guild-b',
       'guild-c',
     ]);
     // …and their slates are on the record, not just attempted.
-    expect(keys).toEqual(new Set(['guild-b:2026-10-27', 'guild-c:2026-10-27']));
+    expect(slateKeys().sort()).toEqual(['guild-b:2026-10-27', 'guild-c:2026-10-27']);
   });
 
   it('does not spend the broken guild’s day key, so it retries once the channel is fixed', async () => {
