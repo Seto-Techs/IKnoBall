@@ -446,6 +446,7 @@ What it stops:
 | Slate posts      | the minute scheduler returns before it looks at any guild, and warns once: `DISCORD_ENABLED=false: no slate is being posted in any guild.` |
 | Tip-off locks    | the lock sweep returns before `run()`, so no card is edited and no `lockedAt` is stamped                                                   |
 | Settlement edits | the settlement sweep, same                                                                                                                 |
+| Points edits     | the stake sweep, same — a card posted before its price existed keeps the line it has                                                       |
 | Picks            | a click is acknowledged and answered with "Picks are paused right now… nothing was saved"; nothing reaches the api                         |
 
 What it does not stop: the gateway connection, slash-command registration, and the

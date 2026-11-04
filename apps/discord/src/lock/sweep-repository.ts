@@ -2,6 +2,7 @@ import {
   and,
   asc,
   eq,
+  gt,
   inArray,
   isNotNull,
   isNull,
@@ -24,6 +25,7 @@ import { cardPayload, type CardPayload } from '../cards/card-payload';
 import { TeamStats } from '../cards/team-stats';
 import type { CardStake, CardTeam, CardTeamRecord } from '../cards/types';
 import { toCardGame, toCardTeams, type SlateGame } from '../scheduler/slate';
+import { sameStake } from '../stakes/stake-change';
 import { STATUS_FINAL, cardLook, renderCard, type CardState } from './card-edit';
 import type { SweepJob } from './card-sweep';
 
@@ -46,6 +48,7 @@ const selection = {
   messageId: discordCards.messageId,
   lockedAt: discordCards.lockedAt,
   settledAt: discordCards.settledAt,
+  updatedAt: discordCards.updatedAt,
   gameStatus: scheduleGames.gameStatus,
   gameDate: scheduleGames.gameDate,
   gameDateTimeUTC: scheduleGames.gameDateTimeUTC,
@@ -81,6 +84,8 @@ export interface CardRow {
   messageId: string;
   lockedAt: Date | null;
   settledAt: Date | null;
+  /** When the card was last written, which is the stake sweep's baseline. */
+  updatedAt: Date;
   gameStatus: number;
   gameDate: string | null;
   gameDateTimeUTC: Date | null;
@@ -103,12 +108,14 @@ export interface CardRow {
 }
 
 /**
- * The `discord_cards` side of both sweeps.
+ * The `discord_cards` side of every sweep.
  *
  * The lock sweep is `lockedAt is null`, past tip-off and not yet final; the
- * settlement sweep is `settledAt is null` joined to a final game with a score. Both
- * cap the run so one very old backlog cannot hold the event loop for minutes, and
- * both skip cards the caller has marked dead.
+ * settlement sweep is `settledAt is null` joined to a final game with a score; the
+ * stake sweep is an open card before tip-off whose price has moved since the card
+ * was last written. Those three predicates are disjoint, so no two sweeps claim the
+ * same card in the same minute. Each caps the run so one very old backlog cannot
+ * hold the event loop for minutes, and each skips cards the caller has marked dead.
  *
  * Work is returned per *message*, because that is the unit Discord can patch: the
  * payload is rebuilt from every card row in that message (see `messagePayload`), so
@@ -177,6 +184,71 @@ export class CardSweepRepository {
     await this.stamp(cardIds, { settledAt: at }, isNull(discordCards.settledAt), at);
   }
 
+  /**
+   * Open cards whose price would print different points from the ones on the card.
+   *
+   * A slate is posted on a timer, so the first card of a game can go out before the
+   * feed has a price for it: the points line is simply absent, and without this
+   * sweep it stays absent. It is also what keeps a card honest when the line moves
+   * between the post and tip-off.
+   *
+   * "Different from the ones on the card" is decided by comparing the price now
+   * with the price at `updatedAt`, the moment the payload was last built — no extra
+   * column, because a card's points are a pure function of a price and the prices
+   * are still in `game_odds_snapshots`. Comparing prices rather than looking for "a
+   * newer snapshot" is what stops the worker's five-minute captures from becoming a
+   * five-minute PATCH: a line re-captured unchanged produces the same `CardStake`
+   * and no edit.
+   *
+   * The window mirrors the lock sweep's — before tip-off, not final — so the two
+   * never claim the same card.
+   */
+  async dueForStakes(
+    now: Date,
+    limit: number,
+    excludeIds: readonly string[] = [],
+  ): Promise<SweepJob[]> {
+    const open = await this.selectRows(
+      and(
+        isNull(discordCards.lockedAt),
+        isNull(discordCards.settledAt),
+        ne(scheduleGames.gameStatus, STATUS_FINAL),
+        gt(scheduleGames.gameDateTimeUTC, now),
+        postedMessage(),
+        exclude(excludeIds),
+      ),
+      [asc(scheduleGames.gameDateTimeUTC), asc(discordCards.id)],
+      limit,
+    );
+    if (open.length === 0) return [];
+
+    // One question per card, not per game: two guilds can hold the same game, and
+    // their cards may have been written minutes apart.
+    const compared = await this.stats.compared(
+      open.map((row) => ({ key: row.id, gameId: row.gameId, at: row.updatedAt })),
+    );
+
+    const moved = open.filter((row) => {
+      const pair = compared.get(row.id);
+      // Every open card was asked about, so a missing pair means there was nothing
+      // to price on either side — which is no change, not an edit.
+      return pair ? !sameStake(pair.then, pair.now) : false;
+    });
+
+    return moved.length === 0 ? [] : this.jobs(moved, now);
+  }
+
+  /**
+   * Remember that these cards now show the price they were rebuilt from.
+   *
+   * `updatedAt` is the whole of the stake sweep's memory: bumping it moves the
+   * baseline, so the next run compares against the line it just printed and leaves
+   * the card alone until the line moves again.
+   */
+  async markStakes(cardIds: readonly string[], at: Date): Promise<void> {
+    await this.stamp(cardIds, {}, isNull(discordCards.lockedAt), at);
+  }
+
   private async stamp(
     cardIds: readonly string[],
     values: { lockedAt?: Date; settledAt?: Date },
@@ -192,12 +264,9 @@ export class CardSweepRepository {
   }
 
   /**
-   * Due cards, grouped into the messages they live in.
+   * Due rows, grouped into the messages they live in.
    *
-   * Two queries per run, not one per card: the due rows, then every sibling of
-   * every message those rows belong to. The siblings are what the rebuilt payload
-   * is made of — a message's other cards have to come back exactly as they look,
-   * because the PATCH replaces all of them.
+   * Selection is the sweep's own predicate; everything after it is `jobs`.
    */
   private async dueMessages(where: SQL | undefined, now: Date, limit: number): Promise<SweepJob[]> {
     const due = await this.selectRows(
@@ -205,8 +274,18 @@ export class CardSweepRepository {
       [asc(discordCards.createdAt), asc(discordCards.id)],
       limit,
     );
-    if (due.length === 0) return [];
+    return due.length === 0 ? [] : this.jobs(due, now);
+  }
 
+  /**
+   * The messages those cards live in, each with its rebuilt payload.
+   *
+   * Two queries per run, not one per card: the due rows are already in hand, then
+   * every sibling of every message they belong to. The siblings are what the
+   * rebuilt payload is made of — a message's other cards have to come back exactly
+   * as they look, because the PATCH replaces all of them.
+   */
+  private async jobs(due: CardRow[], now: Date): Promise<SweepJob[]> {
     const groups = groupByMessage(due);
     const siblings = await this.selectRows(inMessages(groups), [
       asc(scheduleGames.gameDateTimeUTC),
