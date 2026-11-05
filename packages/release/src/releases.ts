@@ -35,6 +35,29 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.3.5',
+    date: '2026-11-05',
+    headline: 'The recap finally lands, and every card says what it pays.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'The recap now posts once the last game of the night goes final. It never had — it looked for picks in a place they were never written, found none, and said nothing, so since 0.3.1 the night ended with an empty channel.',
+      },
+      {
+        kind: 'added',
+        text: 'A card that goes out before the odds are up now fills in its “+N pts” line as soon as a price lands, instead of going out without one and staying that way.',
+      },
+      {
+        kind: 'improved',
+        text: 'A card whose line moves before tip-off now updates to the points it actually pays, so the number you pick on is the number on the card.',
+      },
+      {
+        kind: 'improved',
+        text: 'The logo’s O is a basketball now rather than a globe, and the letters sit at uneven heights on purpose instead of looking like a few of them slipped.',
+      },
+    ],
+  },
+  {
     version: '0.3.4',
     date: '2026-11-03',
     headline: 'The next slate actually arrives — every day, in every server.',
