@@ -228,8 +228,15 @@
       <h1>IKnoBall</h1>
       <p class="lede">
         The word <strong>IKNOBALL</strong> with a basketball in place of the O. All caps, 12&deg;
-        forward lean, flat sheared terminals, navy body, orange seams. Every asset below is real
-        vector &mdash; scale it to any size.
+        forward lean, flat sheared terminals. The ball is the only orange element; letters and seams
+        share one ink, so the mark reads as a basketball on any background. Every asset below is
+        real vector &mdash; scale it to any size.
+      </p>
+      <p class="lede" style="font-size: 14px">
+        The ball is four seams, each ending on the rim: the equator, the prime meridian, and two
+        side arcs whose centres sit <em>outside</em> the ball so they bow inward. Nothing is a
+        closed loop concentric with the ball &mdash; a loop through both poles is a meridian, and a
+        meridian plus an equator is a globe.
       </p>
 
       <div class="hero">
@@ -297,7 +304,7 @@
           <td>
             <a class="dl" href="../public/brand/iknoball-icon.svg" download>iknoball-icon.svg</a>
           </td>
-          <td>Favicon. Seams thickened to survive 16px.</td>
+          <td>Favicon. Cream seams, so the ball survives a dark tab bar.</td>
         </tr>
         <tr>
           <td>
@@ -305,7 +312,7 @@
               >iknoball-app-icon.svg</a
             >
           </td>
-          <td>Home-screen icon: cream ball on a navy plate.</td>
+          <td>Home-screen icon: orange ball on a navy plate.</td>
         </tr>
       </table>
 
@@ -347,7 +354,7 @@
           <div class="stage">
             <img class="mark" src="../public/brand/iknoball-app-icon.svg" alt="" />
           </div>
-          <b>App icon</b><span>Cream ball on a navy plate.</span>
+          <b>App icon</b><span>Orange ball on a navy plate.</span>
         </div>
       </div>
 
@@ -397,12 +404,13 @@ import { Logo, LogoMark } from '../components/brand/Logo';
 &lt;LogoMark className="h-12 w-12 text-brand-cream" /&gt;
 
 // Optional props
-&lt;Logo mono /&gt;      // seams in currentColor instead of orange
+&lt;Logo mono /&gt;      // ball body in currentColor too, for one colour
 &lt;Logo upright /&gt;   // drop the 12&deg; lean</code></pre>
       <p style="font-size: 13px; color: #6b6862">
-        <code>currentColor</code> paints the letters and the ball body, so any text utility
-        recolours the whole mark. Keep <code>build.mjs</code> and <code>Logo.tsx</code> in sync
-        &mdash; both are generated from the same glyph table.
+        <code>currentColor</code> paints the letters and the seams; the ball body stays orange, so
+        any text utility recolours the mark without losing the basketball. Keep
+        <code>build.mjs</code> and <code>Logo.tsx</code> in sync &mdash; both are generated from the
+        same glyph table.
       </p>
 
       <h2>How to use it &mdash; plain HTML</h2>
@@ -435,10 +443,13 @@ import { Logo, LogoMark } from '../components/brand/Logo';
           Navy on white, or white/cream on navy. <strong>Never cream on white</strong> &mdash; it is
           about 1.1:1.
         </li>
-        <li>Orange is for seams and the active nav underline only. It is not a text colour.</li>
         <li>
-          Do not rotate, re-colour the seams separately, add a shadow, or set the wordmark in a
-          different typeface.
+          Orange is the ball body and the active nav underline only. It is not a text colour, and
+          the ball is the only orange element in the mark.
+        </li>
+        <li>
+          Do not rotate, recolour the ball, add a shadow, or set the wordmark in a different
+          typeface.
         </li>
         <li>Do not stretch it. Scale from the height and let the width follow.</li>
       </ul>
