@@ -27,12 +27,12 @@ export interface SweepJob {
  *
  * A port rather than a Drizzle client so the loop can be tested against a table
  * that lives in memory. `due` is where the "already edited" filter lives — the
- * real one is `lockedAt is null` / `settledAt is null` in SQL — so a second run
- * over an already-recorded card returns nothing, which is what makes the sweep
- * idempotent.
+ * real ones are `lockedAt is null` / `settledAt is null` / a price that would print
+ * different points than the card shows, in SQL — so a second run over an
+ * already-recorded card returns nothing, which is what makes the sweep idempotent.
  */
 export interface SweepSource {
-  /** For logs: 'tip-off lock' or 'settlement'. */
+  /** For logs: 'tip-off lock', 'settlement', or 'stake refresh'. */
   readonly name: string;
   due(now: Date, limit: number, excludeIds: readonly string[]): Promise<SweepJob[]>;
   /** Stamp the cards so the next run cannot select them again. */
