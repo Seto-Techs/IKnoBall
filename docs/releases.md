@@ -27,6 +27,12 @@ packages/release/src/releases.ts   ← the only hand-written version
    Newest first, semver, `YYYY-MM-DD` date, one-line headline, and `changes`
    written for a player rather than a developer — no commit subjects.
 
+   Write it in plain language: say what a player saw and what they see now, never
+   how it works. No query, column, cache, endpoint, or screen width, and no
+   version of "we fixed the thing that was broken" without saying what the
+   player noticed. "The next slate turns over every night, in every server" beats
+   "two queries joined on the wrong column".
+
    ```ts
    {
      version: '0.3.0',

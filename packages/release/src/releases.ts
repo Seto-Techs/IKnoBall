@@ -13,7 +13,13 @@ export type ChangeKind = 'added' | 'improved' | 'fixed';
 
 export interface ReleaseChange {
   kind: ChangeKind;
-  /** One sentence, written for a player rather than for a developer. */
+  /**
+   * One sentence, written for a player rather than for a developer.
+   *
+   * No implementation detail: not what a query joined on, not a column name, a
+   * cache, a table, or a screen width. Say what a player saw and what they see
+   * now, and leave how it works out of it.
+   */
   text: string;
 }
 
@@ -35,11 +41,11 @@ export const RELEASES: Release[] = [
     changes: [
       {
         kind: 'fixed',
-        text: 'The rollover runs at all now. It shipped without the one decorator Nest needs to hand it its dependencies, so every rollover tick since 0.3.1 died before it ever read the schedule: no server rolled onto the next slate, no matter how the night ended.',
+        text: 'The next slate now arrives on its own once the night is done. It had never once managed it: it stopped before it ever got as far as reading the schedule, so since 0.3.1 no server rolled onto the next slate.',
       },
       {
         kind: 'fixed',
-        text: 'A server whose post hour falls east of New York gets the slate ahead, not the one that already tipped. A 9 a.m. post in Jakarta is 10 p.m. the night before in New York, and the bot used to aim at that night, whose games were all finished.',
+        text: 'A server in a timezone ahead of New York now gets the slate ahead, not the one that already tipped off. A 9 a.m. post in Jakarta is 10 p.m. the night before in New York, and the bot used to aim at that night — when every game was already over.',
       },
       {
         kind: 'improved',
@@ -54,11 +60,11 @@ export const RELEASES: Release[] = [
     changes: [
       {
         kind: 'fixed',
-        text: 'The next slate now rolls over in every server. Two of the queries behind the rollover looked up the wrong column, so a server read as though it had never posted — no slate the moment the night ended, no recap, and a pick count of zero.',
+        text: 'The next slate now turns over in every server, every night. Some servers were being read as though they had never posted at all, so the night ended with no next slate, no recap, and a pick count of zero.',
       },
       {
         kind: 'fixed',
-        text: 'A server that fell a day or more behind now catches up on its own, onto the next day that still has a game to pick, instead of asking for a day that had already tipped off every minute until morning.',
+        text: 'A server that falls a day behind now catches up by itself, onto the next day that still has a game to pick, instead of asking for a night that had already tipped off over and over until morning.',
       },
       {
         kind: 'improved',
@@ -66,7 +72,7 @@ export const RELEASES: Release[] = [
       },
       {
         kind: 'improved',
-        text: 'The dashboard gives the middle column its width back on a 1280px screen, and leaderboard rows keep the whole username instead of squeezing it.',
+        text: 'On a laptop, the dashboard stops squeezing the middle of the page, and a leaderboard row keeps a long username whole instead of chopping it.',
       },
     ],
   },
@@ -81,7 +87,7 @@ export const RELEASES: Release[] = [
       },
       {
         kind: 'improved',
-        text: 'The card is tighter: the teams, the tip-off and both sides’ numbers, with the clutter gone so a long tip-off no longer wraps.',
+        text: 'The card is tighter: the teams, the tip-off and both sides’ numbers, with the clutter gone so a long tip-off no longer spills onto a second line.',
       },
       {
         kind: 'fixed',
@@ -170,15 +176,15 @@ export const RELEASES: Release[] = [
       },
       {
         kind: 'fixed',
-        text: 'Standings read the record off the final scores, so a result no longer waits on a week-old cache.',
+        text: 'Standings now read the record straight from the final scores, so a result shows up the day it happens instead of a week later.',
       },
       {
         kind: 'fixed',
-        text: 'Season stats refresh two hours after a game goes final instead of racing the box score.',
+        text: 'Season stats update a couple of hours after a game ends, once the numbers behind them are in, instead of grabbing a box score that is still being filled in.',
       },
       {
         kind: 'fixed',
-        text: 'The prediction panel dropped its betting vocabulary and talks about points.',
+        text: 'The prediction panel speaks plainly now: points and scoring, with no bookmaker words.',
       },
       {
         kind: 'fixed',
@@ -213,7 +219,7 @@ export const RELEASES: Release[] = [
       },
       {
         kind: 'added',
-        text: 'An account page for your avatar, password and signed-in sessions.',
+        text: 'An account page for your avatar, your password, and the devices you are signed in on.',
       },
       {
         kind: 'added',
