@@ -76,6 +76,24 @@ describe('RolloverRepository joins', () => {
     expect(sql).toContain('"schedule_games"."gameId" = "prediction_picks"."gameId"');
     expect(sql).not.toContain('"schedule_games"."id"');
   });
+
+  it('gates the recap on guild membership, not on where the pick was placed', async () => {
+    // `prediction_picks.guildId` is null on every row: the bot's pick path sends
+    // `userId`, `gameId`, and `side`, and no guild. Filtering on it counted zero
+    // for every day, so `shouldPostRecap` skipped every recap without a word. The
+    // board this gates ranks members, so the gate has to count members.
+    const { db, statements } = recordingDb();
+    const repo = new RolloverRepository({ db } as unknown as Infrastructure);
+
+    await repo.settledPickCount('guild-1', '2026-10-31');
+
+    const sql = singleLine(statements[0]?.text ?? '');
+    expect(sql).not.toContain('"prediction_picks"."guildId"');
+    expect(sql).toContain('"discord_members"."guildId" = $');
+    expect(sql).toContain(
+      '"discord_members"."discordUserId" = "discord_identities"."discordUserId"',
+    );
+  });
 });
 
 describe('RolloverRepository postable days', () => {

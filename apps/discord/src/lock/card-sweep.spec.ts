@@ -89,6 +89,7 @@ function row(table: Table, entry: Card): CardRow {
     messageId: entry.messageId,
     lockedAt: entry.lockedAt,
     settledAt: entry.settledAt,
+    updatedAt: entry.updatedAt,
     gameStatus: match.gameStatus,
     gameDate: match.gameDate,
     gameDateTimeUTC: match.gameDateTimeUTC,

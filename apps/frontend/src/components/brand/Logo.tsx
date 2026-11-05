@@ -5,28 +5,56 @@ import { useId, type SVGProps } from 'react';
  * BALL. Paths are shared with the SVG files in public/brand (regenerate both
  * from apps/frontend/brand/build.mjs — do not edit one by hand).
  *
- * `currentColor` drives the letters and the ball body; the seams stay orange
- * unless `mono` is set, which paints them in `currentColor` too. Drop the
- * component anywhere and set the colour with a text utility.
+ * `currentColor` drives the letters and the seams. The ball body is the one
+ * orange element, so the mark reads as a basketball on any background; set
+ * `mono` to paint it in `currentColor` as well. Drop the component anywhere and
+ * set the ink with a text utility.
  */
 
+const BALL_ORANGE = '#C4502F';
+// Side seams: arcs centred outside the ball, so they bow toward the middle and
+// die on the rim. A closed loop through the poles would be a meridian, and a
+// meridian plus an equator is a globe.
+const SEAM_ARC_R = 0.703;
+const SEAM_ARC_D = 1.161;
+const round = (v: number) => Math.round(v * 1000) / 1000;
+
+/** The two side seams of a ball of radius `r` centred on (cx, cy). */
+function sideSeams(cx: number, cy: number, r: number) {
+  const arc = round(r * SEAM_ARC_R);
+  const off = round(r * SEAM_ARC_D);
+  return [-1, 1].map((side) => <circle key={side} cx={round(cx + side * off)} cy={cy} r={arc} />);
+}
+
+// Advance width covers the stroke overshoot, so ink spans 0..w and 0..100
+// vertically. A butt cap stops where the path stops, so stems run the full
+// 0..100 while horizontal strokes sit on 9.5/90.5 and let their 19-unit body
+// fill 0..19 or 81..100.
 const LETTERS: { w: number; d: string[] }[] = [
-  { w: 19, d: ['M9.5 9.5V90.5'] },
-  { w: 72, d: ['M9.5 9.5V90.5', 'M60 9.5L9.5 50L66 90.5'] },
-  { w: 61, d: ['M9.5 9.5V90.5', 'M51.5 9.5V90.5', 'M9.5 9.5L51.5 90.5'] },
+  { w: 19, d: ['M9.5 0V100'] },
+  { w: 72, d: ['M9.5 0V100', 'M60 9.5L9.5 50L66 90.5'] },
+  { w: 61, d: ['M9.5 0V100', 'M51.5 0V100', 'M9.5 9.5L51.5 90.5'] },
   { w: 60, d: [] }, // placeholder for the ball, laid out below
   {
     w: 60,
     d: [
-      'M9.5 9.5V90.5',
+      'M9.5 0V100',
       'M9.5 9.5L27 9.5A18 20.25 0 0 1 27 50L9.5 50',
       'M9.5 50L29 50A20 20.25 0 0 1 29 90.5L9.5 90.5',
     ],
   },
-  { w: 66, d: ['M9.5 90.5L26 9.5L40 9.5L56.5 90.5', 'M14.8 64.6L51.2 64.6'] },
-  { w: 54, d: ['M9.5 9.5V90.5', 'M9.5 90.5L54 90.5'] },
-  { w: 54, d: ['M9.5 9.5V90.5', 'M9.5 90.5L54 90.5'] },
+  // Legs run past the baseline so the low corner of each butt cap lands on it.
+  { w: 66, d: ['M7.95 98.1L26 9.5L40 9.5L58.05 98.1', 'M14.8 64.6L51.2 64.6'] },
+  { w: 54, d: ['M9.5 0V100', 'M9.5 90.5L54 90.5'] },
+  { w: 54, d: ['M9.5 0V100', 'M9.5 90.5L54 90.5'] },
 ];
+
+// Every glyph is drawn on the cap line, then shifted by its own value here, so
+// the letters stagger up and down by different amounts. Positive is down. This
+// is a hand-picked draw, not a pattern, and the uneven baseline IS the mark —
+// evening these out flattens it back into generic type. Mirrors DY in
+// apps/frontend/brand/build.mjs; the ball entry stays on 0.
+const DY = [4, -7, 2, 0, 6, -4, -8, 3];
 
 const GAP = 8;
 const BALL_W = 104;
@@ -48,7 +76,7 @@ const positions: { x: number; key: 'letter' | 'ball' }[] = (() => {
 const WIDTH = positions[positions.length - 1].x + LETTERS[LETTERS.length - 1].w;
 
 export type LogoProps = SVGProps<SVGSVGElement> & {
-  /** Paint the seams in `currentColor` instead of orange. */
+  /** Paint the ball body in `currentColor` too, for one-colour reproduction. */
   mono?: boolean;
   /** Drop the 12deg forward lean, for documents and print. */
   upright?: boolean;
@@ -60,12 +88,12 @@ export function Logo({ mono, upright, ...rest }: LogoProps) {
   // the circle and eat into the gap before the N or after the B. useId carries
   // colons, which are fragile inside url(#…), so keep only alphanumerics.
   const clip = `ikb-ball-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const seam = mono ? 'currentColor' : '#C4502F';
+  const body = mono ? 'currentColor' : BALL_ORANGE;
   const ballX = positions[3].x + BALL_W / 2;
 
   const letters = positions.map((p, i) =>
     p.key === 'ball' ? null : (
-      <g key={i} transform={`translate(${p.x} 0)`}>
+      <g key={i} transform={`translate(${p.x} ${DY[i]})`}>
         {LETTERS[i].d.map((d) => (
           <path key={d} d={d} />
         ))}
@@ -85,24 +113,22 @@ export function Logo({ mono, upright, ...rest }: LogoProps) {
       >
         {letters}
       </g>
-      <circle cx={ballX} cy={50} r={BALL_W / 2} fill="currentColor" />
-      <g fill="none" stroke={seam} strokeWidth={8} strokeLinecap="round" clipPath={`url(#${clip})`}>
+      <circle cx={ballX} cy={50} r={BALL_W / 2} fill={body} />
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={8}
+        strokeLinecap="round"
+        clipPath={`url(#${clip})`}
+      >
         <defs>
           <clipPath id={clip}>
             <circle cx={ballX} cy={50} r={BALL_W / 2} />
           </clipPath>
         </defs>
         <path d={`M${ballX - BALL_W / 2} 50H${ballX + BALL_W / 2}`} />
-        <path
-          d={`M${ballX} ${50 - BALL_W / 2}C${ballX - BALL_W * 0.36} ${
-            50 - BALL_W * 0.35
-          } ${ballX - BALL_W * 0.36} ${50 + BALL_W * 0.35} ${ballX} ${50 + BALL_W / 2}`}
-        />
-        <path
-          d={`M${ballX} ${50 - BALL_W / 2}C${ballX + BALL_W * 0.36} ${
-            50 - BALL_W * 0.35
-          } ${ballX + BALL_W * 0.36} ${50 + BALL_W * 0.35} ${ballX} ${50 + BALL_W / 2}`}
-        />
+        <path d={`M${ballX} ${50 - BALL_W / 2}V${50 + BALL_W / 2}`} />
+        {sideSeams(ballX, 50, BALL_W / 2)}
       </g>
     </>
   );
@@ -124,13 +150,13 @@ export function Logo({ mono, upright, ...rest }: LogoProps) {
 /** The basketball alone. Below roughly 36px, use this rather than the lockup. */
 export function LogoMark({ mono, ...rest }: Omit<LogoProps, 'upright'>) {
   const clip = `ikb-mark-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const seam = mono ? 'currentColor' : '#C4502F';
+  const body = mono ? 'currentColor' : BALL_ORANGE;
   return (
     <svg viewBox="-6 -6 172 172" role="img" aria-label="IKnoBall" {...rest}>
-      <circle cx={80} cy={80} r={80} fill="currentColor" />
+      <circle cx={80} cy={80} r={80} fill={body} />
       <g
         fill="none"
-        stroke={seam}
+        stroke="currentColor"
         strokeWidth={12}
         strokeLinecap="round"
         clipPath={`url(#${clip})`}
@@ -141,8 +167,8 @@ export function LogoMark({ mono, ...rest }: Omit<LogoProps, 'upright'>) {
           </clipPath>
         </defs>
         <path d="M0 80H160" />
-        <path d="M80 0C22.4 24 22.4 136 80 160" />
-        <path d="M80 0C137.6 24 137.6 136 80 160" />
+        <path d="M80 0V160" />
+        {sideSeams(80, 80, 80)}
       </g>
     </svg>
   );

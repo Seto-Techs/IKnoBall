@@ -53,9 +53,13 @@ sends the rebuilt payload in a single call. So:
 - **1 call per card** — the price of each card having its own buttons;
 - 4 calls per guild for a four-card slate, 12 for a twelve-card one.
 
-The settlement pass is the same shape and the same cost.
+The settlement pass is the same shape and the same cost. So is the stake pass — the
+one that puts the points line on a card posted before its price existed — except that
+it edits nothing unless the line has moved, so its calls are one per card per price
+change rather than one per card per day.
 
-A guild's whole day, four games: 5 (post) + 4 (lock) + 4 (settlement) = **13 calls**.
+A guild's whole day, four games: 5 (post) + 4 (lock) + 4 (settlement) = **13 calls**,
+plus at most one more per card each time a line moves between the post and tip-off.
 A twelve-game day: 13 + 12 + 12 = **37 calls**. Nobody is close to anything.
 
 ## 3. 100 guilds in one minute
@@ -196,7 +200,7 @@ retrying hard.
 ## 8. What the queue does with a failure
 
 One queue for all outbound REST (`apps/discord/src/infrastructure/rate-limiter.ts`),
-`schedule(task, route?)`, which every poster and both sweeps call:
+`schedule(task, route?)`, which every poster and every sweep call:
 
 - **429** — wait exactly `retry_after` (discord.js's `RateLimitError.retryAfter` in ms,
   or Discord's JSON `retry_after` in seconds, or the `Retry-After` header), block the
