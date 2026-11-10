@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   collapseDashboardRowsBySeason,
+  playerTeamSeasonRows,
   splitDashboardRowsBySeason,
   type PlayerDashboardRow,
 } from './player-season.processor';
@@ -48,6 +49,29 @@ function row(over: Partial<PlayerDashboardRow>): PlayerDashboardRow {
 }
 
 describe('splitDashboardRowsBySeason', () => {
+  it('keeps every concrete team-season row for the relationship graph', () => {
+    expect(
+      playerTeamSeasonRows([
+        row({ GROUP_VALUE: '2003-04', TEAM_ABBREVIATION: 'CLE' }),
+        row({ GROUP_VALUE: '2025-26', TEAM_ABBREVIATION: 'TOT' }),
+        row({ GROUP_VALUE: '2025-26', TEAM_ABBREVIATION: 'SAS' }),
+      ]),
+    ).toEqual([
+      { season: '2003-04', teamAbbr: 'CLE' },
+      { season: '2025-26', teamAbbr: 'SAS' },
+    ]);
+  });
+
+  it('deduplicates repeated team rows and excludes the aggregate row', () => {
+    expect(
+      playerTeamSeasonRows([
+        row({ GROUP_VALUE: '2025-26', TEAM_ABBREVIATION: 'SAS' }),
+        row({ GROUP_VALUE: '2025-26', TEAM_ABBREVIATION: 'SAS' }),
+        row({ GROUP_VALUE: '2025-26', TEAM_ABBREVIATION: 'TOT' }),
+      ]),
+    ).toEqual([{ season: '2025-26', teamAbbr: 'SAS' }]);
+  });
+
   it('keeps the per-team rows of a season the player moved during', () => {
     const splits = splitDashboardRowsBySeason([
       row({ TEAM_ABBREVIATION: 'TOT', GP: 60, PTS: 1300 }),
