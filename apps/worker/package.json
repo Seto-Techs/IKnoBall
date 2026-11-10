@@ -19,6 +19,7 @@
     "backfill:scores": "node dist/run-backfill-scores.js",
     "backfill:team-seasons": "node dist/run-backfill-team-seasons.js",
     "import:historical-team-seasons": "node dist/run-import-historical-team-seasons.js",
+    "hydrate:lebronnect": "node dist/run-import-historical-team-seasons.js && node dist/run-backfill-team-seasons.js",
     "seed:teams": "node dist/run-seed-teams.js",
     "bootstrap": "node dist/run-bootstrap.js"
   },

@@ -66,9 +66,15 @@ async function main() {
       }
     }
     logger.log(`backfill done succeeded=${done} failed=${rows.length - done}`);
+    if (done !== rows.length) {
+      throw new Error(`Team-season backfill incomplete: ${rows.length - done} player(s) failed`);
+    }
   } finally {
     await app.close();
   }
 }
 
-void main();
+void main().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
+});
