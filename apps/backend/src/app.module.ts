@@ -15,6 +15,8 @@ import { DiscordLinkModule } from './discord-link/discord-link.module';
 import { LeadersController } from './leaders.controller';
 import { SearchController } from './search.controller';
 import { PlayersController } from './players.controller';
+import { MinigamesController } from './minigames.controller';
+import { MinigamesService } from './minigames.service';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { EmailModule } from './infrastructure/email/email.module';
 import { emailConfig } from './infrastructure/email/email.config';
@@ -64,9 +66,11 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
     LeadersController,
     SearchController,
     PlayersController,
+    MinigamesController,
   ],
   providers: [
     AppService,
+    MinigamesService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
