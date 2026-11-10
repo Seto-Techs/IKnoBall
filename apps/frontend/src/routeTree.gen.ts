@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root';
 import { Route as IndexRouteImport } from './routes/index';
 import { Route as ChangelogRouteImport } from './routes/changelog';
 import { Route as DashboardRouteImport } from './routes/dashboard';
+import { Route as GamesRouteImport } from './routes/games';
 import { Route as OnboardingRouteImport } from './routes/onboarding';
 import { Route as PredictRouteImport } from './routes/predict';
 import { Route as PrivacyRouteImport } from './routes/privacy';
@@ -26,6 +27,7 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-passw
 import { Route as AuthVerifyRouteImport } from './routes/auth/verify';
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email';
 import { Route as GameGameIdRouteImport } from './routes/game.$gameId';
+import { Route as GamesLebronnectRouteImport } from './routes/games_.lebronnect';
 import { Route as PlayerPlayerIdRouteImport } from './routes/player.$playerId';
 import { Route as PrototypeBoxscoreRouteImport } from './routes/prototype.boxscore';
 import { Route as PrototypeShotzonesRouteImport } from './routes/prototype.shotzones';
@@ -44,6 +46,11 @@ const ChangelogRoute = ChangelogRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const GamesRoute = GamesRouteImport.update({
+  id: '/games',
+  path: '/games',
   getParentRoute: () => rootRouteImport,
 } as any);
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -116,6 +123,11 @@ const GameGameIdRoute = GameGameIdRouteImport.update({
   path: '/game/$gameId',
   getParentRoute: () => rootRouteImport,
 } as any);
+const GamesLebronnectRoute = GamesLebronnectRouteImport.update({
+  id: '/games_/lebronnect',
+  path: '/games/lebronnect',
+  getParentRoute: () => rootRouteImport,
+} as any);
 const PlayerPlayerIdRoute = PlayerPlayerIdRouteImport.update({
   id: '/player/$playerId',
   path: '/player/$playerId',
@@ -141,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/changelog': typeof ChangelogRoute;
   '/dashboard': typeof DashboardRoute;
+  '/games': typeof GamesRoute;
   '/onboarding': typeof OnboardingRoute;
   '/predict': typeof PredictRoute;
   '/privacy': typeof PrivacyRoute;
@@ -155,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/auth/verify': typeof AuthVerifyRoute;
   '/auth/verify-email': typeof AuthVerifyEmailRoute;
   '/game/$gameId': typeof GameGameIdRoute;
+  '/games/lebronnect': typeof GamesLebronnectRoute;
   '/player/$playerId': typeof PlayerPlayerIdRoute;
   '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
   '/prototype/shotzones': typeof PrototypeShotzonesRoute;
@@ -164,6 +178,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/changelog': typeof ChangelogRoute;
   '/dashboard': typeof DashboardRoute;
+  '/games': typeof GamesRoute;
   '/onboarding': typeof OnboardingRoute;
   '/predict': typeof PredictRoute;
   '/privacy': typeof PrivacyRoute;
@@ -178,6 +193,7 @@ export interface FileRoutesByTo {
   '/auth/verify': typeof AuthVerifyRoute;
   '/auth/verify-email': typeof AuthVerifyEmailRoute;
   '/game/$gameId': typeof GameGameIdRoute;
+  '/games/lebronnect': typeof GamesLebronnectRoute;
   '/player/$playerId': typeof PlayerPlayerIdRoute;
   '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
   '/prototype/shotzones': typeof PrototypeShotzonesRoute;
@@ -188,6 +204,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute;
   '/changelog': typeof ChangelogRoute;
   '/dashboard': typeof DashboardRoute;
+  '/games': typeof GamesRoute;
   '/onboarding': typeof OnboardingRoute;
   '/predict': typeof PredictRoute;
   '/privacy': typeof PrivacyRoute;
@@ -202,6 +219,7 @@ export interface FileRoutesById {
   '/auth/verify': typeof AuthVerifyRoute;
   '/auth/verify-email': typeof AuthVerifyEmailRoute;
   '/game/$gameId': typeof GameGameIdRoute;
+  '/games_/lebronnect': typeof GamesLebronnectRoute;
   '/player/$playerId': typeof PlayerPlayerIdRoute;
   '/prototype/boxscore': typeof PrototypeBoxscoreRoute;
   '/prototype/shotzones': typeof PrototypeShotzonesRoute;
@@ -213,6 +231,7 @@ export interface FileRouteTypes {
     | '/'
     | '/changelog'
     | '/dashboard'
+    | '/games'
     | '/onboarding'
     | '/predict'
     | '/privacy'
@@ -227,6 +246,7 @@ export interface FileRouteTypes {
     | '/auth/verify'
     | '/auth/verify-email'
     | '/game/$gameId'
+    | '/games/lebronnect'
     | '/player/$playerId'
     | '/prototype/boxscore'
     | '/prototype/shotzones'
@@ -236,6 +256,7 @@ export interface FileRouteTypes {
     | '/'
     | '/changelog'
     | '/dashboard'
+    | '/games'
     | '/onboarding'
     | '/predict'
     | '/privacy'
@@ -250,6 +271,7 @@ export interface FileRouteTypes {
     | '/auth/verify'
     | '/auth/verify-email'
     | '/game/$gameId'
+    | '/games/lebronnect'
     | '/player/$playerId'
     | '/prototype/boxscore'
     | '/prototype/shotzones'
@@ -259,6 +281,7 @@ export interface FileRouteTypes {
     | '/'
     | '/changelog'
     | '/dashboard'
+    | '/games'
     | '/onboarding'
     | '/predict'
     | '/privacy'
@@ -273,6 +296,7 @@ export interface FileRouteTypes {
     | '/auth/verify'
     | '/auth/verify-email'
     | '/game/$gameId'
+    | '/games_/lebronnect'
     | '/player/$playerId'
     | '/prototype/boxscore'
     | '/prototype/shotzones'
@@ -283,6 +307,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   ChangelogRoute: typeof ChangelogRoute;
   DashboardRoute: typeof DashboardRoute;
+  GamesRoute: typeof GamesRoute;
   OnboardingRoute: typeof OnboardingRoute;
   PredictRoute: typeof PredictRoute;
   PrivacyRoute: typeof PrivacyRoute;
@@ -297,6 +322,7 @@ export interface RootRouteChildren {
   AuthVerifyRoute: typeof AuthVerifyRoute;
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute;
   GameGameIdRoute: typeof GameGameIdRoute;
+  GamesLebronnectRoute: typeof GamesLebronnectRoute;
   PlayerPlayerIdRoute: typeof PlayerPlayerIdRoute;
   PrototypeBoxscoreRoute: typeof PrototypeBoxscoreRoute;
   PrototypeShotzonesRoute: typeof PrototypeShotzonesRoute;
@@ -324,6 +350,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard';
       fullPath: '/dashboard';
       preLoaderRoute: typeof DashboardRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/games': {
+      id: '/games';
+      path: '/games';
+      fullPath: '/games';
+      preLoaderRoute: typeof GamesRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/onboarding': {
@@ -424,6 +457,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GameGameIdRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/games_/lebronnect': {
+      id: '/games_/lebronnect';
+      path: '/games/lebronnect';
+      fullPath: '/games/lebronnect';
+      preLoaderRoute: typeof GamesLebronnectRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/player/$playerId': {
       id: '/player/$playerId';
       path: '/player/$playerId';
@@ -459,6 +499,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChangelogRoute: ChangelogRoute,
   DashboardRoute: DashboardRoute,
+  GamesRoute: GamesRoute,
   OnboardingRoute: OnboardingRoute,
   PredictRoute: PredictRoute,
   PrivacyRoute: PrivacyRoute,
@@ -473,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthVerifyRoute: AuthVerifyRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   GameGameIdRoute: GameGameIdRoute,
+  GamesLebronnectRoute: GamesLebronnectRoute,
   PlayerPlayerIdRoute: PlayerPlayerIdRoute,
   PrototypeBoxscoreRoute: PrototypeBoxscoreRoute,
   PrototypeShotzonesRoute: PrototypeShotzonesRoute,

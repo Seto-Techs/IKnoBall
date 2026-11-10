@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Bell, ChevronDown, LogOut, User, UserRound } from 'lucide-react';
+import { Bell, ChevronDown, Gamepad2, LogOut, User, UserRound } from 'lucide-react';
 import { hexLuminance } from './shared';
 import { GlobalSearchField, GlobalSearchTrigger } from './GlobalSearch';
 import { Logo } from '../brand/Logo';
@@ -13,6 +13,7 @@ export type NavKey =
   | 'profile'
   | 'game'
   | 'player'
+  | 'games'
   | undefined;
 
 const NAV_ITEMS: { key: NavKey; label: string }[] = [
@@ -166,14 +167,34 @@ export function DashboardHeader({
       <div className="mx-auto flex max-w-[1920px] items-center justify-between gap-4 px-6 py-3">
         {/* Left: wordmark + primary nav. */}
         <div className="flex shrink-0 items-center gap-8">
-          <Link
-            to="/dashboard"
-            search={{ tab: 'team' }}
-            className="rounded-md text-brand-navy transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
-            aria-label="IKnoBall home"
-          >
-            <Logo className="h-7 w-auto" />
-          </Link>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <Link
+              to="/dashboard"
+              search={{ tab: 'team' }}
+              className="rounded-md text-brand-navy transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2"
+              aria-label="IKnoBall home"
+            >
+              <Logo className="h-7 w-auto" />
+            </Link>
+
+            {/* Mini games is a door out of the dashboard, not a fourth section of
+                it, so it sits first in the nav strip with its own pill treatment
+                instead of joining the underlined tabs. Below `sm` the label
+                drops and the icon carries it with an aria-label. */}
+            <Link
+              to="/games"
+              aria-label="Mini games"
+              aria-current={active === 'games' ? 'page' : undefined}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 ${
+                active === 'games'
+                  ? 'bg-brand-navy text-white'
+                  : 'border border-brand-line bg-white text-brand-navy hover:border-brand-navy/40 hover:bg-stone-50'
+              }`}
+            >
+              <Gamepad2 className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Games</span>
+            </Link>
+          </div>
 
           <nav aria-label="Primary" className="hidden items-center gap-6 sm:flex">
             {NAV_ITEMS.map((item) => (

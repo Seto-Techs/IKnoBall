@@ -180,6 +180,38 @@ export const playerSeasonTeamStats = pgTable(
   ],
 );
 
+/**
+ * Complete player/team/season memberships from the NBA career feed.
+ *
+ * This intentionally includes single-team seasons. The stats split table above
+ * only needs rows when a player moved, but LeBronnect needs LeBron's CLE 2003-04
+ * membership just as much as Harden's Houston memberships.
+ */
+export const playerTeamSeasons = pgTable(
+  'player_team_seasons',
+  {
+    id: id(),
+    playerId: text('playerId')
+      .notNull()
+      .references(() => players.id),
+    season: text('season').notNull(),
+    seasonType: text('seasonType').notNull(),
+    teamAbbr: text('teamAbbr').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('player_team_seasons_playerId_season_type_team_key').on(
+      table.playerId,
+      table.season,
+      table.seasonType,
+      table.teamAbbr,
+    ),
+    index('player_team_seasons_playerId_idx').on(table.playerId),
+    index('player_team_seasons_lookup_idx').on(table.season, table.seasonType, table.teamAbbr),
+  ],
+);
+
 export const scheduleDays = pgTable(
   'schedule_days',
   {
@@ -736,5 +768,55 @@ export const discordMembers = pgTable(
       columns: [table.guildId, table.discordUserId],
     }),
     index('discord_members_discordUserId_idx').on(table.discordUserId),
+  ],
+);
+
+/**
+ * One finished daily puzzle, one row per player per day.
+ *
+ * The chain is stored as it was played rather than just the score, so the result
+ * screen and the share text can be rebuilt on any device — and so a later graph
+ * import cannot silently rewrite history. `par` is frozen at solve time for the
+ * same reason: the floor is a fact about the puzzle on the day it ran, not a
+ * live query. The unique key is the rule "the first solve counts" made
+ * structural — a second submission hits the constraint instead of overwriting
+ * a better or worse result.
+ */
+export const miniGameResults = pgTable(
+  'mini_game_results',
+  {
+    id: id(),
+    userId: text('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** The game's slug: `lebronnect` today, whatever joins the shelf next. */
+    game: text('game').notNull(),
+    /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
+    puzzleDate: date('puzzleDate').notNull(),
+    puzzleNumber: integer('puzzleNumber').notNull(),
+    startPlayerId: text('startPlayerId').notNull(),
+    targetPlayerId: text('targetPlayerId').notNull(),
+    /** Intermediaries the player named — the score, and never the start or target. */
+    players: integer('players').notNull(),
+    /** Intermediaries on the shortest route, frozen when the result was written. */
+    par: integer('par').notNull(),
+    /** The Wordle-style grade: 5 at par, one fewer for each player over. */
+    blocks: integer('blocks').notNull(),
+    /** `[{ playerId, receipt: [{ team, seasons }] }]`, the chain as played. */
+    chain: jsonb('chain').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('mini_game_results_userId_game_puzzleDate_key').on(
+      table.userId,
+      table.game,
+      table.puzzleDate,
+    ),
+    index('mini_game_results_userId_game_puzzleDate_idx').on(
+      table.userId,
+      table.game,
+      table.puzzleDate,
+    ),
   ],
 );

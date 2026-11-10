@@ -1,6 +1,11 @@
-import { playerSeasonStats, playerSeasonTeamStats, players } from '@iknoball/database';
+import {
+  playerSeasonStats,
+  playerSeasonTeamStats,
+  playerTeamSeasons,
+  players,
+} from '@iknoball/database';
 import { and, eq } from 'drizzle-orm';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import { RedisService } from '../redis.service';
 import { PlayerIndexClient } from '../player-index.client';
@@ -159,6 +164,31 @@ export function collapseDashboardRowsBySeason(
 
 export type UpsertSeasonTotalsOutcome = 'inserted' | 'updated' | 'skipped';
 
+/** Persist one graph membership; repeated career crawls are idempotent. */
+export async function upsertPlayerTeamSeason(
+  db: DatabaseService['db'],
+  params: { playerId: string; season: string; seasonType: string; teamAbbr: string },
+): Promise<UpsertSeasonTotalsOutcome> {
+  const key = and(
+    eq(playerTeamSeasons.playerId, params.playerId),
+    eq(playerTeamSeasons.season, params.season),
+    eq(playerTeamSeasons.seasonType, params.seasonType),
+    eq(playerTeamSeasons.teamAbbr, params.teamAbbr),
+  );
+  const [existing] = await db
+    .select({ id: playerTeamSeasons.id })
+    .from(playerTeamSeasons)
+    .where(key);
+
+  if (!existing) {
+    await db.insert(playerTeamSeasons).values(params);
+    return 'inserted';
+  }
+
+  await db.update(playerTeamSeasons).set({ updatedAt: new Date() }).where(key);
+  return 'updated';
+}
+
 /**
  * The per-team split of each season the player spent on more than one team.
  *
@@ -187,6 +217,39 @@ export function splitDashboardRowsBySeason(
     season,
     teams: Array.from(byTeam, ([teamAbbr, totals]) => ({ teamAbbr, totals })),
   })).filter((entry) => entry.teams.length > 1);
+}
+
+/**
+ * Keep every concrete team row for the relationship graph, including a season
+ * with only one team. `TOT` is an aggregate and is deliberately not a club.
+ */
+export function playerTeamSeasonRows(
+  rows: PlayerDashboardRow[],
+): { season: string; teamAbbr: string }[] {
+  const memberships = new Set<string>();
+  for (const row of rows) {
+    if (!row.GROUP_VALUE || !row.TEAM_ABBREVIATION || row.TEAM_ABBREVIATION === 'TOT') continue;
+    memberships.add(`${row.GROUP_VALUE}|${row.TEAM_ABBREVIATION}`);
+  }
+  return [...memberships].map((value) => {
+    const [season, teamAbbr] = value.split('|');
+    return { season, teamAbbr };
+  });
+}
+
+/** Turn a raw dashboard response into the memberships the graph stores. */
+export function mapPlayerTeamSeasonRows(
+  headers: string[],
+  rows: unknown[][],
+): { season: string; teamAbbr: string }[] {
+  const mapped = rows.map((row) => {
+    const value: Record<string, unknown> = {};
+    headers.forEach((header, index) => {
+      value[header] = row[index] ?? null;
+    });
+    return value;
+  });
+  return playerTeamSeasonRows(mapped as PlayerDashboardRow[]);
 }
 
 /**
@@ -272,11 +335,12 @@ export async function upsertSeasonTotals(
 }
 
 @Injectable()
-export class PlayerSeasonProcessor implements OnModuleInit {
+export class PlayerSeasonProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PlayerSeasonProcessor.name);
   private readonly currentSeason = resolveCurrentSeason();
   private readonly maxRetryAttempts = 5;
   private readonly retryDelayMs = 60000;
+  private careerWorker: Worker | null = null;
 
   constructor(
     private readonly redisService: RedisService,
@@ -287,7 +351,7 @@ export class PlayerSeasonProcessor implements OnModuleInit {
 
   onModuleInit() {
     const connection = this.redisService.getClient();
-    new Worker(
+    this.careerWorker = new Worker(
       QUEUE_NAMES.crawlPlayerCareer,
       async (job) => {
         const { playerExternalId, attempt = 0 } = job.data as {
@@ -301,6 +365,10 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     ).on('failed', (job, error) => {
       this.logger.error(`crawlPlayerCareer failed: ${job?.id}`, error);
     });
+  }
+
+  async onModuleDestroy() {
+    await this.careerWorker?.close();
   }
 
   private async crawlPlayerCareer(playerExternalId: string, attempt: number) {
@@ -376,12 +444,36 @@ export class PlayerSeasonProcessor implements OnModuleInit {
     await this.persistDashboardRows(playerId, rows, statsTimeframe);
   }
 
+  /** Refresh one player's career feed, including all graph memberships. */
+  async syncPlayerCareerNow(playerExternalId: string) {
+    const [player] = await this.database.db
+      .select({ id: players.id })
+      .from(players)
+      .where(eq(players.externalId, playerExternalId));
+    if (!player) throw new Error(`Player not found for externalId ${playerExternalId}`);
+
+    await this.syncDashboardByYear(player.id, playerExternalId, 'Regular Season', 'ByYear-regular');
+    await this.syncDashboardByYear(player.id, playerExternalId, 'Playoffs', 'ByYear-playoffs');
+    await this.syncDashboardByYear(player.id, playerExternalId, 'Pre Season', 'ByYear-preseason');
+  }
+
   private async persistDashboardRows(
     playerId: string,
     rows: PlayerDashboardRow[],
     statsTimeframe: string,
   ) {
     const currentSeason = this.currentSeason;
+    // This is the graph source: persist concrete team memberships even when
+    // the season has no trade split and therefore has no row in the display
+    // table below.
+    for (const { season, teamAbbr } of playerTeamSeasonRows(rows)) {
+      await upsertPlayerTeamSeason(this.database.db, {
+        playerId,
+        season,
+        seasonType: statsTimeframe,
+        teamAbbr,
+      });
+    }
     for (const { season, totals } of collapseDashboardRowsBySeason(rows)) {
       await upsertSeasonTotals(this.database.db, { playerId, season, statsTimeframe }, totals, {
         alwaysRefresh: season === currentSeason,
