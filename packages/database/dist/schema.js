@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.miniGameResults = exports.discordMembers = exports.discordGuilds = exports.discordLinks = exports.discordCards = exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerTeamSeasons = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionSource = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
+exports.miniGameResults = exports.miniGamePuzzles = exports.discordMembers = exports.discordGuilds = exports.discordLinks = exports.discordCards = exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerTeamSeasons = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionSource = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
 const better_auth_schema_js_1 = require("./better-auth.schema.js");
 var better_auth_schema_js_2 = require("./better-auth.schema.js");
@@ -641,6 +641,34 @@ exports.discordMembers = (0, pg_core_1.pgTable)('discord_members', {
     (0, pg_core_1.index)('discord_members_discordUserId_idx').on(table.discordUserId),
 ]);
 /**
+ * One published daily board, one row per game per day.
+ *
+ * The draw is a pure function of the date, but the graph it draws from is not:
+ * a career import changes the pool, so a pair drawn today can be a different
+ * pair tomorrow. Publishing the row freezes the board for the day, and the seed
+ * is kept beside it so a published board can be reproduced even after the graph
+ * has moved on. The unique key is the rule "the first publication wins" made
+ * structural — a second writer hits the constraint instead of replacing a board
+ * players are already solving.
+ */
+exports.miniGamePuzzles = (0, pg_core_1.pgTable)('mini_game_puzzles', {
+    id: id(),
+    /** The game's slug: `lebronnect` today, whatever joins the shelf next. */
+    game: (0, pg_core_1.text)('game').notNull(),
+    /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
+    puzzleDate: (0, pg_core_1.date)('puzzleDate').notNull(),
+    puzzleNumber: (0, pg_core_1.integer)('puzzleNumber').notNull(),
+    /** The draw's seed, so the board can be rebuilt without guessing which pool drew it. */
+    seed: (0, pg_core_1.bigint)('seed', { mode: 'number' }).notNull(),
+    startPlayerId: (0, pg_core_1.text)('startPlayerId').notNull(),
+    targetPlayerId: (0, pg_core_1.text)('targetPlayerId').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('mini_game_puzzles_game_puzzleDate_key').on(table.game, table.puzzleDate),
+    (0, pg_core_1.index)('mini_game_puzzles_game_puzzleDate_idx').on(table.game, table.puzzleDate),
+]);
+/**
  * One finished daily puzzle, one row per player per day.
  *
  * The chain is stored as it was played rather than just the score, so the result
@@ -661,6 +689,8 @@ exports.miniGameResults = (0, pg_core_1.pgTable)('mini_game_results', {
     /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
     puzzleDate: (0, pg_core_1.date)('puzzleDate').notNull(),
     puzzleNumber: (0, pg_core_1.integer)('puzzleNumber').notNull(),
+    /** The published board this was played on. Null on rows that predate the table. */
+    puzzleId: (0, pg_core_1.text)('puzzleId').references(() => exports.miniGamePuzzles.id, { onDelete: 'restrict' }),
     startPlayerId: (0, pg_core_1.text)('startPlayerId').notNull(),
     targetPlayerId: (0, pg_core_1.text)('targetPlayerId').notNull(),
     /** Intermediaries the player named — the score, and never the start or target. */

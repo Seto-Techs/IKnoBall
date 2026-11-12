@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
+  miniGamePuzzles,
   miniGameResults,
   playerTeamSeasons,
   players,
@@ -54,6 +60,13 @@ export type DailyPuzzle = {
   start: ConnectPlayerRef;
   target: ConnectPlayerRef;
 };
+
+/**
+ * A published board plus the row that published it, so a solve can point at the
+ * board it was played on. The seed never comes back out: a client that has it
+ * can replay the draw and skip the search.
+ */
+type PuzzleRecord = DailyPuzzle & { id: string };
 
 export type ChainLink = {
   playerId: string;
@@ -133,7 +146,7 @@ export class MinigamesService {
   private graph: ConnectGraph | null = null;
   private graphBuiltAt = 0;
   private graphLoading: Promise<ConnectGraph> | null = null;
-  private readonly puzzles = new Map<string, DailyPuzzle>();
+  private readonly puzzles = new Map<string, PuzzleRecord>();
 
   constructor(private readonly database: DatabaseService) {}
 
@@ -230,24 +243,72 @@ export class MinigamesService {
   /* ── Today's puzzle ────────────────────────────────────────── */
 
   /**
-   * The day's pair: two of the longest-career players in the data who are not
-   * teammates and sit three to five links apart. The pair is a pure function of
-   * the date — same board for everyone, and the same board if the service
-   * restarts. `par` never leaves this method except through a finished solve.
+   * The day's board as the API serves it: the published pair, without the row
+   * that published it.
    */
   async getPuzzle(date = puzzleDate()): Promise<DailyPuzzle> {
+    const record = await this.getPuzzleRecord(date);
+    return {
+      number: record.number,
+      date: record.date,
+      start: record.start,
+      target: record.target,
+    };
+  }
+
+  /**
+   * The day's board, read from the database and published on first request.
+   *
+   * The draw is a pure function of the date, but the graph it draws from is not:
+   * a career import changes the pool, so a pair drawn this morning can be a
+   * different pair this afternoon. Publishing the row once freezes the board for
+   * the day, and the stored seed means it can be rebuilt even after the graph
+   * has moved on.
+   */
+  private async getPuzzleRecord(date: string): Promise<PuzzleRecord> {
     const cached = this.puzzles.get(date);
     if (cached) return cached;
 
+    const published = await this.findPuzzleRow(date);
+    const record = published ? await this.recordOf(published) : await this.publishPuzzle(date);
+    this.puzzles.set(date, record);
+    return record;
+  }
+
+  private async findPuzzleRow(date: string) {
+    const [row] = await this.db
+      .select()
+      .from(miniGamePuzzles)
+      .where(and(eq(miniGamePuzzles.game, GAME), eq(miniGamePuzzles.puzzleDate, date)))
+      .limit(1);
+    return row;
+  }
+
+  private async recordOf(row: typeof miniGamePuzzles.$inferSelect): Promise<PuzzleRecord> {
     const graph = await this.loadGraph();
-    const number = puzzleNumber(date);
+    return {
+      id: row.id,
+      number: row.puzzleNumber,
+      date: row.puzzleDate,
+      start: this.refOf(graph, row.startPlayerId),
+      target: this.refOf(graph, row.targetPlayerId),
+    };
+  }
+
+  /**
+   * Draw the day's pair and write it down: two of the longest-career players in
+   * the data who are not teammates and sit three to five links apart. `par`
+   * never leaves the graph except through a finished solve.
+   */
+  private async publishPuzzle(date: string): Promise<PuzzleRecord> {
+    const graph = await this.loadGraph();
+    const seed = seedOf(`${GAME}:${date}`);
     const pool = graph.order
       .slice(0, POOL_SIZE)
       .map((id) => graph.byId.get(id))
       .filter((player) => player !== undefined);
 
     const draw = (attempt: number) => {
-      const seed = seedOf(`${GAME}:${date}`);
       const a = pool[(seed + attempt * 131) % pool.length];
       const b = pool[(seed * 31 + attempt * 977 + 7) % pool.length];
       if (!a || !b || a.id === b.id) return null;
@@ -265,14 +326,26 @@ export class MinigamesService {
       if (!pick || !Number.isFinite(pick.distance)) continue;
       if (pick.distance < minDistance || pick.distance > maxDistance) continue;
 
-      const puzzle: DailyPuzzle = {
-        number,
-        date,
-        start: this.refOf(graph, pick.a.id),
-        target: this.refOf(graph, pick.b.id),
-      };
-      this.puzzles.set(date, puzzle);
-      return puzzle;
+      const [inserted] = await this.db
+        .insert(miniGamePuzzles)
+        .values({
+          game: GAME,
+          puzzleDate: date,
+          puzzleNumber: puzzleNumber(date),
+          seed,
+          startPlayerId: pick.a.id,
+          targetPlayerId: pick.b.id,
+        })
+        // A second instance can publish between the read and here; whichever
+        // row lands first is the day's board, and players may already be on it.
+        .onConflictDoNothing()
+        .returning();
+
+      if (inserted) return this.recordOf(inserted);
+
+      const published = await this.findPuzzleRow(date);
+      if (published) return this.recordOf(published);
+      throw new InternalServerErrorException('The day’s puzzle was not published');
     }
 
     throw new BadRequestException('No puzzle can be drawn from the current teammate graph');
@@ -327,7 +400,7 @@ export class MinigamesService {
    */
   async solve(userId: string, chain: string[]): Promise<SolveResult> {
     const today = puzzleDate();
-    const puzzle = await this.getPuzzle(today);
+    const puzzle = await this.getPuzzleRecord(today);
     const graph = await this.loadGraph();
 
     if (chain.length < 2) throw new BadRequestException('The chain has no links yet');
@@ -368,6 +441,7 @@ export class MinigamesService {
         game: GAME,
         puzzleDate: today,
         puzzleNumber: puzzle.number,
+        puzzleId: puzzle.id,
         startPlayerId: puzzle.start.id,
         targetPlayerId: puzzle.target.id,
         players: named,
@@ -397,9 +471,22 @@ export class MinigamesService {
 
   /** The viewer's result for one day, or null when they have not finished it. */
   async resultFor(userId: string, date = puzzleDate()): Promise<SolveResult | null> {
+    // The published board is the authority on what the day was: a row written
+    // before the puzzle table existed has no link, so it falls back to the
+    // date and number it froze for itself.
     const [row] = await this.db
-      .select()
+      .select({
+        puzzleDate: miniGameResults.puzzleDate,
+        puzzleNumber: miniGameResults.puzzleNumber,
+        publishedDate: miniGamePuzzles.puzzleDate,
+        publishedNumber: miniGamePuzzles.puzzleNumber,
+        players: miniGameResults.players,
+        par: miniGameResults.par,
+        blocks: miniGameResults.blocks,
+        chain: miniGameResults.chain,
+      })
       .from(miniGameResults)
+      .leftJoin(miniGamePuzzles, eq(miniGamePuzzles.id, miniGameResults.puzzleId))
       .where(
         and(
           eq(miniGameResults.userId, userId),
@@ -412,8 +499,8 @@ export class MinigamesService {
     if (!row) return null;
 
     return {
-      date: row.puzzleDate,
-      number: row.puzzleNumber,
+      date: row.publishedDate ?? row.puzzleDate,
+      number: row.publishedNumber ?? row.puzzleNumber,
       players: row.players,
       par: row.par,
       blocks: row.blocks as 1 | 2 | 3 | 4 | 5,

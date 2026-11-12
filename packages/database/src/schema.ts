@@ -3,6 +3,7 @@ import { user } from './better-auth.schema.js';
 
 export { account, session, user, verification } from './better-auth.schema.js';
 import {
+  bigint,
   boolean,
   date,
   doublePrecision,
@@ -772,6 +773,39 @@ export const discordMembers = pgTable(
 );
 
 /**
+ * One published daily board, one row per game per day.
+ *
+ * The draw is a pure function of the date, but the graph it draws from is not:
+ * a career import changes the pool, so a pair drawn today can be a different
+ * pair tomorrow. Publishing the row freezes the board for the day, and the seed
+ * is kept beside it so a published board can be reproduced even after the graph
+ * has moved on. The unique key is the rule "the first publication wins" made
+ * structural — a second writer hits the constraint instead of replacing a board
+ * players are already solving.
+ */
+export const miniGamePuzzles = pgTable(
+  'mini_game_puzzles',
+  {
+    id: id(),
+    /** The game's slug: `lebronnect` today, whatever joins the shelf next. */
+    game: text('game').notNull(),
+    /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
+    puzzleDate: date('puzzleDate').notNull(),
+    puzzleNumber: integer('puzzleNumber').notNull(),
+    /** The draw's seed, so the board can be rebuilt without guessing which pool drew it. */
+    seed: bigint('seed', { mode: 'number' }).notNull(),
+    startPlayerId: text('startPlayerId').notNull(),
+    targetPlayerId: text('targetPlayerId').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    unique('mini_game_puzzles_game_puzzleDate_key').on(table.game, table.puzzleDate),
+    index('mini_game_puzzles_game_puzzleDate_idx').on(table.game, table.puzzleDate),
+  ],
+);
+
+/**
  * One finished daily puzzle, one row per player per day.
  *
  * The chain is stored as it was played rather than just the score, so the result
@@ -794,6 +828,8 @@ export const miniGameResults = pgTable(
     /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
     puzzleDate: date('puzzleDate').notNull(),
     puzzleNumber: integer('puzzleNumber').notNull(),
+    /** The published board this was played on. Null on rows that predate the table. */
+    puzzleId: text('puzzleId').references(() => miniGamePuzzles.id, { onDelete: 'restrict' }),
     startPlayerId: text('startPlayerId').notNull(),
     targetPlayerId: text('targetPlayerId').notNull(),
     /** Intermediaries the player named — the score, and never the start or target. */
