@@ -23,8 +23,4 @@ export const LEBRONNECT: LiveGame = {
   to: '/games/lebronnect',
 };
 
-export const MINI_GAMES: MiniGame[] = [
-  LEBRONNECT,
-  { state: 'soon', id: 'up-next-1' },
-  { state: 'soon', id: 'up-next-2' },
-];
+export const MINI_GAMES: MiniGame[] = [LEBRONNECT, { state: 'soon', id: 'up-next-1' }];

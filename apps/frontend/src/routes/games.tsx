@@ -172,7 +172,7 @@ function GamesPage() {
             title="Play now, more coming"
             aside={
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-400">
-                1 to play · 2 in the works
+                1 to play · 1 in the works
               </span>
             }
           >
