@@ -181,7 +181,10 @@ function GamesPage() {
             </p>
           </SectionHead>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Two columns, not three: the shelf holds one live game and one slot,
+              so a third column would leave a dead third of the row. Same grid as
+              the landing band, which is what makes the two shelves identical. */}
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {MINI_GAMES.map((game) => (
               <GameCard key={game.id} game={game} />
             ))}
