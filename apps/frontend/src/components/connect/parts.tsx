@@ -483,10 +483,6 @@ export function HouseRules() {
           <span className="font-semibold text-brand-ink">No hints.</span> Nobody hands you a
           teammate — the chain is the whole game.
         </li>
-        <li className="border-l-2 border-brand-line pl-2.5">
-          <span className="font-semibold text-brand-ink">Sign-in required</span> — streaks need
-          somewhere to live.
-        </li>
       </ul>
     </Panel>
   );
