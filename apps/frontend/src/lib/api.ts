@@ -458,9 +458,19 @@ export interface PlayerSeasonTeam extends PlayerSeasonStats {
   primaryColor: string;
 }
 
+/** A team the player was on that season, for the badge beside the year. */
+export interface PlayerSeasonTeamBadge {
+  teamAbbr: string;
+  teamName: string;
+  logoUrl: string;
+  primaryColor: string;
+}
+
 export interface PlayerSeason extends PlayerSeasonStats {
   /** Per-team splits; empty unless the player was on 2+ teams that season. */
   teams: PlayerSeasonTeam[];
+  /** Every team that season, single-team seasons included, in display order. */
+  seasonTeams: PlayerSeasonTeamBadge[];
 }
 
 export interface PlayerGameLogEntry {

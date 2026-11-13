@@ -5,6 +5,7 @@ import type {
   PlayerSeason,
   PlayerSeasonStats,
   PlayerSeasonTeam,
+  PlayerSeasonTeamBadge,
   PlayerSeasonType,
 } from '../../lib/api';
 import { Panel } from '../dashboard/shared';
@@ -74,6 +75,86 @@ function TeamSplitRow({ team }: { team: PlayerSeasonTeam }) {
       </th>
       <StatCells row={team} className="text-stone-600" />
     </tr>
+  );
+}
+
+/**
+ * The pill column's width, sized for two teams: 2 pills x w-1 (4px) plus one
+ * gap x gap-0.5 (2px) = 10px. A fixed column is what keeps the logos beside it
+ * on one x, but every px reserved is also dead space after a lone pill — three
+ * quarters of all seasons have one team — so reserving for the four-team
+ * maximum would cost 18px on almost every row to align five rows out of 3,177.
+ *
+ * It is a minimum, not a width, so the handful of three- and four-team rows
+ * grow the column rather than overflow into their logos. Those rows put their
+ * first logo 6px and 12px right of everyone else: the deliberate price of a
+ * tight gap, since a constant logo x and a tight gap cannot both hold for rows
+ * below the reserved maximum.
+ */
+const PILL_COLUMN_WIDTH = 'minmax(10px, max-content)';
+
+/**
+ * The year label's width floor. The heading font's figures are proportional, so
+ * "2026-27" and "2021-22" render 5px apart and everything after them drifts row
+ * to row. A floor pins every row's badges to one x. It is a minimum rather than
+ * a fixed width so a fallback font widens every row by the same amount instead
+ * of spilling into the pills.
+ */
+const YEAR_MIN_WIDTH = '52px';
+
+/** The year label, shared so both row branches set the same type and geometry. */
+const YEAR_CLASS =
+  'whitespace-nowrap font-heading text-sm font-black uppercase tracking-wide text-brand-ink';
+
+/**
+ * The teams a season was spent on, laid out in two columns after the year: one
+ * colour pill per team, then their logos. This is the hint that a season had
+ * more than one team, so it renders whether or not the row can be expanded.
+ *
+ * Only the pill column is reserved. The logo column is left-aligned and sizes
+ * to its own row, which is enough for the first logo to land on a constant x —
+ * reserving room for four logos would cost 60px of empty space on the 95% of
+ * rows that have one team.
+ *
+ * The group itself never shrinks. It is a flex child of the row, and at the
+ * table's 560px floor a squeezed flex parent otherwise collapses the pill
+ * column below its own content and spills the pills over the logos.
+ */
+function SeasonTeamBadges({ teams }: { teams: PlayerSeasonTeamBadge[] }) {
+  if (teams.length === 0) return null;
+
+  return (
+    <span
+      className="grid shrink-0 items-center gap-x-1"
+      style={{ gridTemplateColumns: `${PILL_COLUMN_WIDTH} auto` }}
+    >
+      <span className="flex items-center gap-0.5">
+        {teams.map((team) => (
+          <span
+            key={team.teamAbbr}
+            className="h-4 w-1 shrink-0 rounded-full"
+            style={{ backgroundColor: team.primaryColor || '#E8E3DD' }}
+            aria-hidden="true"
+          />
+        ))}
+      </span>
+      <span className="flex items-center gap-1">
+        {teams.map((team) =>
+          team.logoUrl ? (
+            <img
+              key={team.teamAbbr}
+              src={team.logoUrl}
+              alt={team.teamName}
+              className="h-4 w-4 shrink-0 object-contain"
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.style.visibility = 'hidden';
+              }}
+            />
+          ) : null,
+        )}
+      </span>
+    </span>
   );
 }
 
@@ -152,37 +233,43 @@ export function CareerPanel({ seasons }: { seasons: PlayerSeason[] }) {
                   <tbody key={key} id={splitsId}>
                     <tr className={`border-b border-brand-line ${open ? 'border-b-0' : ''}`}>
                       <th scope="row" className="py-2 pr-3 text-left">
-                        {expandable ? (
-                          <button
-                            type="button"
-                            onClick={() => toggle(key)}
-                            aria-expanded={open}
-                            aria-controls={splitsId}
-                            className="flex items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                          >
-                            {open ? (
-                              <ChevronDown
-                                className="h-4 w-4 shrink-0 text-stone-500"
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              <ChevronRight
-                                className="h-4 w-4 shrink-0 text-stone-500"
-                                aria-hidden="true"
-                              />
-                            )}
-                            <span className="font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
-                              {row.season}
+                        <div className="flex items-center gap-1.5">
+                          {expandable ? (
+                            <button
+                              type="button"
+                              onClick={() => toggle(key)}
+                              aria-expanded={open}
+                              aria-controls={splitsId}
+                              className="flex items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                            >
+                              {open ? (
+                                <ChevronDown
+                                  className="h-4 w-4 shrink-0 text-stone-500"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <ChevronRight
+                                  className="h-4 w-4 shrink-0 text-stone-500"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span className={YEAR_CLASS} style={{ minWidth: YEAR_MIN_WIDTH }}>
+                                {row.season}
+                              </span>
+                            </button>
+                          ) : (
+                            // An empty slot the size of the chevron and its gap,
+                            // so a season without one starts its year, pills and
+                            // logos where every other row does.
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-4 w-4 shrink-0" aria-hidden="true" />
+                              <span className={YEAR_CLASS} style={{ minWidth: YEAR_MIN_WIDTH }}>
+                                {row.season}
+                              </span>
                             </span>
-                            <span className="text-xs font-semibold text-stone-500">
-                              {splits.length} {splits.length === 1 ? 'team' : 'teams'}
-                            </span>
-                          </button>
-                        ) : (
-                          <span className="block pl-[22px] font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
-                            {row.season}
-                          </span>
-                        )}
+                          )}
+                          <SeasonTeamBadges teams={row.seasonTeams} />
+                        </div>
                       </th>
                       <StatCells row={row} className="text-brand-ink" />
                     </tr>
