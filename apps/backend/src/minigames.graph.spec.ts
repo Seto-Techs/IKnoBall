@@ -4,6 +4,7 @@ import {
   distanceBetween,
   gradeOf,
   receiptsBetween,
+  shortestPath,
   type MembershipRow,
 } from './minigames.graph';
 
@@ -56,6 +57,15 @@ describe('the teammate graph', () => {
 
   it('reports an unreachable pair as infinite rather than guessing', () => {
     expect(distanceBetween(graph, 'a', 'e')).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it('names one shortest route, start first and target last', () => {
+    expect(shortestPath(graph, 'a', 'd')).toEqual(['a', 'c', 'd']);
+    expect(shortestPath(graph, 'a', 'a')).toEqual(['a']);
+  });
+
+  it('returns no route between players who never meet', () => {
+    expect(shortestPath(graph, 'a', 'e')).toEqual([]);
   });
 
   it('orders the pool by appearances, so the daily draw favours long careers', () => {

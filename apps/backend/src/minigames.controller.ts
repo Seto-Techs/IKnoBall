@@ -100,6 +100,14 @@ class SolveResponse {
 
   @ApiProperty({ type: ChainLinkResponse, isArray: true })
   chain!: ChainLinkResponse[];
+
+  @ApiProperty({
+    type: ChainLinkResponse,
+    isArray: true,
+    nullable: true,
+    description: 'The shortest route, start first. Sent only to a player who finished over par',
+  })
+  best!: ChainLinkResponse[] | null;
 }
 
 class MeResponse {
@@ -141,7 +149,9 @@ class SolveDto {
  * everyone and carries no route.
  *
  * No endpoint can be read to learn the answer: the puzzle returns the two
- * players and nothing else, and par exists only in a finished solve.
+ * players and nothing else, and par exists only in a finished solve. The route
+ * itself goes out only with an over-par solve, where it is the lesson rather
+ * than the shortcut.
  */
 @ApiTags('Minigames')
 @Controller('minigames/lebronnect')

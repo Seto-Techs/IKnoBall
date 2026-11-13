@@ -10,8 +10,9 @@ import { fetchJson, mutateJson } from './api';
  * reason — the client is a renderer here, and a chain it made up is worth
  * nothing until the graph agrees with it.
  *
- * The one thing no response ever contains is the shortest route: `par` arrives
- * with a finished solve and nowhere else.
+ * The one thing no response ever contains is the shortest route, except with an
+ * over-par solve: `par` arrives with a finished solve and nowhere else, and the
+ * route comes with it only for a player who needs to see what par looked like.
  */
 
 /** The two facts every surface of the game needs about a player. */
@@ -43,6 +44,14 @@ export type LebronnectPuzzle = {
 
 export type LebronnectGrade = 1 | 2 | 3 | 4 | 5;
 
+/** One row of a stored chain, as the API returns it. */
+export type ResultChainLink = {
+  playerId: string;
+  externalId: string;
+  name: string;
+  receipt: Receipt[];
+};
+
 export type LebronnectResult = {
   date: string;
   number: number;
@@ -52,7 +61,12 @@ export type LebronnectResult = {
   par: number;
   blocks: LebronnectGrade;
   perfect: boolean;
-  chain: { playerId: string; externalId: string; name: string; receipt: Receipt[] }[];
+  chain: ResultChainLink[];
+  /**
+   * The shortest route, start first, when the chain finished over par. Null at
+   * par or better — the server withholds it rather than restating the answer.
+   */
+  best: ResultChainLink[] | null;
 };
 
 export type LebronnectHistoryRow = {

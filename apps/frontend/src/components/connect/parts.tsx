@@ -415,9 +415,11 @@ export function SolvedActions({
 
       {/* The floor stays hidden all game and lands here, after the chain is
           done: it grades the solve instead of being a target to count down to.
-          Still no route and no name list — the number alone. */}
+          Over par, the route itself is the useful part, so the line says where
+          it went instead of leaving the player to work out the shorter chain. */}
       <p className="mt-1 text-[11px] leading-relaxed text-slate-300">
-        Best solution is {playerLabel(result.par)}.
+        Best solution is {playerLabel(result.par)}
+        {result.best ? ' — the route is below.' : '.'}
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -439,6 +441,21 @@ export function SolvedActions({
           Locked for today
         </span>
       </div>
+
+      {/* Off par, par's route belongs next to the score rather than in a second
+          column of names: the right column is the player's own chain and
+          nothing else. A caption, not a list — one line of names joined by
+          arrows, so the panel closes on a sentence instead of growing. */}
+      {result.best && result.best.length > 1 && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            Best connection
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-slate-300 [text-wrap:pretty]">
+            {result.best.map((link) => link.name).join(' → ')}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -482,10 +499,6 @@ export function HouseRules() {
         <li className="border-l-2 border-brand-line pl-2.5">
           <span className="font-semibold text-brand-ink">No hints.</span> Nobody hands you a
           teammate — the chain is the whole game.
-        </li>
-        <li className="border-l-2 border-brand-line pl-2.5">
-          <span className="font-semibold text-brand-ink">Sign-in required</span> — streaks need
-          somewhere to live.
         </li>
       </ul>
     </Panel>

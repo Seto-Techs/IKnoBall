@@ -21,6 +21,7 @@ import {
   distanceBetween,
   gradeOf,
   receiptsBetween,
+  shortestPath,
   type ConnectGraph,
   type GraphPlayer,
   type MembershipRow,
@@ -87,6 +88,12 @@ export type SolveResult = {
   blocks: 1 | 2 | 3 | 4 | 5;
   perfect: boolean;
   chain: ChainLink[];
+  /**
+   * The shortest route, start first and target last, sent only to a player who
+   * finished over par — that is the one case where it is worth more than the
+   * number. Null at par or better, where it would only restate the answer.
+   */
+  best: ChainLink[] | null;
 };
 
 export type ConnectStats = {
@@ -456,17 +463,41 @@ export class MinigamesService {
     // Report the day's recorded result rather than this submission. A replay
     // writes nothing, so returning the fresh grade would make the board show
     // one answer and the stats shelf another.
-    return (
-      (await this.resultFor(userId, today)) ?? {
-        date: today,
-        number: puzzle.number,
-        players: named,
-        par,
-        blocks,
-        perfect: named <= par,
-        chain: links,
-      }
-    );
+    const recorded = await this.resultFor(userId, today);
+    if (recorded) return recorded;
+
+    // No row came back even though the insert was accepted. Grade this
+    // submission directly rather than showing a solve with no score.
+    return {
+      date: today,
+      number: puzzle.number,
+      players: named,
+      par,
+      blocks,
+      perfect: named <= par,
+      chain: links,
+      best: named > par ? await this.shortestChain(puzzle.start.id, puzzle.target.id) : null,
+    };
+  }
+
+  /**
+   * The route par is counting: the same chain shape as the player's own, with a
+   * receipt on every hop, so the solved screen can draw it with the rows it
+   * already has.
+   */
+  private async shortestChain(startId: string, targetId: string): Promise<ChainLink[]> {
+    const graph = await this.loadGraph();
+    const path = shortestPath(graph, startId, targetId);
+
+    return path.map((playerId, index) => {
+      const player = this.refOf(graph, playerId);
+      return {
+        playerId,
+        externalId: player.externalId,
+        name: player.name,
+        receipt: index === 0 ? [] : receiptsBetween(graph, path[index - 1], playerId),
+      };
+    });
   }
 
   /** The viewer's result for one day, or null when they have not finished it. */
@@ -480,6 +511,8 @@ export class MinigamesService {
         puzzleNumber: miniGameResults.puzzleNumber,
         publishedDate: miniGamePuzzles.puzzleDate,
         publishedNumber: miniGamePuzzles.puzzleNumber,
+        startPlayerId: miniGameResults.startPlayerId,
+        targetPlayerId: miniGameResults.targetPlayerId,
         players: miniGameResults.players,
         par: miniGameResults.par,
         blocks: miniGameResults.blocks,
@@ -506,6 +539,12 @@ export class MinigamesService {
       blocks: row.blocks as 1 | 2 | 3 | 4 | 5,
       perfect: row.players <= row.par,
       chain: row.chain as ChainLink[],
+      // Over par is the only case that earns the route: at par the player has
+      // already walked it, and under par is impossible.
+      best:
+        row.players > row.par
+          ? await this.shortestChain(row.startPlayerId, row.targetPlayerId)
+          : null,
     };
   }
 
