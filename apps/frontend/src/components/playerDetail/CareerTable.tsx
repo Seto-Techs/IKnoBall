@@ -79,12 +79,19 @@ function TeamSplitRow({ team }: { team: PlayerSeasonTeam }) {
 }
 
 /**
- * The pill column's width, sized for the most teams any one season has on file:
- * four, so 4 pills x w-1 (4px) plus 3 gaps x gap-0.5 (2px) = 22px. It has to be
- * fixed rather than shrink-wrapped, or the logos beside it would start at a
- * different x on a one-team row than on a four-team one.
+ * The pill column's width, sized for two teams: 2 pills x w-1 (4px) plus one
+ * gap x gap-0.5 (2px) = 10px. A fixed column is what keeps the logos beside it
+ * on one x, but every px reserved is also dead space after a lone pill — three
+ * quarters of all seasons have one team — so reserving for the four-team
+ * maximum would cost 18px on almost every row to align five rows out of 3,177.
+ *
+ * It is a minimum, not a width, so the handful of three- and four-team rows
+ * grow the column rather than overflow into their logos. Those rows put their
+ * first logo 6px and 12px right of everyone else: the deliberate price of a
+ * tight gap, since a constant logo x and a tight gap cannot both hold for rows
+ * below the reserved maximum.
  */
-const PILL_COLUMN_WIDTH = '22px';
+const PILL_COLUMN_WIDTH = 'minmax(10px, max-content)';
 
 /**
  * The year label's width floor. The heading font's figures are proportional, so
@@ -104,17 +111,21 @@ const YEAR_CLASS =
  * colour pill per team, then their logos. This is the hint that a season had
  * more than one team, so it renders whether or not the row can be expanded.
  *
- * Only the pill column is fixed. The logo column is left-aligned and sizes to
- * its own row, which is enough for the first logo to land on a constant x —
+ * Only the pill column is reserved. The logo column is left-aligned and sizes
+ * to its own row, which is enough for the first logo to land on a constant x —
  * reserving room for four logos would cost 60px of empty space on the 95% of
  * rows that have one team.
+ *
+ * The group itself never shrinks. It is a flex child of the row, and at the
+ * table's 560px floor a squeezed flex parent otherwise collapses the pill
+ * column below its own content and spills the pills over the logos.
  */
 function SeasonTeamBadges({ teams }: { teams: PlayerSeasonTeamBadge[] }) {
   if (teams.length === 0) return null;
 
   return (
     <span
-      className="grid items-center gap-x-1.5"
+      className="grid shrink-0 items-center gap-x-1"
       style={{ gridTemplateColumns: `${PILL_COLUMN_WIDTH} auto` }}
     >
       <span className="flex items-center gap-0.5">
