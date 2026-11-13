@@ -79,15 +79,44 @@ function TeamSplitRow({ team }: { team: PlayerSeasonTeam }) {
 }
 
 /**
- * The teams a season was spent on, drawn to the right of the year: one colour
- * pill each, then their logos. This is the hint that a season had more than one
- * team, so it renders whether or not the row can be expanded.
+ * The pill column's width, sized for the most teams any one season has on file:
+ * four, so 4 pills x w-1 (4px) plus 3 gaps x gap-0.5 (2px) = 22px. It has to be
+ * fixed rather than shrink-wrapped, or the logos beside it would start at a
+ * different x on a one-team row than on a four-team one.
+ */
+const PILL_COLUMN_WIDTH = '22px';
+
+/**
+ * The year label's width floor. The heading font's figures are proportional, so
+ * "2026-27" and "2021-22" render 5px apart and everything after them drifts row
+ * to row. A floor pins every row's badges to one x. It is a minimum rather than
+ * a fixed width so a fallback font widens every row by the same amount instead
+ * of spilling into the pills.
+ */
+const YEAR_MIN_WIDTH = '52px';
+
+/** The year label, shared so both row branches set the same type and geometry. */
+const YEAR_CLASS =
+  'whitespace-nowrap font-heading text-sm font-black uppercase tracking-wide text-brand-ink';
+
+/**
+ * The teams a season was spent on, laid out in two columns after the year: one
+ * colour pill per team, then their logos. This is the hint that a season had
+ * more than one team, so it renders whether or not the row can be expanded.
+ *
+ * Only the pill column is fixed. The logo column is left-aligned and sizes to
+ * its own row, which is enough for the first logo to land on a constant x —
+ * reserving room for four logos would cost 60px of empty space on the 95% of
+ * rows that have one team.
  */
 function SeasonTeamBadges({ teams }: { teams: PlayerSeasonTeamBadge[] }) {
   if (teams.length === 0) return null;
 
   return (
-    <span className="ml-auto flex items-center gap-2 pl-2">
+    <span
+      className="grid items-center gap-x-1.5"
+      style={{ gridTemplateColumns: `${PILL_COLUMN_WIDTH} auto` }}
+    >
       <span className="flex items-center gap-0.5">
         {teams.map((team) => (
           <span
@@ -211,15 +240,19 @@ export function CareerPanel({ seasons }: { seasons: PlayerSeason[] }) {
                                   aria-hidden="true"
                                 />
                               )}
-                              <span className="whitespace-nowrap font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
+                              <span className={YEAR_CLASS} style={{ minWidth: YEAR_MIN_WIDTH }}>
                                 {row.season}
                               </span>
                             </button>
                           ) : (
-                            // The left padding is the chevron plus its gap, so a
-                            // season without one still starts where the others do.
-                            <span className="block whitespace-nowrap pl-[22px] font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
-                              {row.season}
+                            // An empty slot the size of the chevron and its gap,
+                            // so a season without one starts its year, pills and
+                            // logos where every other row does.
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-4 w-4 shrink-0" aria-hidden="true" />
+                              <span className={YEAR_CLASS} style={{ minWidth: YEAR_MIN_WIDTH }}>
+                                {row.season}
+                              </span>
                             </span>
                           )}
                           <SeasonTeamBadges teams={row.seasonTeams} />
