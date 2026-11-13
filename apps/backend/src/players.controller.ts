@@ -931,7 +931,8 @@ export class PlayersController {
       teamId == null ? undefined : teamById.get(String(teamId));
 
     const playerTeam =
-      teamForId(player.teamId) ?? (player.teamAbbr ? teamByAbbr.get(player.teamAbbr) : undefined);
+      teamForId(player.teamId) ??
+      (player.teamAbbr ? teamByAbbr.get(canonicalTeamAbbr(player.teamAbbr)) : undefined);
 
     const seasonRows = await this.db.db
       .select({
@@ -1028,12 +1029,14 @@ export class PlayersController {
     for (const row of splitRows) {
       const season = seasonByKey.get(`${row.season}|${seasonType(row.statsTimeframe)}`);
       if (!season) continue;
-      // The feed reports the same abbreviations the teams table uses (BKN for
-      // Brooklyn), so a direct lookup resolves the split's identity. A split
-      // whose team is unknown still renders, just without a name or logo.
-      const team = teamByAbbr.get(row.teamAbbr);
+      // The feed's tricode is not always the teams table's spelling (it says
+      // BKN where the table says BRK), so both the lookup and the emitted code
+      // go through the canonical form. A split whose team is unknown still
+      // renders, just without a name or logo.
+      const teamAbbr = canonicalTeamAbbr(row.teamAbbr);
+      const team = teamByAbbr.get(teamAbbr);
       season.teams.push({
-        teamAbbr: row.teamAbbr,
+        teamAbbr,
         teamName: team?.fullName ?? '',
         logoUrl: team?.logoUrl ?? '',
         primaryColor: team?.primaryColor ?? '',
@@ -1117,7 +1120,8 @@ export class PlayersController {
     const currentSeason = regularSeasons.find((s) => s.season === currentSeasonLabel) ?? null;
 
     // The player's own tricode comes from the same feed as the schedule's, so
-    // this matches directly where the teams table would need the id.
+    // this matches directly where the teams table would need the id. Both sides
+    // of this comparison are feed codes, so it must not be canonicalised.
     const tricode = player.teamAbbr;
     const nextRows = tricode
       ? await this.db.db
