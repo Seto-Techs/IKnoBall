@@ -543,9 +543,14 @@ describe('PlayersController.getById', () => {
   });
 
   it('keeps a split whose team is absent from the teams table, without identity', async () => {
+    // Two rows, because a lone split no longer reaches the client — see the
+    // test below. The unknown team still renders, just without an identity.
     const controller = makeController(
       detailFixture({
-        splits: [{ season: '2025-26', statsTimeframe: 'ByYear-regular', teamAbbr: 'SEA', gp: 5 }],
+        splits: [
+          splitRows[0],
+          { season: '2025-26', statsTimeframe: 'ByYear-regular', teamAbbr: 'SEA', gp: 5 },
+        ],
       }),
     );
 
@@ -555,8 +560,23 @@ describe('PlayersController.getById', () => {
     );
 
     expect(season?.teams).toEqual([
+      expect.objectContaining({ teamAbbr: 'SAS', teamName: 'San Antonio Spurs' }),
       expect.objectContaining({ teamAbbr: 'SEA', teamName: '', logoUrl: '' }),
     ]);
+  });
+
+  it('reports no splits for a season whose only split is a lone row', async () => {
+    // A stale one-team row for a season the player never changed teams in. It
+    // describes the same thing the combined row already says, so it must not
+    // reach the client and open the row up.
+    const controller = makeController(detailFixture({ splits: [splitRows[0]] }));
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2025-26' && s.seasonType === 'regular',
+    );
+
+    expect(season?.teams).toEqual([]);
   });
 
   it('ignores a split whose season has no row', async () => {
@@ -599,7 +619,9 @@ describe('PlayersController.getById', () => {
   it('badges a two-team season in split order, including a team only the split knows', async () => {
     const controller = makeController(
       detailFixture({
-        splits: splitRows,
+        // Inlined rather than the shared `splitRows`, whose second team other
+        // tests are free to change.
+        splits: [splitRows[0], { ...splitRows[1], teamAbbr: 'ATL' }],
         // One membership only, and the team that played fewer games first, so
         // neither the order nor the second badge can come from this list.
         memberships: [{ season: '2025-26', seasonType: 'ByYear-regular', teamAbbr: 'ATL' }],

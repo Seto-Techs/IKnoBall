@@ -214,7 +214,9 @@ export function CareerPanel({ seasons }: { seasons: PlayerSeason[] }) {
                 const key = rowKey(row);
                 const open = expanded.includes(key);
                 const splits = row.teams;
-                const expandable = splits.length > 0;
+                // A lone split says nothing the row does not already say, so
+                // only a real team change opens the row up.
+                const expandable = splits.length > 1;
                 const splitsId = `career-splits-${key}`;
                 return (
                   <tbody key={key} id={splitsId}>

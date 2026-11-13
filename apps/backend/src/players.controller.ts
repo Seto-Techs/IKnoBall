@@ -1026,16 +1026,17 @@ export class PlayersController {
     const seasonByKey = new Map(
       seasons.map((season) => [`${season.season}|${season.seasonType}`, season]),
     );
+    const splitsByKey = new Map<string, PlayerSeasonTeamResponse[]>();
     for (const row of splitRows) {
-      const season = seasonByKey.get(`${row.season}|${seasonType(row.statsTimeframe)}`);
-      if (!season) continue;
+      const key = `${row.season}|${seasonType(row.statsTimeframe)}`;
+      if (!seasonByKey.has(key)) continue;
       // The feed's tricode is not always the teams table's spelling (it says
       // BKN where the table says BRK), so both the lookup and the emitted code
       // go through the canonical form. A split whose team is unknown still
       // renders, just without a name or logo.
       const teamAbbr = canonicalTeamAbbr(row.teamAbbr);
       const team = teamByAbbr.get(teamAbbr);
-      season.teams.push({
+      const split: PlayerSeasonTeamResponse = {
         teamAbbr,
         teamName: team?.fullName ?? '',
         logoUrl: team?.logoUrl ?? '',
@@ -1056,7 +1057,17 @@ export class PlayersController {
         assistsTotal: row.assistsTotal == null ? null : Math.round(row.assistsTotal),
         stealsTotal: row.stealsTotal == null ? null : Math.round(row.stealsTotal),
         blocksTotal: row.blocksTotal == null ? null : Math.round(row.blocksTotal),
-      });
+      };
+      const group = splitsByKey.get(key);
+      if (group) group.push(split);
+      else splitsByKey.set(key, [split]);
+    }
+
+    // A lone split repeats what the combined row already says, so it must not
+    // reach the client: only a season with a real team change opens up.
+    for (const [key, teams] of splitsByKey) {
+      const season = seasonByKey.get(key);
+      if (season && teams.length > 1) season.teams = teams;
     }
 
     // The badges the career table shows beside each season: one per team, with
