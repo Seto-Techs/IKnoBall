@@ -130,6 +130,21 @@ const teamRows: Row[] = [
     headCoach: 'Quin Snyder',
     primaryColor: '#E03A3E',
   },
+  // The stats feed says BKN for this club; the teams table says BRK. Splits
+  // carry the feed's spelling, so the controller has to canonicalise to find it.
+  {
+    externalId: '1610612751',
+    abbreviation: 'BRK',
+    teamName: 'Nets',
+    fullName: 'Brooklyn Nets',
+    city: 'Brooklyn',
+    conference: 'East',
+    division: 'Atlantic',
+    logoUrl: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg',
+    arena: 'Barclays Center',
+    headCoach: 'Jordi Fernández',
+    primaryColor: '#000000',
+  },
 ];
 
 const seasonRows: Row[] = [
@@ -234,7 +249,7 @@ const splitRows: Row[] = [
   {
     season: '2025-26',
     statsTimeframe: 'ByYear-regular',
-    teamAbbr: 'ATL',
+    teamAbbr: 'BKN',
     gp: 24,
     wins: 8,
     losses: 16,
@@ -492,12 +507,38 @@ describe('PlayersController.getById', () => {
         stealsTotal: 44,
         blocksTotal: 96,
       },
-      expect.objectContaining({ teamAbbr: 'ATL', teamName: 'Atlanta Hawks', gp: 24, points: 18.8 }),
+      // The fixture's split carries the feed's BKN; the response must speak the
+      // teams table's BRK and resolve the Nets' identity from it.
+      expect.objectContaining({
+        teamAbbr: 'BRK',
+        teamName: 'Brooklyn Nets',
+        logoUrl: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg',
+        primaryColor: '#000000',
+        gp: 24,
+        points: 18.8,
+      }),
     ]);
     // The splits belong to the season row, not the playoff row of the same label.
     expect(
       res.data?.seasons.find((s) => s.season === '2025-26' && s.seasonType === 'playoffs')?.teams,
     ).toEqual([]);
+  });
+
+  it('keeps a split whose team is absent from the teams table, without identity', async () => {
+    const controller = makeController(
+      detailFixture({
+        splits: [{ season: '2025-26', statsTimeframe: 'ByYear-regular', teamAbbr: 'SEA', gp: 5 }],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2025-26' && s.seasonType === 'regular',
+    );
+
+    expect(season?.teams).toEqual([
+      expect.objectContaining({ teamAbbr: 'SEA', teamName: '', logoUrl: '' }),
+    ]);
   });
 
   it('ignores a split whose season has no row', async () => {
