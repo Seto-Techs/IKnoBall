@@ -18,6 +18,7 @@ import { useSession } from '../../lib/use-auth';
 import { DISCORD_INVITE_URL } from '../../lib/discord';
 import { Logo as BrandLogo } from '../brand/Logo';
 import { navLinkClass } from '../brand/nav';
+import { MiniGamesSection } from '../games/MiniGamesSection';
 import { seasonLabel, weekStartKey } from '../predict/week';
 
 /*
@@ -30,9 +31,14 @@ import { seasonLabel, weekStartKey } from '../predict/week';
  * for every accent. Deliberately no gradient blobs, no glow, no gold.
  */
 
-const NAV_LINKS = [
+// The landing nav is the page's own sections, plus one link out to the mini
+// games: they are a destination, not a section of this page.
+type NavLink = { label: string; href: string } | { label: string; to: '/games' };
+
+const NAV_LINKS: NavLink[] = [
   { href: '#how', label: 'How it works' },
   { href: '#features', label: 'Features' },
+  { to: '/games', label: 'Mini games' },
   { href: '#discord', label: 'Discord' },
   { href: '#scoring', label: 'Scoring' },
   { href: '#board', label: 'Standings' },
@@ -139,11 +145,17 @@ function LandingNav() {
         </Link>
 
         <nav aria-label="Primary" className="ml-2 hidden items-center gap-6 lg:flex">
-          {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className={navLinkClass(false, 'dark')}>
-              {link.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((link) =>
+            'to' in link ? (
+              <Link key={link.to} to={link.to} className={navLinkClass(false, 'dark')}>
+                {link.label}
+              </Link>
+            ) : (
+              <a key={link.href} href={link.href} className={navLinkClass(false, 'dark')}>
+                {link.label}
+              </a>
+            ),
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
@@ -813,6 +825,7 @@ export default function LandingPage() {
     <div id="top" className="scroll-smooth bg-white text-brand-ink">
       <LandingNav />
       <Hero />
+      <MiniGamesSection />
       <HowItWorks />
       <Features />
       <DiscordBand />

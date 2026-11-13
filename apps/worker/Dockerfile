@@ -36,7 +36,7 @@ WORKDIR /app/apps/worker
 ENV NODE_ENV=production
 
 RUN apt-get update -y \
-  && apt-get install -y openssl ca-certificates adduser nodejs \
+  && apt-get install -y openssl ca-certificates adduser nodejs unzip \
   && rm -rf /var/lib/apt/lists/*
 
 # A real Node runtime, and it has to be real. `oven/bun` images ship a `node`

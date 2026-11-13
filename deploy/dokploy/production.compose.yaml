@@ -89,6 +89,31 @@ services:
         condition: service_started
       api:
         condition: service_healthy
+      lebronnect-data-init:
+        condition: service_completed_successfully
+    networks:
+      - app_net
+
+  # Seed the historical teammate graph before the worker starts. This is an
+  # idempotent one-shot job: it imports only known player ids and leaves newer
+  # team-season memberships to the NBA career feed / box-score sync.
+  lebronnect-data-init:
+    image: ghcr.io/seto-techs/iknoball-worker:prod
+    pull_policy: always
+    restart: 'no'
+    env_file:
+      - .env
+    command:
+      [
+        'sh',
+        '-c',
+        'node dist/run-import-historical-team-seasons.js && node dist/run-backfill-team-seasons.js',
+      ]
+    depends_on:
+      redis:
+        condition: service_started
+      api:
+        condition: service_healthy
     networks:
       - app_net
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.discordMembers = exports.discordGuilds = exports.discordLinks = exports.discordCards = exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionSource = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
+exports.miniGameResults = exports.miniGamePuzzles = exports.discordMembers = exports.discordGuilds = exports.discordLinks = exports.discordCards = exports.predictionPicks = exports.gameOddsSnapshots = exports.scheduleBoxscorePlayers = exports.scheduleBoxscoreTeams = exports.scheduleBoxscoreSummaries = exports.schedulePointsLeaders = exports.shotZoneGameSyncs = exports.playerGameShotZones = exports.scheduleGames = exports.scheduleDays = exports.playerTeamSeasons = exports.playerSeasonTeamStats = exports.playerSeasonStats = exports.teams = exports.players = exports.activityLogs = exports.predictionSource = exports.predictionStatus = exports.predictionMode = exports.categoryType = exports.scheduleTeamSide = exports.verification = exports.user = exports.session = exports.account = void 0;
 const node_crypto_1 = require("node:crypto");
 const better_auth_schema_js_1 = require("./better-auth.schema.js");
 var better_auth_schema_js_2 = require("./better-auth.schema.js");
@@ -143,6 +143,28 @@ exports.playerSeasonTeamStats = (0, pg_core_1.pgTable)('player_season_team_stats
 }, (table) => [
     (0, pg_core_1.unique)('player_season_team_stats_playerId_season_timeframe_team_key').on(table.playerId, table.season, table.statsTimeframe, table.teamAbbr),
     (0, pg_core_1.index)('player_season_team_stats_playerId_idx').on(table.playerId),
+]);
+/**
+ * Complete player/team/season memberships from the NBA career feed.
+ *
+ * This intentionally includes single-team seasons. The stats split table above
+ * only needs rows when a player moved, but LeBronnect needs LeBron's CLE 2003-04
+ * membership just as much as Harden's Houston memberships.
+ */
+exports.playerTeamSeasons = (0, pg_core_1.pgTable)('player_team_seasons', {
+    id: id(),
+    playerId: (0, pg_core_1.text)('playerId')
+        .notNull()
+        .references(() => exports.players.id),
+    season: (0, pg_core_1.text)('season').notNull(),
+    seasonType: (0, pg_core_1.text)('seasonType').notNull(),
+    teamAbbr: (0, pg_core_1.text)('teamAbbr').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('player_team_seasons_playerId_season_type_team_key').on(table.playerId, table.season, table.seasonType, table.teamAbbr),
+    (0, pg_core_1.index)('player_team_seasons_playerId_idx').on(table.playerId),
+    (0, pg_core_1.index)('player_team_seasons_lookup_idx').on(table.season, table.seasonType, table.teamAbbr),
 ]);
 exports.scheduleDays = (0, pg_core_1.pgTable)('schedule_days', {
     id: id(),
@@ -617,4 +639,71 @@ exports.discordMembers = (0, pg_core_1.pgTable)('discord_members', {
         columns: [table.guildId, table.discordUserId],
     }),
     (0, pg_core_1.index)('discord_members_discordUserId_idx').on(table.discordUserId),
+]);
+/**
+ * One published daily board, one row per game per day.
+ *
+ * The draw is a pure function of the date, but the graph it draws from is not:
+ * a career import changes the pool, so a pair drawn today can be a different
+ * pair tomorrow. Publishing the row freezes the board for the day, and the seed
+ * is kept beside it so a published board can be reproduced even after the graph
+ * has moved on. The unique key is the rule "the first publication wins" made
+ * structural — a second writer hits the constraint instead of replacing a board
+ * players are already solving.
+ */
+exports.miniGamePuzzles = (0, pg_core_1.pgTable)('mini_game_puzzles', {
+    id: id(),
+    /** The game's slug: `lebronnect` today, whatever joins the shelf next. */
+    game: (0, pg_core_1.text)('game').notNull(),
+    /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
+    puzzleDate: (0, pg_core_1.date)('puzzleDate').notNull(),
+    puzzleNumber: (0, pg_core_1.integer)('puzzleNumber').notNull(),
+    /** The draw's seed, so the board can be rebuilt without guessing which pool drew it. */
+    seed: (0, pg_core_1.bigint)('seed', { mode: 'number' }).notNull(),
+    startPlayerId: (0, pg_core_1.text)('startPlayerId').notNull(),
+    targetPlayerId: (0, pg_core_1.text)('targetPlayerId').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('mini_game_puzzles_game_puzzleDate_key').on(table.game, table.puzzleDate),
+    (0, pg_core_1.index)('mini_game_puzzles_game_puzzleDate_idx').on(table.game, table.puzzleDate),
+]);
+/**
+ * One finished daily puzzle, one row per player per day.
+ *
+ * The chain is stored as it was played rather than just the score, so the result
+ * screen and the share text can be rebuilt on any device — and so a later graph
+ * import cannot silently rewrite history. `par` is frozen at solve time for the
+ * same reason: the floor is a fact about the puzzle on the day it ran, not a
+ * live query. The unique key is the rule "the first solve counts" made
+ * structural — a second submission hits the constraint instead of overwriting
+ * a better or worse result.
+ */
+exports.miniGameResults = (0, pg_core_1.pgTable)('mini_game_results', {
+    id: id(),
+    userId: (0, pg_core_1.text)('userId')
+        .notNull()
+        .references(() => better_auth_schema_js_1.user.id, { onDelete: 'cascade' }),
+    /** The game's slug: `lebronnect` today, whatever joins the shelf next. */
+    game: (0, pg_core_1.text)('game').notNull(),
+    /** The puzzle's local date, so a day is a day whichever timezone it is read in. */
+    puzzleDate: (0, pg_core_1.date)('puzzleDate').notNull(),
+    puzzleNumber: (0, pg_core_1.integer)('puzzleNumber').notNull(),
+    /** The published board this was played on. Null on rows that predate the table. */
+    puzzleId: (0, pg_core_1.text)('puzzleId').references(() => exports.miniGamePuzzles.id, { onDelete: 'restrict' }),
+    startPlayerId: (0, pg_core_1.text)('startPlayerId').notNull(),
+    targetPlayerId: (0, pg_core_1.text)('targetPlayerId').notNull(),
+    /** Intermediaries the player named — the score, and never the start or target. */
+    players: (0, pg_core_1.integer)('players').notNull(),
+    /** Intermediaries on the shortest route, frozen when the result was written. */
+    par: (0, pg_core_1.integer)('par').notNull(),
+    /** The Wordle-style grade: 5 at par, one fewer for each player over. */
+    blocks: (0, pg_core_1.integer)('blocks').notNull(),
+    /** `[{ playerId, receipt: [{ team, seasons }] }]`, the chain as played. */
+    chain: (0, pg_core_1.jsonb)('chain').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+}, (table) => [
+    (0, pg_core_1.unique)('mini_game_results_userId_game_puzzleDate_key').on(table.userId, table.game, table.puzzleDate),
+    (0, pg_core_1.index)('mini_game_results_userId_game_puzzleDate_idx').on(table.userId, table.game, table.puzzleDate),
 ]);

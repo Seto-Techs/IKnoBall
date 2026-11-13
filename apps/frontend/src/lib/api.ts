@@ -164,7 +164,7 @@ export interface SearchResults {
 
 const API = import.meta.env.DEV ? '/api' : `${import.meta.env.VITE_API_URL ?? ''}/api`;
 
-async function fetchJson<T>(path: string): Promise<T> {
+export async function fetchJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API}${path}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
@@ -739,7 +739,7 @@ async function errorMessage(res: Response): Promise<string> {
   return `${res.status} ${res.statusText}`;
 }
 
-async function mutateJson<T>(method: string, path: string, body: unknown): Promise<T> {
+export async function mutateJson<T>(method: string, path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
