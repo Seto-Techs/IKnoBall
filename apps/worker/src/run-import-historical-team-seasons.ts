@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import 'dotenv/config';
 import { createDatabase, playerTeamSeasons, players } from '@iknoball/database';
-import { inArray } from 'drizzle-orm';
+import { count, inArray } from 'drizzle-orm';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -42,12 +42,28 @@ async function main() {
       .from(players)
       .where(inArray(players.externalId, [...new Set(sourceRows.map((row) => row.externalId))]));
     const playerIds = new Map(localPlayers.map((player) => [player.externalId, player.id]));
+    const [playerTotalRow] = await database.db.select({ total: count() }).from(players);
+    const playerTotal = Number(playerTotalRow?.total ?? 0);
     const historicalRows = sourceRows.flatMap((row) => {
       const playerId = playerIds.get(row.externalId);
       return playerId
         ? [{ playerId, season: row.season, seasonType: 'ByYear-regular', teamAbbr: row.teamAbbr }]
         : [];
     });
+
+    // A database that already holds players but matches none of the source's
+    // ids means the source drifted — a renamed column or a different id scheme
+    // — and no retry fixes that. Reporting it as a successful import is how the
+    // graph silently keeps only current-season memberships, so it is an error
+    // even though the exit code stays 0: this runs ahead of the worker, and a
+    // data gap must not keep box scores, odds and settlement down. An empty
+    // database is just a fresh install; run-bootstrap seeds the players and the
+    // next deploy imports their history.
+    if (playerTotal > 0 && historicalRows.length === 0) {
+      console.error(
+        `historical team seasons matched nothing: source=${sourceRows.length} localPlayers=${playerTotal} — check the source's PLAYER_ID join`,
+      );
+    }
 
     // Backfill the source's historical seasons without overwriting newer rows
     // written by the NBA career feed. This source currently ends at 2023-24.
