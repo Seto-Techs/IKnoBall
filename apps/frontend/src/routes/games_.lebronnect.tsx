@@ -5,10 +5,13 @@ import { DashboardHeader } from '../components/dashboard/Header';
 import { SplitHero } from '../components/connect/layouts';
 import { HouseRules, HowTo } from '../components/connect/parts';
 import {
+  clearChainProgress,
+  readChainProgress,
   useLebronnectHop,
   useLebronnectMe,
   useLebronnectPuzzle,
   useLebronnectSolve,
+  writeChainProgress,
   type ChainLink,
   type LebronnectResult,
   type PlayerSuggestion,
@@ -26,7 +29,8 @@ export const Route = createFileRoute('/games_/lebronnect')({
  * The board, the link checks and the grade all come from `/minigames/lebronnect`,
  * so the client never decides whether two players were teammates and never
  * learns how few players a solve takes until the chain is done. Reloading the
- * page restores the day's finished chain instead of starting over.
+ * page restores the day's finished chain from the server, or an unfinished one
+ * from this browser.
  */
 function LebronnectPage() {
   const navigate = useNavigate();
@@ -53,12 +57,16 @@ function LebronnectPage() {
   }, [sessionLoading, sessionFetching, user, navigate]);
 
   useEffect(() => {
-    // Wait for the viewer's record too: seeding from the puzzle alone would make
-    // a solved board look unplayed for the length of one request.
-    if (!puzzle || me.isLoading || seeded.current === puzzle.date) return;
+    // Wait for the viewer and their record too: seeding from the puzzle alone
+    // would make a solved board look unplayed for the length of one request, and
+    // a saved chain is keyed by the viewer.
+    if (!user || !puzzle || me.isLoading || seeded.current === puzzle.date) return;
     seeded.current = puzzle.date;
 
     if (me.data?.result) {
+      // The day's record is authoritative, so it wins over anything left in this
+      // browser — and the local copy has no further purpose once it is here.
+      clearChainProgress(user.id, puzzle.date);
       setResult(me.data.result);
       setChain(
         me.data.result.chain.map((link) => ({
@@ -72,15 +80,19 @@ function LebronnectPage() {
     }
 
     setResult(null);
-    setChain([
-      {
-        id: puzzle.start.id,
-        externalId: puzzle.start.externalId,
-        name: puzzle.start.name,
-        receipt: [],
-      },
-    ]);
-  }, [puzzle, me.isLoading, me.data]);
+    // An unfinished chain survives a reload on this browser; yesterday's, or
+    // another account's, is never read back.
+    setChain(
+      readChainProgress(user.id, puzzle.date, puzzle.start.id) ?? [
+        {
+          id: puzzle.start.id,
+          externalId: puzzle.start.externalId,
+          name: puzzle.start.name,
+          receipt: [],
+        },
+      ],
+    );
+  }, [user, puzzle, me.isLoading, me.data]);
 
   /**
    * One guess, in two steps the server owns: ask whether the two players shared
@@ -88,7 +100,7 @@ function LebronnectPage() {
    * chain for grading. A rejection costs nothing and changes nothing.
    */
   async function pick(player: PlayerSuggestion): Promise<string | null> {
-    if (!puzzle || !chain) return 'The board is still loading.';
+    if (!puzzle || !chain || !user) return 'The board is still loading.';
 
     const from = chain[chain.length - 1];
     if (chain.some((link) => link.id === player.id)) {
@@ -145,10 +157,14 @@ function LebronnectPage() {
             receipt: link.receipt,
           })),
         );
+        // The server holds the day's chain now, so the local copy is retired.
+        clearChainProgress(user.id, puzzle.date);
       } else {
         // Don't render an appended target while the unresolved board still
         // renders its separate target anchor; otherwise it briefly appears twice.
         setChain(next);
+        // Save the chain so leaving the page does not lose it.
+        writeChainProgress(user.id, puzzle.date, next);
       }
       return null;
     } catch (error) {

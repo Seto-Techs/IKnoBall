@@ -183,3 +183,109 @@ export function useLebronnectSolve() {
     },
   });
 }
+
+/* ── Chain in progress ─────────────────────────────────────
+ * The chain lives in component state, so leaving the page loses it, and the
+ * server only keeps a record once the day is solved. An unfinished chain has no
+ * other home, and the user is coming back to the same tab in the same browser,
+ * so it is kept in localStorage.
+ *
+ * The key carries the viewer's id and the puzzle date. A shared browser must not
+ * hand one person's chain to the next, and yesterday's board must not appear on
+ * today's, so a record under any other key is never read.
+ *
+ * What comes back out of storage is untrusted input: a hand-edited value, a
+ * write truncated by a full quota, or a record left by older code. It is checked
+ * down to the fields the chain renders — player id, name, and each receipt's
+ * club and season strings — because a malformed row reaches `seasonRun` and
+ * throws inside the chain, which takes the whole board down. A record that fails
+ * the check is dropped, never rendered, so the worst case is starting the day
+ * over.
+ *
+ * The hops themselves are not re-checked here: each was verified by
+ * `/minigames/lebronnect/hop` when it was added, and `/solve` reviews every hop
+ * again before grading, so a tampered record cannot score anything.
+ *
+ * localStorage can throw (Safari private mode, storage disabled). Losing the
+ * chain only means starting the day over, which is not worth failing a render
+ * over, so reads and writes swallow the error.
+ */
+
+const PROGRESS_KEY_PREFIX = 'iknoball.lebronnect.chain.v1';
+
+function progressKey(userId: string, date: string): string {
+  return `${PROGRESS_KEY_PREFIX}:${userId}:${date}`;
+}
+
+function isStoredReceipt(value: unknown): value is Receipt {
+  if (typeof value !== 'object' || value === null) return false;
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.team === 'string' &&
+    Array.isArray(row.seasons) &&
+    row.seasons.every((season) => typeof season === 'string')
+  );
+}
+
+function isStoredLink(value: unknown): value is ChainLink {
+  if (typeof value !== 'object' || value === null) return false;
+  const link = value as Record<string, unknown>;
+  return (
+    typeof link.id === 'string' &&
+    typeof link.externalId === 'string' &&
+    typeof link.name === 'string' &&
+    Array.isArray(link.receipt) &&
+    link.receipt.every(isStoredReceipt)
+  );
+}
+
+/** A stored chain is this board's only if it starts from the board's start player. */
+function isStoredChain(value: unknown, startId: string): value is ChainLink[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    isStoredLink(value[0]) &&
+    value[0].id === startId &&
+    value.every(isStoredLink)
+  );
+}
+
+/** The chain saved for this player and this board, or null when there is none. */
+export function readChainProgress(
+  userId: string,
+  date: string,
+  startId: string,
+): ChainLink[] | null {
+  const key = progressKey(userId, date);
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (isStoredChain(parsed, startId)) return parsed;
+
+    // A record for some other board, or a mangled one, is discarded so it
+    // cannot come back.
+    window.localStorage.removeItem(key);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeChainProgress(userId: string, date: string, chain: ChainLink[]): void {
+  try {
+    window.localStorage.setItem(progressKey(userId, date), JSON.stringify(chain));
+  } catch {
+    // Storage unavailable or full: the chain simply will not survive a reload.
+  }
+}
+
+/** Drop the local copy once the server holds the day's chain. */
+export function clearChainProgress(userId: string, date: string): void {
+  try {
+    window.localStorage.removeItem(progressKey(userId, date));
+  } catch {
+    // Nothing to do: a record that cannot be read is never rendered.
+  }
+}
