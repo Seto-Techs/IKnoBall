@@ -7,6 +7,7 @@ import {
   players,
   playerSeasonStats,
   playerSeasonTeamStats,
+  playerTeamSeasons,
   playerGameShotZones,
   teams,
   scheduleDays,
@@ -16,6 +17,7 @@ import {
 import { SHOT_ZONE_IDS } from '@iknoball/shot-zones';
 import { and, asc, count, desc, eq, gte, notInArray, or, sql, sum } from 'drizzle-orm';
 import { resolveCurrentSeason } from './common/season';
+import { canonicalTeamAbbr } from './common/team-abbr';
 
 /** Games per page of the game log. */
 const GAME_LOG_PAGE_SIZE = 10;
@@ -209,6 +211,20 @@ class PlayerSeasonTeamResponse extends PlayerSeasonStatsResponse {
   primaryColor!: string;
 }
 
+class PlayerSeasonTeamBadgeResponse {
+  @ApiProperty({ example: 'BRK', description: "The teams table's abbreviation." })
+  teamAbbr!: string;
+
+  @ApiProperty({ example: 'Brooklyn Nets' })
+  teamName!: string;
+
+  @ApiProperty({ example: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg' })
+  logoUrl!: string;
+
+  @ApiProperty({ example: '#000000' })
+  primaryColor!: string;
+}
+
 class PlayerSeasonResponse extends PlayerSeasonStatsResponse {
   @ApiProperty({ example: '2025-26' })
   season!: string;
@@ -222,6 +238,13 @@ class PlayerSeasonResponse extends PlayerSeasonStatsResponse {
       'Per-team splits for a season the player spent on more than one team; empty otherwise.',
   })
   teams!: PlayerSeasonTeamResponse[];
+
+  @ApiProperty({
+    type: [PlayerSeasonTeamBadgeResponse],
+    description:
+      'Every team the player was on that season, in display order. Unlike `teams` this is populated for single-team seasons too, so the career table can show them without expanding.',
+  })
+  seasonTeams!: PlayerSeasonTeamBadgeResponse[];
 }
 
 class PlayerGameLogResponse {
@@ -955,6 +978,7 @@ export class PlayersController {
       stealsTotal: row.stealsTotal == null ? null : Math.round(row.stealsTotal),
       blocksTotal: row.blocksTotal == null ? null : Math.round(row.blocksTotal),
       teams: [],
+      seasonTeams: [],
     }));
 
     // Seasons the player spent on more than one team carry a split per team,
@@ -984,6 +1008,18 @@ export class PlayersController {
       .from(playerSeasonTeamStats)
       .where(eq(playerSeasonTeamStats.playerId, player.id))
       .orderBy(desc(playerSeasonTeamStats.gp), asc(playerSeasonTeamStats.teamAbbr));
+
+    // Every team the player was on, one row per season and type — including the
+    // single-team seasons the split query leaves out. `playerId` is indexed, and
+    // this is the only query the endpoint needs it for.
+    const membershipRows = await this.db.db
+      .select({
+        season: playerTeamSeasons.season,
+        seasonType: playerTeamSeasons.seasonType,
+        teamAbbr: playerTeamSeasons.teamAbbr,
+      })
+      .from(playerTeamSeasons)
+      .where(eq(playerTeamSeasons.playerId, player.id));
 
     // Keyed by season and type, which is what identifies a row to the client.
     const seasonByKey = new Map(
@@ -1018,6 +1054,57 @@ export class PlayersController {
         stealsTotal: row.stealsTotal == null ? null : Math.round(row.stealsTotal),
         blocksTotal: row.blocksTotal == null ? null : Math.round(row.blocksTotal),
       });
+    }
+
+    // The badges the career table shows beside each season: one per team, with
+    // the colour for its pill and the logo for its mark. Memberships are the
+    // only source that covers a single-team season, and a split can outlive a
+    // stale membership, so the two are unioned. Dirty rows can hold both BKN and
+    // BRK for one club, so the canonical abbreviation is the key — otherwise the
+    // same team renders twice.
+    const membershipsBySeason = new Map<string, string[]>();
+    for (const row of membershipRows) {
+      const key = `${row.season}|${seasonType(row.seasonType)}`;
+      const abbrs = membershipsBySeason.get(key);
+      if (abbrs) abbrs.push(row.teamAbbr);
+      else membershipsBySeason.set(key, [row.teamAbbr]);
+    }
+
+    for (const season of seasons) {
+      // Keyed by the canonical abbreviation, so a membership holding BKN cannot
+      // add a second badge beside the split that already says BRK.
+      const badges = new Map<string, PlayerSeasonTeamBadgeResponse>();
+      const add = (abbr: string | null | undefined, emitCanonical: boolean) => {
+        const canonical = canonicalTeamAbbr(abbr);
+        if (!canonical || badges.has(canonical)) return;
+        const team = teamByAbbr.get(canonical);
+        badges.set(canonical, {
+          // A split is emitted as it arrives, so the badge agrees with the split
+          // row below it; the canonical key above is what resolves either
+          // spelling to the teams row. A membership is emitted canonically.
+          teamAbbr: emitCanonical ? canonical : (abbr?.trim() ?? canonical),
+          teamName: team?.fullName ?? '',
+          logoUrl: team?.logoUrl ?? '',
+          primaryColor: team?.primaryColor ?? '',
+        });
+      };
+
+      for (const abbr of membershipsBySeason.get(`${season.season}|${season.seasonType}`) ?? []) {
+        add(abbr, true);
+      }
+      for (const team of season.teams) add(team.teamAbbr, false);
+
+      // With splits on file their order is the chronology: games played, then
+      // abbreviation. Memberships carry no chronology of their own, so a team
+      // only they know about sorts after the splits, alphabetically. The map's
+      // keys are canonical, so they serve as the sort key too.
+      const splitRank = new Map(
+        season.teams.map((team, index) => [canonicalTeamAbbr(team.teamAbbr), index]),
+      );
+      const rank = (abbr: string) => splitRank.get(abbr) ?? Number.MAX_SAFE_INTEGER;
+      season.seasonTeams = [...badges.entries()]
+        .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+        .map(([, badge]) => badge);
     }
 
     // `seasons` is newest first, so the first regular-season row is the latest

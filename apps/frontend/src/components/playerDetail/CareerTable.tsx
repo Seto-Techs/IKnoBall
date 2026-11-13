@@ -5,6 +5,7 @@ import type {
   PlayerSeason,
   PlayerSeasonStats,
   PlayerSeasonTeam,
+  PlayerSeasonTeamBadge,
   PlayerSeasonType,
 } from '../../lib/api';
 import { Panel } from '../dashboard/shared';
@@ -74,6 +75,46 @@ function TeamSplitRow({ team }: { team: PlayerSeasonTeam }) {
       </th>
       <StatCells row={team} className="text-stone-600" />
     </tr>
+  );
+}
+
+/**
+ * The teams a season was spent on, drawn to the right of the year: one colour
+ * pill each, then their logos. This is the hint that a season had more than one
+ * team, so it renders whether or not the row can be expanded.
+ */
+function SeasonTeamBadges({ teams }: { teams: PlayerSeasonTeamBadge[] }) {
+  if (teams.length === 0) return null;
+
+  return (
+    <span className="ml-auto flex items-center gap-2 pl-2">
+      <span className="flex items-center gap-0.5">
+        {teams.map((team) => (
+          <span
+            key={team.teamAbbr}
+            className="h-4 w-1 shrink-0 rounded-full"
+            style={{ backgroundColor: team.primaryColor || '#E8E3DD' }}
+            aria-hidden="true"
+          />
+        ))}
+      </span>
+      <span className="flex items-center gap-1">
+        {teams.map((team) =>
+          team.logoUrl ? (
+            <img
+              key={team.teamAbbr}
+              src={team.logoUrl}
+              alt={team.teamName}
+              className="h-4 w-4 shrink-0 object-contain"
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.style.visibility = 'hidden';
+              }}
+            />
+          ) : null,
+        )}
+      </span>
+    </span>
   );
 }
 
@@ -150,37 +191,39 @@ export function CareerPanel({ seasons }: { seasons: PlayerSeason[] }) {
                   <tbody key={key} id={splitsId}>
                     <tr className={`border-b border-brand-line ${open ? 'border-b-0' : ''}`}>
                       <th scope="row" className="py-2 pr-3 text-left">
-                        {expandable ? (
-                          <button
-                            type="button"
-                            onClick={() => toggle(key)}
-                            aria-expanded={open}
-                            aria-controls={splitsId}
-                            className="flex items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
-                          >
-                            {open ? (
-                              <ChevronDown
-                                className="h-4 w-4 shrink-0 text-stone-500"
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              <ChevronRight
-                                className="h-4 w-4 shrink-0 text-stone-500"
-                                aria-hidden="true"
-                              />
-                            )}
-                            <span className="font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
+                        <div className="flex items-center gap-1.5">
+                          {expandable ? (
+                            <button
+                              type="button"
+                              onClick={() => toggle(key)}
+                              aria-expanded={open}
+                              aria-controls={splitsId}
+                              className="flex items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy"
+                            >
+                              {open ? (
+                                <ChevronDown
+                                  className="h-4 w-4 shrink-0 text-stone-500"
+                                  aria-hidden="true"
+                                />
+                              ) : (
+                                <ChevronRight
+                                  className="h-4 w-4 shrink-0 text-stone-500"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              <span className="whitespace-nowrap font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
+                                {row.season}
+                              </span>
+                            </button>
+                          ) : (
+                            // The left padding is the chevron plus its gap, so a
+                            // season without one still starts where the others do.
+                            <span className="block whitespace-nowrap pl-[22px] font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
                               {row.season}
                             </span>
-                            <span className="text-xs font-semibold text-stone-500">
-                              {splits.length} teams
-                            </span>
-                          </button>
-                        ) : (
-                          <span className="block pl-[22px] font-heading text-sm font-black uppercase tracking-wide text-brand-ink">
-                            {row.season}
-                          </span>
-                        )}
+                          )}
+                          <SeasonTeamBadges teams={row.seasonTeams} />
+                        </div>
                       </th>
                       <StatCells row={row} className="text-brand-ink" />
                     </tr>
