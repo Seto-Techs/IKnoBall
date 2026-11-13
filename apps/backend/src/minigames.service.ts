@@ -38,8 +38,13 @@ const GAME = 'lebronnect';
  */
 const RESET_TIMEZONE = 'America/New_York';
 
-/** Day one. Puzzle numbers count from here and never move. */
-const EPOCH = Date.UTC(2026, 9, 28);
+/**
+ * Day one. Puzzle numbers count from here and never move.
+ *
+ * It is the day LeBronnect shipped, so the first board anyone plays is #1
+ * rather than the middle of a count that started before there was a game.
+ */
+const EPOCH = Date.UTC(2026, 10, 13);
 
 /** How many of the broadest team-season histories daily pairs are drawn from. */
 const POOL_SIZE = 400;
