@@ -35,6 +35,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.4.0',
+    date: '2026-11-13',
+    headline: 'LeBronnect lands: two players, and every teammate between them.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'LeBronnect is a new daily game — two players, and you bridge them through teammates — where every link has to be real, a link you get right shows the seasons the two shared, and a chain that finishes over par comes back with the shortest route.',
+      },
+    ],
+  },
+  {
     version: '0.3.5',
     date: '2026-11-05',
     headline: 'The recap finally lands, and every card says what it pays.',
