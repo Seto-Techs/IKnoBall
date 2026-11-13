@@ -145,32 +145,61 @@ export function receiptsBetween(graph: ConnectGraph, aId: string, bId: string): 
 }
 
 /**
+ * One shortest route between two players, as the players it passes through —
+ * `fromId` first, `toId` last, `[fromId]` for a player against themselves, and
+ * an empty array when no route exists.
+ *
+ * Breadth-first, so the path's length is the distance `distanceBetween`
+ * reports. Any shortest route will do: par counts links, not names.
+ */
+export function shortestPath(graph: ConnectGraph, fromId: string, toId: string): string[] {
+  if (!graph.byId.has(fromId) || !graph.byId.has(toId)) return [];
+  if (fromId === toId) return [fromId];
+
+  /** Each player reached, and the one they were reached from. */
+  const parent = new Map<string, string>();
+  const seen = new Set([fromId]);
+  let frontier = [fromId];
+  let reached = false;
+
+  while (frontier.length > 0 && !reached) {
+    const next: string[] = [];
+    for (const current of frontier) {
+      for (const neighbour of graph.neighbours.get(current) ?? []) {
+        if (seen.has(neighbour)) continue;
+        seen.add(neighbour);
+        parent.set(neighbour, current);
+        if (neighbour === toId) {
+          reached = true;
+          break;
+        }
+        next.push(neighbour);
+      }
+      if (reached) break;
+    }
+    frontier = next;
+  }
+
+  if (!reached) return [];
+
+  const path = [toId];
+  for (let current = toId; current !== fromId;) {
+    const previous = parent.get(current);
+    if (previous === undefined) return [];
+    path.push(previous);
+    current = previous;
+  }
+  return path.reverse();
+}
+
+/**
  * Fewest links between two players, measured in edges (a direct teammate is 1).
  * Returns `Infinity` when they are in different components — the pool filter
  * uses that to skip a pair rather than to claim a distance.
  */
 export function distanceBetween(graph: ConnectGraph, fromId: string, toId: string): number {
-  if (fromId === toId) return 0;
-
-  const seen = new Set([fromId]);
-  let frontier = [fromId];
-  let depth = 0;
-
-  while (frontier.length > 0) {
-    depth += 1;
-    const next: string[] = [];
-    for (const current of frontier) {
-      for (const neighbour of graph.neighbours.get(current) ?? []) {
-        if (seen.has(neighbour)) continue;
-        if (neighbour === toId) return depth;
-        seen.add(neighbour);
-        next.push(neighbour);
-      }
-    }
-    frontier = next;
-  }
-
-  return Number.POSITIVE_INFINITY;
+  const path = shortestPath(graph, fromId, toId);
+  return path.length > 0 ? path.length - 1 : Number.POSITIVE_INFINITY;
 }
 
 /**
