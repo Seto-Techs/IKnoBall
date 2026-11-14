@@ -66,8 +66,16 @@ async function main() {
       }
     }
     logger.log(`backfill done succeeded=${done} failed=${rows.length - done}`);
+    // Deliberately not fatal. This runs as a one-shot container that the worker
+    // waits on, and it makes three live NBA requests per player, so a single
+    // 404 or rate limit is ordinary rather than exceptional. Throwing here kept
+    // the worker — and therefore box scores, odds and settlement — down until
+    // someone noticed, for a gap the next deploy retries anyway. The count above
+    // is the signal; every player this skips keeps only box-score memberships.
     if (done !== rows.length) {
-      throw new Error(`Team-season backfill incomplete: ${rows.length - done} player(s) failed`);
+      logger.error(
+        `Team-season backfill incomplete: ${rows.length - done} of ${rows.length} player(s) failed; rerun to retry`,
+      );
     }
   } finally {
     await app.close();
