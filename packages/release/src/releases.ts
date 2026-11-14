@@ -35,6 +35,34 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.4.1',
+    date: '2026-11-14',
+    headline:
+      'A career table that shows every shirt, and a LeBronnect chain that survives a closed tab.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'LeBronnect keeps your chain. Close the tab halfway through and it is still there when you come back, picking up from the player you last added instead of starting you over.',
+      },
+      {
+        kind: 'added',
+        text: 'Every season in a player’s career table now shows the clubs he turned out for, with a colour and a logo beside the year, so a season split between two teams reads at a glance without opening it.',
+      },
+      {
+        kind: 'fixed',
+        text: 'A season row only opens now when the player really did change teams. A season he spent in one place used to offer a dropdown that opened onto a single team repeating the row above it.',
+      },
+      {
+        kind: 'fixed',
+        text: 'Brooklyn’s share of a traded season shows the Nets properly — their name, colour and logo — instead of a bare grey code with nothing beside it.',
+      },
+      {
+        kind: 'fixed',
+        text: 'A deploy can no longer leave the app sitting on old scores. If the season-history import it runs on boot hits a snag, everything else now starts anyway, so box scores, odds and settlement keep updating.',
+      },
+    ],
+  },
+  {
     version: '0.4.0',
     date: '2026-11-13',
     headline: 'LeBronnect lands: two players, and every teammate between them.',
