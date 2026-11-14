@@ -13,7 +13,7 @@
     },
     "apps/backend": {
       "name": "backend",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.750.0",
         "@aws-sdk/s3-request-presigner": "^3.750.0",
@@ -64,7 +64,7 @@
     },
     "apps/discord": {
       "name": "iknoball-discord",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "@iknoball/database": "workspace:*",
         "@iknoball/predictions": "workspace:*",
@@ -92,7 +92,7 @@
     },
     "apps/frontend": {
       "name": "frontend",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "@iknoball/release": "workspace:*",
         "@iknoball/shot-zones": "workspace:*",
@@ -133,7 +133,7 @@
     },
     "apps/worker": {
       "name": "iknoball-worker",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "@iknoball/database": "workspace:*",
         "@iknoball/predictions": "workspace:*",
@@ -160,7 +160,7 @@
     },
     "packages/database": {
       "name": "@iknoball/database",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "drizzle-orm": "^0.45.2",
         "pg": "^8.16.3",
@@ -173,7 +173,7 @@
     },
     "packages/predictions": {
       "name": "@iknoball/predictions",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "devDependencies": {
         "@types/node": "^24.0.0",
         "typescript": "^5.7.3",
@@ -181,7 +181,7 @@
     },
     "packages/release": {
       "name": "@iknoball/release",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "devDependencies": {
         "@types/node": "^24.0.0",
         "typescript": "^5.7.3",
@@ -190,7 +190,7 @@
     },
     "packages/schema": {
       "name": "@iknoball/schema",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "zod": "^4.3.5",
       },
@@ -200,7 +200,7 @@
     },
     "packages/shot-zones": {
       "name": "@iknoball/shot-zones",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "devDependencies": {
         "@types/node": "^24.0.0",
         "typescript": "^5.7.3",

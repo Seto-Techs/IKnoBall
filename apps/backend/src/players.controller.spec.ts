@@ -118,6 +118,19 @@ const teamRows: Row[] = [
     primaryColor: '#1D1160',
   },
   {
+    externalId: '1610612751',
+    abbreviation: 'BRK',
+    teamName: 'Nets',
+    fullName: 'Brooklyn Nets',
+    city: 'Brooklyn',
+    conference: 'East',
+    division: 'Atlantic',
+    logoUrl: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg',
+    arena: 'Barclays Center',
+    headCoach: 'Jordi Fernández',
+    primaryColor: '#000000',
+  },
+  {
     externalId: '1610612737',
     abbreviation: 'ATL',
     teamName: 'Hawks',
@@ -129,6 +142,21 @@ const teamRows: Row[] = [
     arena: 'State Farm Arena',
     headCoach: 'Quin Snyder',
     primaryColor: '#E03A3E',
+  },
+  // The stats feed says BKN for this club; the teams table says BRK. Splits
+  // carry the feed's spelling, so the controller has to canonicalise to find it.
+  {
+    externalId: '1610612751',
+    abbreviation: 'BRK',
+    teamName: 'Nets',
+    fullName: 'Brooklyn Nets',
+    city: 'Brooklyn',
+    conference: 'East',
+    division: 'Atlantic',
+    logoUrl: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg',
+    arena: 'Barclays Center',
+    headCoach: 'Jordi Fernández',
+    primaryColor: '#000000',
   },
 ];
 
@@ -234,7 +262,7 @@ const splitRows: Row[] = [
   {
     season: '2025-26',
     statsTimeframe: 'ByYear-regular',
-    teamAbbr: 'ATL',
+    teamAbbr: 'BKN',
     gp: 24,
     wins: 8,
     losses: 16,
@@ -257,12 +285,16 @@ const splitRows: Row[] = [
 /** The player row the first query returns, as the double's first queued response. */
 const playerQuery: Row[][] = [[playerRow]];
 
-/** A detail response's queries, in call order: player, teams, seasons, splits, next game. */
+/**
+ * A detail response's queries, in call order: player, teams, seasons, splits,
+ * team memberships, next game.
+ */
 const detailFixture = (
   over: {
     player?: Row[];
     seasons?: Row[];
     splits?: Row[];
+    memberships?: Row[];
     nextGame?: Row[];
   } = {},
 ): Row[][] => [
@@ -270,6 +302,7 @@ const detailFixture = (
   teamRows,
   over.seasons ?? seasonRows,
   over.splits ?? [],
+  over.memberships ?? [],
   over.nextGame ?? [nextGameRow],
 ];
 
@@ -492,12 +525,58 @@ describe('PlayersController.getById', () => {
         stealsTotal: 44,
         blocksTotal: 96,
       },
-      expect.objectContaining({ teamAbbr: 'ATL', teamName: 'Atlanta Hawks', gp: 24, points: 18.8 }),
+      // The fixture's split carries the feed's BKN; the response must speak the
+      // teams table's BRK and resolve the Nets' identity from it.
+      expect.objectContaining({
+        teamAbbr: 'BRK',
+        teamName: 'Brooklyn Nets',
+        logoUrl: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg',
+        primaryColor: '#000000',
+        gp: 24,
+        points: 18.8,
+      }),
     ]);
     // The splits belong to the season row, not the playoff row of the same label.
     expect(
       res.data?.seasons.find((s) => s.season === '2025-26' && s.seasonType === 'playoffs')?.teams,
     ).toEqual([]);
+  });
+
+  it('keeps a split whose team is absent from the teams table, without identity', async () => {
+    // Two rows, because a lone split no longer reaches the client — see the
+    // test below. The unknown team still renders, just without an identity.
+    const controller = makeController(
+      detailFixture({
+        splits: [
+          splitRows[0],
+          { season: '2025-26', statsTimeframe: 'ByYear-regular', teamAbbr: 'SEA', gp: 5 },
+        ],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2025-26' && s.seasonType === 'regular',
+    );
+
+    expect(season?.teams).toEqual([
+      expect.objectContaining({ teamAbbr: 'SAS', teamName: 'San Antonio Spurs' }),
+      expect.objectContaining({ teamAbbr: 'SEA', teamName: '', logoUrl: '' }),
+    ]);
+  });
+
+  it('reports no splits for a season whose only split is a lone row', async () => {
+    // A stale one-team row for a season the player never changed teams in. It
+    // describes the same thing the combined row already says, so it must not
+    // reach the client and open the row up.
+    const controller = makeController(detailFixture({ splits: [splitRows[0]] }));
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2025-26' && s.seasonType === 'regular',
+    );
+
+    expect(season?.teams).toEqual([]);
   });
 
   it('ignores a split whose season has no row', async () => {
@@ -512,11 +591,96 @@ describe('PlayersController.getById', () => {
     expect(res.data?.seasons.every((season) => season.teams.length === 0)).toBe(true);
   });
 
+  it('badges a single-team season from its membership, without inventing a split', async () => {
+    const controller = makeController(
+      detailFixture({
+        memberships: [{ season: '2024-25', seasonType: 'ByYear-regular', teamAbbr: 'SAS' }],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2024-25' && s.seasonType === 'regular',
+    );
+
+    expect(season?.seasonTeams).toEqual([
+      {
+        teamAbbr: 'SAS',
+        teamName: 'San Antonio Spurs',
+        logoUrl: 'https://cdn.nba.com/logos/nba/1610612759/global/L/logo.svg',
+        primaryColor: '#C4CED4',
+      },
+    ]);
+    // The split list drives the expanded rows, so a badge must not put a team
+    // there: a season with one team stays closed and stat-less.
+    expect(season?.teams).toEqual([]);
+  });
+
+  it('badges a two-team season in split order, including a team only the split knows', async () => {
+    const controller = makeController(
+      detailFixture({
+        // Inlined rather than the shared `splitRows`, whose second team other
+        // tests are free to change.
+        splits: [splitRows[0], { ...splitRows[1], teamAbbr: 'ATL' }],
+        // One membership only, and the team that played fewer games first, so
+        // neither the order nor the second badge can come from this list.
+        memberships: [{ season: '2025-26', seasonType: 'ByYear-regular', teamAbbr: 'ATL' }],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2025-26' && s.seasonType === 'regular',
+    );
+
+    expect(season?.seasonTeams.map((team) => team.teamAbbr)).toEqual(['SAS', 'ATL']);
+    expect(season?.seasonTeams[0]).toMatchObject({
+      teamName: 'San Antonio Spurs',
+      primaryColor: '#C4CED4',
+    });
+    expect(season?.seasonTeams[1]).toMatchObject({
+      teamName: 'Atlanta Hawks',
+      primaryColor: '#E03A3E',
+    });
+    // Badges belong to the season row, not to the playoff row of the same label.
+    expect(
+      res.data?.seasons.find((s) => s.season === '2025-26' && s.seasonType === 'playoffs')
+        ?.seasonTeams,
+    ).toEqual([]);
+  });
+
+  it('shows one badge when a season holds both BKN and BRK for the Nets', async () => {
+    const controller = makeController(
+      detailFixture({
+        memberships: [
+          { season: '2025-26', seasonType: 'ByYear-regular', teamAbbr: 'BKN' },
+          { season: '2025-26', seasonType: 'ByYear-regular', teamAbbr: 'BRK' },
+        ],
+      }),
+    );
+
+    const res = await controller.getById('p-1');
+    const season = res.data?.seasons.find(
+      (s) => s.season === '2025-26' && s.seasonType === 'regular',
+    );
+
+    // Both rows name the same club, so two badges would render the Nets twice.
+    expect(season?.seasonTeams).toEqual([
+      {
+        teamAbbr: 'BRK',
+        teamName: 'Brooklyn Nets',
+        logoUrl: 'https://cdn.nba.com/logos/nba/1610612751/global/L/logo.svg',
+        primaryColor: '#000000',
+      },
+    ]);
+  });
+
   it('falls back to the newest regular season when the current one has no row', async () => {
     const controller = makeController([
       ...playerQuery,
       teamRows,
       [{ season: '2024-25', statsTimeframe: 'ByYear-regular', gp: 46, points: 24.26086956521739 }],
+      [],
       [],
       [],
     ]);
