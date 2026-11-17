@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type IORedis from 'ioredis';
-import { DAY_KEY_GUARD, DAY_KEY_TTL_SECONDS, RedisDayKeyGuard, dayKey } from './day-key.guard';
+import {
+  DAY_KEY_GUARD,
+  DAY_KEY_TTL_SECONDS,
+  RedisDayKeyGuard,
+  noteKey,
+  recapKey,
+} from './day-key.guard';
 import type { Infrastructure } from './infrastructure';
 
 /**
@@ -34,11 +40,17 @@ function guardFor(redis: FakeRedis): RedisDayKeyGuard {
   return new RedisDayKeyGuard({ redis } as unknown as Infrastructure);
 }
 
-describe('the day key', () => {
+describe('the board key', () => {
   it('is one key per guild per slate day', () => {
-    expect(dayKey('1234', '2026-10-27')).toBe('1234:2026-10-27');
-    expect(dayKey('1234', '2026-10-27')).not.toBe(dayKey('1234', '2026-10-28'));
-    expect(dayKey('1234', '2026-10-27')).not.toBe(dayKey('5678', '2026-10-27'));
+    expect(recapKey('1234', '2026-10-27')).toBe('recap:1234:2026-10-27');
+    expect(recapKey('1234', '2026-10-27')).not.toBe(recapKey('1234', '2026-10-28'));
+    expect(recapKey('1234', '2026-10-27')).not.toBe(recapKey('5678', '2026-10-27'));
+  });
+
+  it('cannot collide with the off-day note for the same day', () => {
+    // The note is about *today*; the board is about the last day that had games.
+    // One shared keyspace would let a quiet Monday suppress Tuesday's board.
+    expect(recapKey('1234', '2026-10-27')).not.toBe(noteKey('1234', '2026-10-27'));
   });
 
   it('is a string, because it is the token other chunks pass around', () => {
@@ -50,7 +62,7 @@ describe('RedisDayKeyGuard', () => {
   it('is absent before a post and present after it', async () => {
     const redis = fakeRedis();
     const guard = guardFor(redis);
-    const key = dayKey('1234', '2026-10-27');
+    const key = recapKey('1234', '2026-10-27');
 
     expect(await guard.has(key)).toBe(false);
     await guard.remember(key);
@@ -59,10 +71,10 @@ describe('RedisDayKeyGuard', () => {
 
   it('expires, so a key cannot outlive its day', async () => {
     const redis = fakeRedis();
-    await guardFor(redis).remember(dayKey('1234', '2026-10-27'));
+    await guardFor(redis).remember(recapKey('1234', '2026-10-27'));
 
     expect(DAY_KEY_TTL_SECONDS).toBe(3 * 24 * 60 * 60);
-    expect(redis.keys.get('1234:2026-10-27')).toEqual({
+    expect(redis.keys.get('recap:1234:2026-10-27')).toEqual({
       value: 'posted',
       ttl: DAY_KEY_TTL_SECONDS,
     });
@@ -71,9 +83,9 @@ describe('RedisDayKeyGuard', () => {
   it('does not answer for another guild', async () => {
     const redis = fakeRedis();
     const guard = guardFor(redis);
-    await guard.remember(dayKey('1234', '2026-10-27'));
+    await guard.remember(recapKey('1234', '2026-10-27'));
 
-    expect(await guard.has(dayKey('5678', '2026-10-27'))).toBe(false);
+    expect(await guard.has(recapKey('5678', '2026-10-27'))).toBe(false);
   });
 
   it('type-checks as the injected interface', () => {

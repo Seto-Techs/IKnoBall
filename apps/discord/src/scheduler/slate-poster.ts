@@ -25,9 +25,6 @@ export interface SlateTarget {
  */
 export const SLATE_PACE = 'SLATE_PACE';
 
-/** Cards `/setup` prints before it stops: a preview shares one message's embeds. */
-const PREVIEW_CARDS = 3;
-
 export type PostStatus = 'posted' | 'empty' | 'already-posted';
 
 export interface PostResult {
@@ -38,14 +35,6 @@ export interface PostResult {
   games: number;
   /** One message id per card, in tip-off order. */
   messageIds: string[];
-}
-
-/** What `/setup` shows: today's first cards, with the buttons inert. */
-export interface SlatePreview {
-  etKey: string;
-  /** Games on the day, which can be more than were previewed. */
-  games: number;
-  payloads: CardPayload[];
 }
 
 /**
@@ -118,9 +107,10 @@ export class SlatePoster {
    * The one line a game-less day gets.
    *
    * Silence on a day the league is off is indistinguishable from a bot that has
-   * died, and the rollover makes it worse: it posts the *next* slate, so nothing
-   * points at the gap. `nextKey` is null only when nothing ahead is pickable either,
-   * and then the line says so instead of naming a day.
+   * died, and it matters more now that this note sits beside the only post the bot
+   * makes: a channel with neither a board nor a note looks broken. `nextKey` is null
+   * only when nothing ahead is pickable either, and then the line says so instead of
+   * naming a day.
    */
   async postOffDay(target: SlateTarget, day: string, nextKey: string | null): Promise<void> {
     const channel = await this.sendableChannel(target.channelId);
@@ -137,14 +127,13 @@ export class SlatePoster {
   /**
    * The slate for a named ET day.
    *
-   * The rollover is why this exists: after the last game of the night it posts the
-   * *next* day, which is not `etDateKey(now)` until the small hours. Everything
-   * else — the selection filter, the card claim, the send — is the same post, so
-   * `post` is this method with the day derived from the clock.
+   * No cron calls this any more — picks live in the Activity — so the caller is
+   * `bun run force:slate`, an operator re-posting a day by hand. It takes the day as
+   * an argument for that reason.
    *
    * `now` still bounds the selection: a game that has already tipped off is not
-   * pickable, so a late rollover posts what is left of the day rather than a slate
-   * of dead cards.
+   * pickable, so a late post sends what is left of the day rather than a slate of
+   * dead cards.
    */
   async postFor(target: SlateTarget, etKey: string, now: Date = new Date()): Promise<PostResult> {
     const games = await this.slateGames(etKey, now);
@@ -202,33 +191,6 @@ export class SlatePoster {
    */
   async plan(etKey: string, now: Date = new Date()): Promise<SlateGame[]> {
     return this.slateGames(etKey, now);
-  }
-
-  /**
-   * Today's cards as `/setup` would show them.
-   *
-   * The same selection and the same payload builder as a real post, with the
-   * buttons disabled: a preview must not look pickable, and its message is not in
-   * `discord_cards`, so the lock sweep would never come back to freeze it.
-   *
-   * Capped at three cards because the preview puts them in one ephemeral reply, and
-   * a message holds ten embeds. The line above the cards still reports the day's
-   * full count.
-   */
-  async preview(now: Date = new Date()): Promise<SlatePreview> {
-    const etKey = etDateKey(now);
-    const games = await this.slateGames(etKey, now);
-    const teams = await this.teamLookup(games);
-    const stakes = await this.store.findStakes(games.map((game) => game.gameId));
-    const shown = games.slice(0, PREVIEW_CARDS);
-
-    return {
-      etKey,
-      games: games.length,
-      payloads: shown.map((game) =>
-        inert(cardPayload(toCardGame(game), toCardTeams(game, teams, stakes.get(game.gameId)))),
-      ),
-    };
   }
 
   private async slateGames(etKey: string, now: Date): Promise<SlateGame[]> {
@@ -324,7 +286,7 @@ const PERMISSION_NAMES: Readonly<Record<string, string>> = {
  * Discord counts a 403 as an invalid request, and 10,000 of those in ten minutes
  * earns a temporary ban, so a channel the bot cannot post in must be skipped
  * *before* the send rather than discovered by it. Thrown (not swallowed) so the
- * tick stops for that guild alone: `SlateScheduler` already catches per guild.
+ * tick stops for that guild alone: `BoardScheduler` already catches per guild.
  */
 export class MissingPermissionsError extends Error {
   constructor(
@@ -384,15 +346,4 @@ export function offDayMessage(day: string, nextKey: string | null): string {
   return nextKey === null
     ? `${line} The next slate is not on the schedule yet.`
     : `${line} The next slate is **${formatDayKey(nextKey)}**.`;
-}
-
-/** The same payload with every button disabled, for the `/setup` preview. */
-function inert(payload: CardPayload): CardPayload {
-  return {
-    embeds: payload.embeds,
-    components: payload.components.map((row) => ({
-      ...row,
-      components: row.components.map((component) => ({ ...component, disabled: true })),
-    })),
-  };
 }
