@@ -90,7 +90,9 @@ export async function connectDiscord(): Promise<ActivitySession> {
   }
 
   if (!isInsideDiscord()) {
-    throw new ActivityError('IKnoBall opens inside Discord. Type /launch in any channel to play.');
+    throw new ActivityError(
+      'IKnoBall opens inside Discord. Type /iknoball in any channel to play.',
+    );
   }
 
   const sdk = new DiscordSDK(CLIENT_ID);

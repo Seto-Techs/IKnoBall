@@ -2,7 +2,7 @@
 
 The play surface. A Discord Activity — a React app that runs inside Discord's
 iframe, launched from a channel by the app's entry point command, which is
-named `launch` so it reads `/launch`.
+named `iknoball` so it reads `/iknoball`.
 
 It replaces the bot as the place where people play: picks, Lebronnect, and the
 leaderboard. The bot keeps doing notifications.
@@ -86,8 +86,8 @@ Same application as the bot. None of this can be scripted from the repo:
    or it swallows `/be` and `/nba`.
 
 3. **Entry Point command** — enabling Activities creates one named "Launch".
-   Rename it to `launch`; do not add a second, an app may have exactly one and it
-   must be global:
+   Rename it to `iknoball`; do not add a second, an app may have exactly one and
+   it must be global:
 
    ```bash
    # Find it: the entry point is the command with "type": 4.
@@ -98,7 +98,7 @@ Same application as the bot. None of this can be scripted from the repo:
    curl -s -X PATCH \
      https://discord.com/api/v10/applications/1531941991875743744/commands/<id> \
      -H "Authorization: Bot $DISCORD_TOKEN" -H 'content-type: application/json' \
-     -d '{"name":"launch","description":"Play IKnoBall"}'
+     -d '{"name":"iknoball","description":"Play IKnoBall"}'
    ```
 
 4. **OAuth2 → Redirects** — the SDK's `authorize` does not need a redirect URI,
