@@ -11,14 +11,15 @@ IKnoBall is a Bun + Turborepo monorepo. Use `bun` for everything.
 
 ## Repo layout
 
-| Path                | Workspace            | Stack                                   |
-| ------------------- | -------------------- | --------------------------------------- |
-| `apps/frontend`     | `frontend`           | React 19 + Vite + TanStack Router/Query |
-| `apps/backend`      | `backend`            | NestJS + Drizzle + BetterAuth           |
-| `apps/worker`       | `iknoball-worker`    | NestJS standalone worker (BullMQ, cron) |
-| `packages/database` | `@iknoball/database` | Drizzle schema + migrations             |
-| `packages/schema`   | `@iknoball/schema`   | Shared Zod schemas + auth types         |
-| `packages/release`  | `@iknoball/release`  | The changelog and the one version       |
+| Path                | Workspace            | Stack                                         |
+| ------------------- | -------------------- | --------------------------------------------- |
+| `apps/frontend`     | `frontend`           | React 19 + Vite + TanStack Router/Query       |
+| `apps/backend`      | `backend`            | NestJS + Drizzle + BetterAuth                 |
+| `apps/worker`       | `iknoball-worker`    | NestJS standalone worker (BullMQ, cron)       |
+| `apps/activity`     | `activity`           | React 19 + Vite + Tailwind (Discord Activity) |
+| `packages/database` | `@iknoball/database` | Drizzle schema + migrations                   |
+| `packages/schema`   | `@iknoball/schema`   | Shared Zod schemas + auth types               |
+| `packages/release`  | `@iknoball/release`  | The changelog and the one version             |
 
 ## Running things
 
@@ -30,6 +31,7 @@ bun run dev              # turbo run dev (all workspaces)
 bun run backend          # turbo run dev --filter=backend
 bun run frontend         # turbo run dev --filter=frontend
 bun run worker           # turbo run dev --filter=iknoball-worker
+bun run activity         # turbo run dev --filter=activity (the Discord Activity)
 ```
 
 You can also drive a workspace directly, e.g. `bun run --filter frontend dev` or `bun --filter '@iknoball/database' run generate`.
@@ -41,6 +43,7 @@ bun run build            # turbo run build (all)
 bun run backend:build    # turbo run build --filter=backend
 bun run frontend:build   # turbo run build --filter=frontend
 bun run worker:build     # turbo run build --filter=iknoball-worker
+bun run activity:build   # turbo run build --filter=activity
 
 bun run lint             # turbo run lint (oxlint)
 bun run format           # oxfmt . --write

@@ -9,8 +9,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false, bufferLogs: true });
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
+  // The site and the Discord Activity are two origins, and the activity is
+  // served from Discord's own proxy (`https://<app id>.discordsays.com`), which
+  // cannot be predicted from the frontend URL. `ACTIVITY_URL` names that origin
+  // once it is known; until it is set, only the site may call the API.
+  const allowedOrigins = [process.env.FRONTEND_URL ?? 'http://localhost:5173']
+    .concat(process.env.ACTIVITY_URL ?? [])
+    .filter(Boolean);
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    origin: allowedOrigins,
     credentials: true,
   });
 

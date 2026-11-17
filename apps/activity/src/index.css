@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Self-hosted, latin subset. The activity is served inside Discord's iframe,
+   where the CSP blocks fonts.googleapis.com — a <link> to it would fail in
+   production and only look right in local dev. Oswald is one variable file;
+   Poppins ships static weights, so the four the app uses are separate. */
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url('/fonts/oswald-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/poppins-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/poppins-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/poppins-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/poppins-700.woff2') format('woff2');
+}
+
+@layer base {
+  /* The app owns the whole iframe, and every screen scrolls in its own pane, so
+     the document itself must never scroll — a mobile-landscape Discord window is
+     ~390px tall and a stray document scrollbar eats it. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-stone-200 font-sans text-brand-ink antialiased;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+}

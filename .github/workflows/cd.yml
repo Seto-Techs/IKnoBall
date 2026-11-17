@@ -11,6 +11,7 @@ env:
   FE_IMAGE: seto-techs/iknoball-fe
   WORKER_IMAGE: seto-techs/iknoball-worker
   DISCORD_IMAGE: seto-techs/iknoball-discord
+  ACTIVITY_IMAGE: seto-techs/iknoball-activity
 
 jobs:
   # ── BUILD: BACKEND ──────────────────────────────────────────
@@ -184,9 +185,57 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.DISCORD_IMAGE }}:${{ steps.tag.outputs.tag }}
 
+  # ── BUILD: ACTIVITY ─────────────────────────────────────────
+  # The Discord Activity. `VITE_API_URL` is a path, not an origin: inside
+  # Discord the app is served from `<app id>.discordsays.com` and reaches the API
+  # through the portal's `/be` URL mapping, which keeps every request same-origin
+  # (Discord's CSP blocks the direct call, and same-origin means no CORS).
+  build-activity:
+    if: |
+      github.event.pull_request.merged == true &&
+      (github.event.pull_request.base.ref == 'dev' ||
+       github.event.pull_request.base.ref == 'main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image tag
+        id: tag
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" = "main" ]; then
+            echo "tag=prod" >> $GITHUB_OUTPUT
+          else
+            echo "tag=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build & push Activity
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/activity/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.ACTIVITY_IMAGE }}:${{ steps.tag.outputs.tag }}
+          build-args: |
+            VITE_API_URL=/be
+            VITE_DISCORD_CLIENT_ID=1531941991875743744
+
   # ── DEPLOY ──────────────────────────────────────────────────
   deploy:
-    needs: [build-be, build-fe, build-worker, build-discord]
+    needs: [build-be, build-fe, build-worker, build-discord, build-activity]
     if: |
       always() &&
       github.event.pull_request.merged == true &&
@@ -198,10 +247,13 @@ jobs:
       needs.build-worker.result != 'cancelled' &&
       needs.build-discord.result != 'failure' &&
       needs.build-discord.result != 'cancelled' &&
+      needs.build-activity.result != 'failure' &&
+      needs.build-activity.result != 'cancelled' &&
       (needs.build-be.result == 'success' ||
        needs.build-fe.result == 'success' ||
        needs.build-worker.result == 'success' ||
-       needs.build-discord.result == 'success')
+       needs.build-discord.result == 'success' ||
+       needs.build-activity.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read

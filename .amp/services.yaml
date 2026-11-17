@@ -36,3 +36,18 @@ services:
     cwd: apps/backend
     port: 3000
     health: /api
+
+  # The Discord Activity. Its own Vite server on 5174 (the site keeps 5173), and
+  # its proxy points at the backend rather than at `$PORT`, which here is the
+  # activity's own port.
+  activity:
+    command: bun run vite --port "$PORT" --strictPort
+    cwd: apps/activity
+    port: 5174
+    health: /
+    portal:
+      url: /
+      title: IKnoBall Activity
+      description: >-
+        The Discord Activity, run in a plain browser tab. Append
+        ?token=<session token> to sign in without a Discord client.
