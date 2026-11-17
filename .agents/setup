@@ -14,21 +14,77 @@ cd "$(dirname "$0")/.."
 step() { printf '\n==> %s\n' "$*"; }
 note() { printf '    %s\n' "$*"; }
 
+# A failed setup leaves an orb that still looks alive: services start, crash-loop
+# into the supervisor's start limit, and the portal serves a 502 with no
+# explanation. Say what broke, in words, instead of trailing off inside a wall of
+# resolver errors that nobody reads.
+die() {
+  {
+    printf '\n'
+    printf '==================== SETUP FAILED ====================\n'
+    printf '%s\n' "${1:-A setup step failed.}"
+    printf '%s\n' "${2:-}"
+    printf '======================================================\n'
+    printf 'This orb cannot run IKnoBall: no service will start from it.\n'
+    printf 'Open a new orb rather than restarting services here.\n'
+  } >&2
+  exit 1
+}
+
 step "Installing dependencies"
 # `--ignore-scripts` matches the repository's Dockerfiles. It also skips the
 # root `prepare` script, which runs `lefthook install`; lefthook aborts in orbs
 # because Amp sets a global core.hooksPath, and git hooks are pointless here.
-bun install --frozen-lockfile --ignore-scripts
+#
+# Output is captured rather than streamed: when the registry is unreachable this
+# is hundreds of identical resolver errors, and only the verdict below matters.
+install_log="$(mktemp -t iknoball-install.XXXXXX)"
+if ! bun install --frozen-lockfile --ignore-scripts >"$install_log" 2>&1; then
+  if grep -q 'DNSResolveFailed' "$install_log"; then
+    die "Dependencies could not be downloaded: the npm registry is unreachable." \
+      "$(grep -c 'DNSResolveFailed' "$install_log") downloads failed with DNSResolveFailed.
+This orb has no egress to registry.npmjs.org, so node_modules stays incomplete
+and every dev server started here will crash-loop while the portal serves a 502.
+
+Open a new orb. If a new orb fails the same way, the orb network policy is
+blocking the registry, and that is worth reporting rather than retrying.
+
+Full output: $install_log"
+  fi
+  die "bun install failed." \
+    "The lockfile and the workspace are unchanged, so this is not dependency
+drift. Last lines of the install:
+
+$(tail -n 8 "$install_log")
+
+Full output: $install_log"
+fi
+rm -f "$install_log"
+
+# bun can also exit 0 having half-populated the tree, and then every package
+# symlink dangles. That is the failure that masquerades as a working orb, so
+# check the tree instead of trusting the exit code.
+broken="$(find node_modules apps/*/node_modules packages/*/node_modules \
+  -maxdepth 1 -xtype l 2>/dev/null | wc -l || true)"
+if [ "$broken" -ne 0 ]; then
+  die "node_modules is incomplete: $broken package symlinks point at nothing." \
+    "The install store is missing the packages those links resolve into, so no
+dev server can start from this tree."
+fi
 
 step "Building shared workspace packages"
 # apps/* import @iknoball/* from their built dist/, which is gitignored, so a
 # fresh checkout cannot run until these exist.
-bunx turbo run build \
+if ! bunx turbo run build \
   --filter='@iknoball/database' \
   --filter='@iknoball/schema' \
   --filter='@iknoball/predictions' \
   --filter='@iknoball/release' \
-  --filter='@iknoball/shot-zones'
+  --filter='@iknoball/shot-zones'; then
+  die "Shared workspace packages failed to build." \
+    "apps/* import @iknoball/* from their built dist/, so without these the API
+and the frontend cannot start. The build output above names the failing package."
+fi
 
 step "Preparing local .env"
 if [ -f .env ]; then
