@@ -42,7 +42,7 @@ export const RELEASES: Release[] = [
     changes: [
       {
         kind: 'added',
-        text: 'Type /launch in a channel and the game opens right there. Picks, LeBronnect and the leaderboard all live inside Discord, so you never have to leave the conversation to play.',
+        text: 'Type /iknoball in a channel and the game opens right there. Picks, LeBronnect and the leaderboard all live inside Discord, so you never have to leave the conversation to play.',
       },
       {
         kind: 'added',
