@@ -97,11 +97,13 @@ export class BoardRepository {
    * Activity. So the count has to describe that same population, and it joins the same
    * Discord-identity bridge the board does.
    *
-   * It used to filter `prediction_picks.guildId` instead, on the reading that the
-   * column records where a pick was placed. Nothing writes it: the bot's pick path
-   * sends `userId`, `gameId`, and `side` and no guild, so every day counted zero and
-   * the board was skipped, silently, for the life of the feature. A column that is
-   * null for every row makes a filter look correct and count nothing.
+   * Why the join rather than a filter on `prediction_picks.guildId`: the column reads
+   * like provenance, but nothing writes it — the bot's pick path sends `userId`,
+   * `gameId`, and `side` and no guild, so filtering on it counted zero for every day
+   * and skipped the post silently. That was fixed in af464bf (2026-11-05) and this is
+   * the same query, moved here unchanged from `RolloverRepository`. The note stays
+   * because the join is the part that looks removable, and removing it is exactly how
+   * the board went silent the first time.
    */
   async settledPickCount(guildId: string, slateKey: string): Promise<number> {
     // `prediction_picks.gameId` is the feed's id, so the join is on

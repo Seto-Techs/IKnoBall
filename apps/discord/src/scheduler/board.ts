@@ -51,13 +51,18 @@ export function isDayOver(day: DayState, now: Date): boolean {
  * The day the board is for, or null when nothing has finished yet.
  *
  * The **latest** finished day, not today's: the board ranks settled picks, and today's
- * are not settled until the last game of tonight is. Posting the latest one also means
- * a missed morning catches up by itself — the next tick still sees the same day — so a
- * restart, a deploy, or a channel outage costs a late board rather than a missing one.
+ * are not settled until the last game of tonight is. Choosing the latest one is also
+ * what lets a failed post retry — the next tick sees the same day — so a failure inside
+ * the guild's `postHour` hour costs a late board rather than a missing one.
  *
- * A day with no games is skipped even though it is trivially "over": an off day would
- * otherwise be the latest finished day forever, and the board for the night before it
- * would never post.
+ * That window is the hour, not the day. `BoardScheduler.runForGuild` answers `not-due`
+ * outside it, so a deploy that spans the whole hour loses that morning's board: by the
+ * next tick there is a newer finished day, and the one that was missed is behind it.
+ *
+ * The `games === 0` skip is defensive. `BoardRepository.daysSince` groups from
+ * `schedule_games`, so a day with no games produces no row at all, and an off day is
+ * announced by `noteOffDay`'s `hasGames(today)` instead. Kept because this function is
+ * pure and its contract should not depend on how the caller happens to query.
  */
 export function latestFinishedDay(days: readonly DayState[], now: Date): DayState | null {
   let latest: DayState | null = null;
