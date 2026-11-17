@@ -35,6 +35,26 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.0',
+    date: '2026-11-17',
+    headline:
+      'Play IKnoBall inside Discord: picks, LeBronnect and the leaderboard, one command away.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Type /launch in a channel and the game opens right there. Picks, LeBronnect and the leaderboard all live inside Discord, so you never have to leave the conversation to play.',
+      },
+      {
+        kind: 'added',
+        text: 'Your Discord account signs you in on its own. If you have linked it with /link, the activity opens straight onto your own picks and chain, with no password and no second login.',
+      },
+      {
+        kind: 'improved',
+        text: 'Each pick shows both teams with their records and how long is left before tip-off, so you can decide without opening anything else.',
+      },
+    ],
+  },
+  {
     version: '0.4.1',
     date: '2026-11-14',
     headline:

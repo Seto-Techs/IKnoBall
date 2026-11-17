@@ -8,6 +8,9 @@ import { ApiDataResponse } from './common/openapi/response';
 import { DatabaseService } from './infrastructure/database/database.service';
 
 export class UserProfile {
+  @ApiProperty({ example: 'kR3n8XyZ...', description: 'The user id the leaderboard keys rows by' })
+  id!: string;
+
   @ApiProperty({ example: 'player@iknoball.test' })
   email!: string;
 
@@ -49,6 +52,7 @@ export class UserController {
     const userId = session.user.id as string;
     const rows = await this.db.db
       .select({
+        id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
@@ -63,6 +67,7 @@ export class UserController {
 
     const u = rows[0];
     return response(true, 'Authenticated.', {
+      id: u.id,
       email: u.email,
       name: u.name,
       role: u.role ?? 'user',
@@ -85,6 +90,7 @@ export class UserController {
     // Re-read with JOIN for the response (session still has stale user row)
     const rows = await this.db.db
       .select({
+        id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
@@ -99,6 +105,7 @@ export class UserController {
 
     const u = rows[0];
     return response(true, 'Team updated.', {
+      id: u.id,
       email: u.email,
       name: u.name,
       role: u.role ?? 'user',

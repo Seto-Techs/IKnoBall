@@ -47,19 +47,21 @@ game log yet, so nothing is missing that could have been fetched.
 | `main` | `prod`    | `production`    |
 
 `.github/workflows/cd.yml` runs on every PR merge into `dev` or `main`: it builds
-all four images (`iknoball-be`, `iknoball-fe`, `iknoball-worker`,
-`iknoball-discord`) tagged for that environment, then calls `compose.deploy` on
-the matching compose, found by name inside the `iknoball` project. So a production
-release is a PR merged into `main` — nothing is deployed by pushing a branch
-directly.
+all five images (`iknoball-be`, `iknoball-fe`, `iknoball-worker`,
+`iknoball-discord`, `iknoball-activity`) tagged for that environment, then calls
+`compose.deploy` on the matching compose, found by name inside the `iknoball`
+project. So a production release is a PR merged into `main` — nothing is deployed
+by pushing a branch directly.
 
-A build job that fails blocks the deploy job: `deploy` needs all four and refuses
+A build job that fails blocks the deploy job: `deploy` needs all five and refuses
 to run if any of them failed or was cancelled, so a broken Discord bot image can
 never ship a half-updated stack.
 
 The frontend's API origin is baked in at build time (`VITE_API_URL`), which is why
 the `:prod` frontend must be built by that workflow rather than reused from
-staging.
+staging. The activity bakes in `VITE_API_URL=/be` — a path, not an origin, because
+inside Discord it is served from `<app id>.discordsays.com` and reaches the API
+through the portal's `/be` URL mapping, same-origin.
 
 ## 2. The compose
 
@@ -105,6 +107,12 @@ BETTER_AUTH_SECRET="<openssl rand -base64 32>"
 # https://api-iknoball.setotechs.com/auth/callback/discord
 DISCORD_CLIENT_ID="..."
 DISCORD_CLIENT_SECRET="..."
+
+# Optional. The Discord Activity reaches the API through the portal's `/be` URL
+# mapping, so its requests are same-origin inside Discord's iframe and never
+# trigger CORS. Set this only if something starts calling the API from the
+# activity's own origin directly; it is appended to the CORS allow-list.
+# ACTIVITY_URL="https://activity-iknoball.setotechs.com"
 
 # Redis. The compose runs it with this password; service DNS is `redis`.
 REDIS_PASSWORD="<generated>"

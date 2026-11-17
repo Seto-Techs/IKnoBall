@@ -135,6 +135,31 @@ services:
     networks:
       - app_net
 
+  # The Discord Activity. Static nginx, no env_file: `VITE_API_URL` and the
+  # client id are baked in at build time by the CD workflow. Discord's proxy
+  # serves it inside the client at `<app id>.discordsays.com`, so this host is
+  # only ever reached by that proxy — the URL mapping in the portal points `/`
+  # here and `/be` at the API.
+  activity:
+    image: ghcr.io/seto-techs/iknoball-activity:prod
+    pull_policy: always
+    restart: unless-stopped
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=dokploy-network'
+      - 'traefik.http.routers.iknoball-prod-activity-web.entrypoints=web'
+      - 'traefik.http.routers.iknoball-prod-activity-web.middlewares=redirect-to-https@file'
+      - 'traefik.http.routers.iknoball-prod-activity-web.rule=Host(`activity-iknoball.setotechs.com`)'
+      - 'traefik.http.routers.iknoball-prod-activity-web.service=iknoball-prod-activity-web'
+      - 'traefik.http.routers.iknoball-prod-activity-websecure.entrypoints=websecure'
+      - 'traefik.http.routers.iknoball-prod-activity-websecure.rule=Host(`activity-iknoball.setotechs.com`)'
+      - 'traefik.http.routers.iknoball-prod-activity-websecure.service=iknoball-prod-activity-websecure'
+      - 'traefik.http.services.iknoball-prod-activity-web.loadbalancer.server.port=3000'
+      - 'traefik.http.services.iknoball-prod-activity-websecure.loadbalancer.server.port=3000'
+    networks:
+      - dokploy-network
+      - default
+
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}

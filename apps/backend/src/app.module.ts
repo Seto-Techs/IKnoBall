@@ -12,6 +12,7 @@ import { PredictionsController } from './predictions.controller';
 import { PredictionsModule } from './predictions.module';
 import { InternalModule } from './internal/internal.module';
 import { DiscordLinkModule } from './discord-link/discord-link.module';
+import { ActivityModule } from './activity/activity.module';
 import { LeadersController } from './leaders.controller';
 import { SearchController } from './search.controller';
 import { PlayersController } from './players.controller';
@@ -49,6 +50,8 @@ import { ZodValidationPipe, ZodSerializerInterceptor } from 'nestjs-zod';
     InternalModule,
     // Empty until chunk C5 fills it in.
     DiscordLinkModule,
+    // The Discord Activity's sign-in: a Discord id in, a session token out.
+    ActivityModule,
     AuthModule.forRootAsync({
       imports: [EmailModule],
       inject: [EmailService],
