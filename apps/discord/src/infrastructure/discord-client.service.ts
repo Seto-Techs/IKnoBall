@@ -1,5 +1,12 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import {
+  ApplicationCommandType,
+  Client,
+  EntryPointCommandHandlerType,
+  Events,
+  GatewayIntentBits,
+} from 'discord.js';
+import type { PrimaryEntryPointCommandData } from 'discord.js';
 import { DiscordConfigService } from '../config/discord-config.service';
 import { InteractionRouter } from '../interactions/router';
 
@@ -99,6 +106,11 @@ export class DiscordClientService implements OnModuleDestroy {
    * Discord's global command PUT is a bulk overwrite, so running this on every
    * boot is idempotent: it updates changed definitions and removes ones the
    * registry no longer lists. No diffing, no stored hash to get out of sync.
+   *
+   * One command is not ours to describe: the Activity's `PRIMARY_ENTRY_POINT`
+   * command, which Discord creates when Activities are enabled and which the
+   * developer portal owns. A bulk overwrite that omits it is rejected with
+   * 50240, so whatever entry point already exists is carried through untouched.
    */
   private async registerCommands(): Promise<void> {
     const application = this.raw.application;
@@ -108,12 +120,28 @@ export class DiscordClientService implements OnModuleDestroy {
     }
 
     const commands = this.router.commandDefinitions();
-    await application.commands.set(commands);
+    // Echoed back by name rather than id: the bulk overwrite upserts on the
+    // pair (type, name), so this preserves the entry point instead of deleting
+    // and recreating it.
+    const entryPoints: PrimaryEntryPointCommandData[] = [
+      ...(await application.commands.fetch()).values(),
+    ]
+      .filter((command) => command.type === ApplicationCommandType.PrimaryEntryPoint)
+      .map((command) => ({
+        name: command.name,
+        description: command.description,
+        type: ApplicationCommandType.PrimaryEntryPoint,
+        handler: command.handler ?? EntryPointCommandHandlerType.DiscordLaunchActivity,
+        integrationTypes: command.integrationTypes ?? undefined,
+        contexts: command.contexts ?? undefined,
+      }));
+
+    await application.commands.set([...entryPoints, ...commands]);
 
     this.logger.log(
       `Discord: registered ${commands.length} global commands (${commands
         .map((command) => `/${command.name}`)
-        .join(', ')})`,
+        .join(', ')})${entryPoints.length ? ' plus the Activity entry point' : ''}`,
     );
   }
 }
