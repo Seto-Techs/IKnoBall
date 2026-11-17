@@ -41,6 +41,19 @@ export function apiUrl(path: string): string {
   return `${API_BASE}/api${path}`;
 }
 
+/**
+ * Whether this page is running inside Discord's iframe.
+ *
+ * Discord appends `frame_id` to the iframe URL and the SDK reads it during
+ * `ready()`, throwing a bare "frame_id query param is not defined" when it is
+ * absent. That is what anyone who opens the deployed URL directly gets — a
+ * shared link, a bookmark, a curious visit — so the shell checks this first and
+ * says where the app actually lives rather than showing that error.
+ */
+export function isInsideDiscord(): boolean {
+  return new URLSearchParams(window.location.search).has('frame_id');
+}
+
 /** What `POST /api/activity/session` hands back. */
 export interface ActivitySession {
   token: string;
@@ -74,6 +87,10 @@ export async function connectDiscord(): Promise<ActivitySession> {
     throw new ActivityError(
       'VITE_DISCORD_CLIENT_ID is not set, so the activity cannot ask Discord who you are.',
     );
+  }
+
+  if (!isInsideDiscord()) {
+    throw new ActivityError('IKnoBall opens inside Discord. Type /launch in any channel to play.');
   }
 
   const sdk = new DiscordSDK(CLIENT_ID);
