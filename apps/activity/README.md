@@ -48,6 +48,35 @@ is required: the default only patches fetch/XHR/WebSocket, which leaves every
 `<img src>` blocked. With it, the SDK watches `src` attributes and added nodes,
 so React-mounted avatars are caught too.
 
+## Testing
+
+Three layers, cheapest first. Only the last one needs a deploy.
+
+**Unit tests.** `bun run --filter activity test` covers what fails silently.
+`src/lib/discord.spec.ts` drives the SDK's own `patchUrlMappings` with a stubbed
+`window`, so a mapping that leaves `cdn.nba.com` URLs untouched fails here
+instead of showing up as broken headshots in the client.
+
+**The real UI, against the real API.** In dev, `App.tsx` takes a session token
+from `?token=` (it then remembers it in `localStorage` under
+`iknoball.activity.dev-token`) and skips the SDK handshake, so a plain browser
+tab drives every screen:
+
+```bash
+bun run activity   # http://localhost:5174/?token=<session token>
+```
+
+That token is a Better Auth session token: sign into the site, then copy the
+`set-auth-token` response header from any `/api/auth/...` call in devtools. It
+is good for as long as that session is.
+
+**What the harness cannot show.** Outside Discord there is no CSP, no URL
+mapping and no iframe, so `cdn.nba.com` loads directly and a broken mapping
+looks perfect — that is how a wrong target reached production once. The
+handshake and the frame's size are the same story. Those live only in a real
+client, which is why the mapping is pinned by a unit test rather than by
+looking at the page.
+
 ## Deploy
 
 `apps/activity/Dockerfile` builds the bundle and serves it from nginx on port
