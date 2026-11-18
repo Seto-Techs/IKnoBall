@@ -58,8 +58,8 @@ export class Infrastructure {
    * The bot → API client.
    *
    * Same story: `IknoballClient` is a provider of `AppModule`, which exports nothing.
-   * The rollover's recap asks the API for a guild's board, because the ranking is
-   * the API's to compute — the bot must not grow a second definition of points.
+   * The daily board asks the API for a guild's ranking, because the ranking is the
+   * API's to compute — the bot must not grow a second definition of points.
    */
   get api(): IknoballClient {
     this.iknoball ??= this.moduleRef.get(IknoballClient, { strict: false });

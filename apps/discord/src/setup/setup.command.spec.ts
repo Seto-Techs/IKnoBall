@@ -6,16 +6,14 @@ import {
   type ChatInputCommandInteraction,
   type PermissionsBitField,
 } from 'discord.js';
-import type { CardPayload } from '../cards/card-payload';
-import type { SlatePoster, SlatePreview } from '../scheduler/slate-poster';
 import type { GuildConfigService, GuildSettings } from './guild-config.service';
 import { SetupCommand } from './setup.command';
 
 /**
  * `/setup`, driven as an interaction.
  *
- * The command is the only way a guild's row is created, so each rejection here is
- * a row that does not exist and a slate that is never posted into a guessed
+ * The command is the only way a guild's row is created, so each rejection here is a
+ * row that does not exist and a leaderboard that is never posted into a guessed
  * channel. The gateway is fake; the validation and the write are real.
  */
 
@@ -85,11 +83,7 @@ function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
   };
 }
 
-function preview(overrides: Partial<SlatePreview> = {}): SlatePreview {
-  return { etKey: '2026-10-27', games: 0, payloads: [], ...overrides };
-}
-
-function harness(options: { existing?: GuildSettings | null; preview?: SlatePreview } = {}) {
+function harness(options: { existing?: GuildSettings | null } = {}) {
   // Mirrors the service: an unspecified field keeps the stored value, and only
   // then falls back to the default.
   const save = vi.fn(async (input: Parameters<GuildConfigService['save']>[0]) => {
@@ -104,14 +98,10 @@ function harness(options: { existing?: GuildSettings | null; preview?: SlatePrev
     };
   });
   const get = vi.fn(async () => options.existing ?? null);
-  const previewCards = vi.fn(async () => options.preview ?? preview());
 
-  const command = new SetupCommand(
-    { get, save } as unknown as GuildConfigService,
-    { preview: previewCards } as unknown as SlatePoster,
-  );
+  const command = new SetupCommand({ get, save } as unknown as GuildConfigService);
 
-  return { command, save, get, previewCards };
+  return { command, save, get };
 }
 
 /** The text of the single reply, whichever overload was used. */
@@ -259,18 +249,14 @@ describe('saving', () => {
 
     expect(save).toHaveBeenCalledTimes(1);
     const text = replyText(reply);
-    expect(text).toContain('Slate configured for this server');
+    expect(text).toContain('Leaderboard configured for this server');
     expect(text).not.toContain('Heads up');
   });
 });
 
 describe('no arguments', () => {
-  it('shows the current config and today’s cards', async () => {
-    const payload = { embeds: [{ title: 'BKN @ BOS' }], components: [] } as unknown as CardPayload;
-    const { command, previewCards } = harness({
-      existing: settings(),
-      preview: preview({ games: 2, payloads: [payload] }),
-    });
+  it('shows the current config and sends nothing else', async () => {
+    const { command } = harness({ existing: settings() });
     const { interaction: fake, reply } = interaction();
 
     await command.execute(fake);
@@ -279,13 +265,14 @@ describe('no arguments', () => {
     expect(text).toContain('<#channel-1>');
     expect(text).toContain('09:00 America/New_York');
     expect(text).toContain('enabled');
-    expect(text).toContain("**Today's slate — Oct 27 (ET):** 2 games — one message each");
-    expect(previewCards).toHaveBeenCalledTimes(1);
+    expect(text).toContain('Picks are made in the Activity — type `/iknoball`');
 
+    // No embeds and no buttons: the cards are gone, so there is nothing to preview.
     const [replyPayload] = reply.mock.calls[0] as unknown as [
-      { embeds: unknown[]; flags: MessageFlags },
+      { embeds?: unknown[]; components?: unknown[]; flags: MessageFlags },
     ];
-    expect(replyPayload.embeds).toHaveLength(1);
+    expect(replyPayload.embeds).toBeUndefined();
+    expect(replyPayload.components).toBeUndefined();
     expect(replyPayload.flags).toBe(MessageFlags.Ephemeral);
   });
 
@@ -298,27 +285,8 @@ describe('no arguments', () => {
     const text = replyText(reply);
     expect(text).toContain('not set up yet');
     expect(text).toContain('09:00 America/New_York');
-    expect(text).toContain('nothing would be posted');
+    expect(text).toContain('no leaderboard is posted');
+    expect(text).toContain('/iknoball');
     expect(save).not.toHaveBeenCalled();
-  });
-
-  it('says a slate goes out one card per message', async () => {
-    const { command } = harness({ existing: settings(), preview: preview({ games: 6 }) });
-    const { interaction: fake, reply } = interaction();
-
-    await command.execute(fake);
-
-    const text = replyText(reply);
-    expect(text).toContain('6 games');
-    expect(text).toContain('one message each');
-  });
-
-  it('says one message for a single-game day', async () => {
-    const { command } = harness({ existing: settings(), preview: preview({ games: 1 }) });
-    const { interaction: fake, reply } = interaction();
-
-    await command.execute(fake);
-
-    expect(replyText(reply)).toContain('1 game —');
   });
 });

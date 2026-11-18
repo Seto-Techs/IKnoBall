@@ -380,8 +380,13 @@ Reading it: `connected` should equal the number of servers the bot is actually i
 is how many of them ran `/setup`. `configured` below `connected` is normal for a
 guild that invited the bot and never finished setup. `locked` should be close to
 `posted` minus today's open cards; `settled` trails `locked` by the worker's
-settlement cadence. A `last slate post` older than 24 hours while `active` is the
-one number that means "posting is broken", not "nothing happened today".
+settlement cadence.
+
+`last slate post` and the `cards:` counts are history as of 0.6.0: picks are made in
+the Discord Activity, so the bot no longer posts cards and these only move when
+someone runs the `force:slate` op. What posts daily now is the **leaderboard**, once
+per guild at its `/setup` hour — if a guild is `configured` and `active` but no board
+arrived today, look for `Leaderboard post failed` in the log rather than at this line.
 
 ### 7.4 Token rotation
 
@@ -504,8 +509,10 @@ rg 'guild=1122334455'        # one server
 
 The other lines worth knowing:
 
-- `SlateScheduler`: `Slate post failed for guild <id>: <reason>` — one guild, the
-  rest of the sweep continues.
+- `BoardScheduler`: `Leaderboard post failed for guild <id>: <reason>` — one guild,
+  the rest of the sweep continues. The same logger also says
+  `DISCORD_ENABLED=false: no leaderboard is being posted in any guild.` once a minute
+  while the kill switch is off.
 - `CardSweep`: `tip-off lock: edited N card(s) in M message(s)…`,
   `settlement: edited …`, `… is dead, dropping N card(s)` (a 403/404/unknown
   message, never retried), `… pausing for Ns (failure N)` (a transient failure:

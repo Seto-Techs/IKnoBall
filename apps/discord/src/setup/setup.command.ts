@@ -1,10 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { CommandHandler } from '../interactions/handler.types';
-import type { SlatePreview, SlatePoster } from '../scheduler/slate-poster';
-import { formatDayKey, localClock } from '../scheduler/slate-date';
+import { localClock } from '../scheduler/slate-date';
 import type { GuildConfigService, GuildSettings } from './guild-config.service';
-import { GUILD_CONFIG, SLATE_POSTER } from './tokens';
+import { GUILD_CONFIG } from './tokens';
 import {
   DEFAULT_POST_HOUR,
   DEFAULT_TIMEZONE,
@@ -17,7 +16,10 @@ import {
 } from './guild-settings';
 
 /**
- * `/setup` — where and when this server gets its slate.
+ * `/setup` — where and when this server gets its daily leaderboard.
+ *
+ * The board is the bot's only scheduled post now that picks live in the Activity, so
+ * the channel and hour configured here are about that one post.
  *
  * Three rules the command enforces before it writes anything:
  *
@@ -28,8 +30,9 @@ import {
  * - A channel the bot can actually post in, so the failure shows up here instead
  *   of silently at 9 a.m.
  *
- * With no options it reports the current config and previews today's cards, which
- * is the only way an admin can see what the bot will post without waiting a day.
+ * With no options it reports the current config. It no longer previews the day's
+ * cards: the bot does not post them, and an admin should not be shown a post that will
+ * never arrive.
  */
 @Injectable()
 export class SetupCommand implements CommandHandler {
@@ -37,9 +40,9 @@ export class SetupCommand implements CommandHandler {
 
   readonly data = new SlashCommandBuilder()
     .setName('setup')
-    .setDescription('Configure where and when this server gets the daily slate.')
+    .setDescription('Configure where and when this server gets the daily leaderboard.')
     .addChannelOption((option) =>
-      option.setName('channel').setDescription('Channel to post the daily slate in.'),
+      option.setName('channel').setDescription('Channel to post the daily leaderboard in.'),
     )
     .addIntegerOption((option) =>
       option
@@ -58,29 +61,25 @@ export class SetupCommand implements CommandHandler {
   /**
    * Injected by token, not by class.
    *
-   * `GuildConfigService` and `SlatePoster` both reach `Infrastructure`, which
-   * reaches `DiscordClientService` → `InteractionRouter` → the command registry →
-   * this file. Importing either as a value closes that loop, and a class read
-   * before its module has finished evaluating is `undefined` when the decorator
-   * metadata is built — Nest would then have nothing to inject and the bot would
-   * fail to resolve `/setup` at boot. The tokens in `./tokens` are strings in a
-   * file that imports nothing, so this file's only runtime dependencies are the
-   * validators and the date helpers.
+   * `GuildConfigService` reaches `Infrastructure`, which reaches
+   * `DiscordClientService` → `InteractionRouter` → the command registry → this file.
+   * Importing it as a value closes that loop, and a class read before its module has
+   * finished evaluating is `undefined` when the decorator metadata is built — Nest
+   * would then have nothing to inject and the bot would fail to resolve `/setup` at
+   * boot. The token in `./tokens` is a string in a file that imports nothing, so this
+   * file's only runtime dependencies are the validators and the date helpers.
    */
-  constructor(
-    @Inject(GUILD_CONFIG) private readonly config: GuildConfigService,
-    @Inject(SLATE_POSTER) private readonly poster: SlatePoster,
-  ) {}
+  constructor(@Inject(GUILD_CONFIG) private readonly config: GuildConfigService) {}
 
   async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     const guildId = interaction.guildId;
     if (!guildId) {
-      await reply(interaction, 'Run `/setup` in the server you want the slate posted in.');
+      await reply(interaction, 'Run `/setup` in the server you want the board posted in.');
       return;
     }
 
     if (!canManageServer(interaction.memberPermissions)) {
-      await reply(interaction, 'You need the **Manage Server** permission to configure the slate.');
+      await reply(interaction, 'You need the **Manage Server** permission to configure the board.');
       return;
     }
 
@@ -131,7 +130,7 @@ export class SetupCommand implements CommandHandler {
     const saved = await this.config.save({ guildId, channelId, postHour: hour, timezone });
 
     this.logger.log(
-      `Slate configured for guild ${guildId}: <#${saved.channelId}> ${formatPostHour(
+      `Leaderboard configured for guild ${guildId}: <#${saved.channelId}> ${formatPostHour(
         saved.postHour,
       )} ${saved.timezone}`,
     );
@@ -139,61 +138,42 @@ export class SetupCommand implements CommandHandler {
     await reply(interaction, confirmation(saved));
   }
 
-  /** The no-argument form: current config, then today's cards. */
+  /** The no-argument form: the current config, and where picks happen now. */
   private async showCurrent(
     interaction: ChatInputCommandInteraction,
     guildId: string,
   ): Promise<void> {
     const settings = await this.config.get(guildId);
-    const preview = await this.poster.preview();
     const now = new Date();
 
     const lines = settings
       ? [
           `**Channel:** <#${settings.channelId}>`,
-          `**Posts:** every day at ${formatPostHour(settings.postHour)} ${settings.timezone}` +
+          `**Posts:** the leaderboard for the last finished slate, every day at ` +
+            `${formatPostHour(settings.postHour)} ${settings.timezone}` +
             ` (it is ${localClock(now, settings.timezone)} there now)`,
           `**Status:** ${settings.enabled ? 'enabled' : 'paused'}`,
           '',
           'Change it with `/setup channel:#nba hour:9 timezone:America/New_York`.',
         ]
       : [
-          'This server is not set up yet, so no slate is posted.',
+          'This server is not set up yet, so no leaderboard is posted.',
           `**Defaults:** every day at ${formatPostHour(DEFAULT_POST_HOUR)} ${DEFAULT_TIMEZONE}.`,
           'Start with `/setup channel:#nba`.',
         ];
 
-    lines.push('', previewLine(preview));
+    lines.push('', 'Picks are made in the Activity — type `/iknoball` in a channel to open it.');
 
-    await interaction.reply({
-      content: lines.join('\n'),
-      embeds: preview.payloads.flatMap((payload) => payload.embeds),
-      components: preview.payloads.flatMap((payload) => payload.components),
-      flags: MessageFlags.Ephemeral,
-    });
+    await interaction.reply({ content: lines.join('\n'), flags: MessageFlags.Ephemeral });
   }
 }
 
 function confirmation(settings: GuildSettings): string {
   return [
-    '**Slate configured for this server.**',
+    '**Leaderboard configured for this server.**',
     `**Channel:** <#${settings.channelId}>`,
     `**Posts:** every day at ${formatPostHour(settings.postHour)} ${settings.timezone}`,
   ].join('\n');
-}
-
-/** What today's slate would look like, in one line. */
-function previewLine(preview: SlatePreview): string {
-  const day = formatDayKey(preview.etKey);
-
-  if (preview.games === 0) {
-    return `**Today's slate — ${day} (ET):** no games, so nothing would be posted.`;
-  }
-
-  return (
-    `**Today's slate — ${day} (ET):** ${preview.games} game${preview.games === 1 ? '' : 's'} — ` +
-    'one message each, so every card sits above its own buttons.'
-  );
 }
 
 async function reply(interaction: ChatInputCommandInteraction, content: string): Promise<void> {

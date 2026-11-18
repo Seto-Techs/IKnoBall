@@ -9,8 +9,8 @@ import { SchedulerModule } from './scheduler.module';
  * TypeScript only emits that metadata for a decorated class. An undecorated
  * provider is constructed with **no arguments**, so its dependencies are silently
  * `undefined` and the failure surfaces only when something touches one — which is
- * exactly how `RolloverRepository` shipped: every rollover tick died on
- * `this.infra.db` for the life of the feature, and nothing failed at boot.
+ * exactly how the board repository shipped (as `RolloverRepository`): every tick died
+ * on `this.infra.db` for the life of the feature, and nothing failed at boot.
  *
  * The watermark is the cheap, honest check. Asserting `design:paramtypes` instead
  * would not work here: the build strips decorator metadata, so every class would
@@ -27,7 +27,7 @@ describe('the scheduler module’s providers', () => {
 
   it('registers the ones the scheduler needs', () => {
     // A guard against the filter above silently matching nothing.
-    expect(classes.length).toBeGreaterThanOrEqual(10);
+    expect(classes.length).toBeGreaterThanOrEqual(9);
   });
 
   it('decorates every class provider, so its dependencies are injected', () => {

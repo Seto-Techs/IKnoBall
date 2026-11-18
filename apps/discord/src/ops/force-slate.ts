@@ -1,23 +1,21 @@
 /**
  * `bun run force:slate` — post one slate day's cards now, from a shell.
  *
- * The bot has two triggers of its own: `SlateScheduler` posts at each guild's local
- * hour, and `RolloverScheduler` posts the next day once the last game goes final.
- * Neither can be asked to post on demand, which leaves a bad set of options on the
- * morning a guild's post did not happen: wait a day, or edit `discord_cards` by
- * hand. This is the third trigger, and the only one an operator can pull.
+ * Since 0.6.0 no cron posts cards at all — picks are made in the Activity — so this
+ * is the *only* way a slate goes into a channel, and it exists for the case it always
+ * did: an operator who needs a day's cards in front of people, now, without waiting
+ * for a schedule that no longer posts them.
  *
  * Three properties, because a manual post is the one that can quietly diverge from
  * the automatic ones:
  *
  * 1. **It is the same post.** Everything after the day key — selection, claim,
- *    send — is `SlatePoster.postFor`, the method both crons call. This file
+ *    send — is `SlatePoster.postFor`, the method the crons used to call. This file
  *    adds an entry point, not a second implementation.
  * 2. **It cannot double-post.** The cards are claimed in `discord_cards` with
  *    `on conflict do nothing` before anything is sent, so a day that is already
- *    out answers `already-posted` instead of posting twice. The Redis day key is
- *    left alone: it is `SlateScheduler`'s cheap filter, and the durable guard it
- *    fronts is the claim.
+ *    out answers `already-posted` instead of posting twice. No Redis key is
+ *    involved: the durable guard is the claim.
  * 3. **It is an operator tool, not a feature.** No slash command, nothing in the
  *    command picker, no help copy, no changelog entry — in 0.3.2 or later. Adding
  *    it to any of those is a product decision, not a docs tidy-up.

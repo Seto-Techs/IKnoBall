@@ -1,18 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DiscordConfigService } from '../config/discord-config.service';
+import type { DayState } from '../scheduler/board';
+import type { BoardRepository } from '../scheduler/board-repository';
+import { BoardScheduler } from '../scheduler/board-scheduler';
 import type { DayKeyGuard } from '../scheduler/day-key.guard';
+import type { RecapPoster } from '../scheduler/recap-poster';
 import { etDateKey } from '../scheduler/slate-date';
-import type { PostResult, SlatePoster } from '../scheduler/slate-poster';
-import { SlateScheduler } from '../scheduler/slate-scheduler';
+import type { SlatePoster } from '../scheduler/slate-poster';
 import type { GuildConfigService, GuildSettings } from '../setup/guild-config.service';
 
 /**
- * One guild's 403 must not cost the other guilds their slate.
+ * One guild's 403 must not cost the other guilds their board.
  *
  * The failure this guards against is the expensive one: a bot in a hundred servers
  * that is missing `Send Messages` in *one* channel. If that 403 escaped the loop,
- * ninety-nine guilds would go dark because of one server's permissions, and the
- * first symptom would be users noticing — not the logs.
+ * ninety-nine guilds would go a day without their leaderboard because of one
+ * server's permissions, and the first symptom would be users noticing — not the logs.
  *
  * The 403 is shaped the way discord.js raises it: a `DiscordAPIError` carries the
  * HTTP status on `status` and Discord's code on `code`.
@@ -34,12 +37,13 @@ function settings(guildId: string): GuildSettings {
   };
 }
 
-function posted(guildId: string): PostResult {
+/** Last night's slate, every game final. */
+function finishedDay(): DayState {
   return {
-    status: 'posted',
-    etKey: '2026-10-27',
+    slateKey: '2026-10-27',
     games: 2,
-    messageIds: [`message-${guildId}`],
+    finals: 2,
+    lastTipOff: new Date('2026-10-27T23:30:00.000Z'),
   };
 }
 
@@ -48,19 +52,20 @@ const NINE_ET = new Date('2026-10-27T13:00:00.000Z');
 
 function harness(guildIds: string[], failFor: string) {
   const keys = new Set<string>();
-  const postFor = vi.fn(async (target: { guildId: string }) => {
+  const post = vi.fn(async (target: { guildId: string }) => {
     if (target.guildId === failFor) throw forbidden();
-    return posted(target.guildId);
+    return 'posted' as const;
   });
 
-  const scheduler = new SlateScheduler(
+  const scheduler = new BoardScheduler(
     { enabled: true } as unknown as DiscordConfigService,
     { listEnabled: async () => guildIds.map(settings) } as unknown as GuildConfigService,
+    { daysSince: async () => [finishedDay()] } as unknown as BoardRepository,
+    { post } as unknown as RecapPoster,
     {
-      postFor,
-      postOffDay: vi.fn(async () => {}),
       hasGames: vi.fn(async () => true),
       nextSlateDay: vi.fn(async (now: Date) => etDateKey(now)),
+      postOffDay: vi.fn(async () => {}),
     } as unknown as SlatePoster,
     {
       has: async (key: string) => keys.has(key),
@@ -70,35 +75,35 @@ function harness(guildIds: string[], failFor: string) {
     } as unknown as DayKeyGuard,
   );
 
-  return { scheduler, postFor, keys, slateKeys: slateKeysOf(keys) };
+  return { scheduler, post, keys, boardKeys: boardKeysOf(keys) };
 }
 
-/** The slate keys only: the off-day note keeps its own keyspace. */
-function slateKeysOf(keys: Set<string>): () => string[] {
-  return () => [...keys].filter((key) => !key.startsWith('note:'));
+/** The board keys only: the off-day note keeps its own keyspace. */
+function boardKeysOf(keys: Set<string>): () => string[] {
+  return () => [...keys].filter((key) => key.startsWith('recap:')).sort();
 }
 
 describe('per-guild isolation', () => {
   it('keeps the other guilds posting when one guild answers 403', async () => {
-    const { scheduler, postFor, slateKeys } = harness(
+    const { scheduler, post, boardKeys } = harness(
       ['locked-out', 'guild-b', 'guild-c'],
       'locked-out',
     );
 
     expect(await scheduler.tick(NINE_ET)).toEqual([
-      { guildId: 'locked-out', status: 'failed' },
-      { guildId: 'guild-b', status: 'posted' },
-      { guildId: 'guild-c', status: 'posted' },
+      { guildId: 'locked-out', day: '2026-10-27', status: 'failed' },
+      { guildId: 'guild-b', day: '2026-10-27', status: 'posted' },
+      { guildId: 'guild-c', day: '2026-10-27', status: 'posted' },
     ]);
 
     // Every guild after the broken one was still attempted, in order.
-    expect(postFor.mock.calls.map(([target]) => (target as { guildId: string }).guildId)).toEqual([
+    expect(post.mock.calls.map(([target]) => (target as { guildId: string }).guildId)).toEqual([
       'locked-out',
       'guild-b',
       'guild-c',
     ]);
-    // …and their slates are on the record, not just attempted.
-    expect(slateKeys().sort()).toEqual(['guild-b:2026-10-27', 'guild-c:2026-10-27']);
+    // …and their boards are on the record, not just attempted.
+    expect(boardKeys()).toEqual(['recap:guild-b:2026-10-27', 'recap:guild-c:2026-10-27']);
   });
 
   it('does not spend the broken guild’s day key, so it retries once the channel is fixed', async () => {
@@ -107,8 +112,8 @@ describe('per-guild isolation', () => {
     await scheduler.tick(NINE_ET);
 
     // A 403 is a property of the channel, not of the hour: the retry must be allowed.
-    expect(keys.has('locked-out:2026-10-27')).toBe(false);
-    expect(keys.has('guild-b:2026-10-27')).toBe(true);
+    expect(keys.has('recap:locked-out:2026-10-27')).toBe(false);
+    expect(keys.has('recap:guild-b:2026-10-27')).toBe(true);
   });
 
   it('isolates a 403 wherever it lands in the sweep, not only at the end', async () => {

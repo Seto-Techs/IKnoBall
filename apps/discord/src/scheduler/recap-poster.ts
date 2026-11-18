@@ -3,15 +3,15 @@ import type { SendableChannels } from 'discord.js';
 import type { Pace } from '../infrastructure/rate-limiter';
 import { leaderboardEmbed } from '../leaderboard/leaderboard.embed';
 import { Infrastructure } from './infrastructure';
-import { recapIntro, recapModes, shouldPostRecap } from './rollover';
-import { RolloverRepository } from './rollover-repository';
+import { recapIntro, recapModes, shouldPostRecap } from './board';
+import { BoardRepository } from './board-repository';
 import { SLATE_PACE, type SlateTarget } from './slate-poster';
 
 /** What a recap attempt did, for the scheduler's log line. */
 export type RecapStatus = 'posted' | 'skipped';
 
 /**
- * "Today's picks", posted when the last game of the day goes final.
+ * The daily board: one finished slate day's leaderboard, posted unprompted.
  *
  * The board is the `/leaderboard` embed, unchanged and unparameterised by a viewer:
  * an unprompted recap has no caller whose row would be appended, which is why the
@@ -20,13 +20,15 @@ export type RecapStatus = 'posted' | 'skipped';
  * bot never disagrees with the website about points.
  *
  * Two gates, in order: the day must have settled picks (`shouldPostRecap`), and the
- * guild must not have been recapped for that day already (checked by the caller,
- * `RolloverScheduler`, which owns the Redis key). A day with no picks costs one
- * count and no REST call.
+ * guild must not have been sent this day's board already (checked by the caller,
+ * `BoardScheduler`, which owns the Redis key). A day with no picks costs one count and
+ * no REST call.
  *
- * Sends into the guild's slate channel with the same pacing as a slate post. It does
- * not re-run the permission preflight: the slate this recap follows was just sent
- * into the same channel, so a `403` here would already have failed there.
+ * Sends into the guild's `/setup` channel with the shared pacing queue. It does not
+ * run the card pipeline's permission preflight: nothing precedes this post any more,
+ * so a missing `Send Messages` has to surface as the failure it is — the send throws,
+ * the scheduler reports it and does not remember the day, and the next minute tries
+ * again.
  */
 @Injectable()
 export class RecapPoster {
@@ -35,7 +37,7 @@ export class RecapPoster {
 
   constructor(
     private readonly infra: Infrastructure,
-    private readonly repo: RolloverRepository,
+    private readonly repo: BoardRepository,
     @Optional() @Inject(SLATE_PACE) pace?: Pace,
   ) {
     this.pace = pace ?? ((task) => task());
