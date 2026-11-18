@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run --config vitest.config.mjs"
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.5.0",
@@ -24,6 +25,7 @@
     "postcss": "^8.5.6",
     "tailwindcss": "3",
     "typescript": "~5.9.3",
-    "vite": "^7.2.5"
+    "vite": "^7.2.5",
+    "vitest": "^4.1.10"
   }
 }

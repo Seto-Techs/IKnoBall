@@ -17,8 +17,14 @@ export const CDN_ORIGIN = 'https://cdn.nba.com';
  * `patchUrlMappings` matches on the target host, so an absolute
  * `https://cdn.nba.com/...` URL from the API is rewritten to `/nba/...` on the
  * activity's own origin.
+ *
+ * The target must be a bare host with no scheme. The SDK coerces it with
+ * `new URL('https://' + target)`, so passing `https://cdn.nba.com` parses to
+ * host `https` and builds the regex `https(/|$)/` — which never matches, since
+ * a real URL has a colon after its scheme. The mapping then silently does
+ * nothing and every image stays on the host Discord's CSP blocks.
  */
-const CDN_MAPPING = { prefix: '/nba', target: CDN_ORIGIN };
+export const CDN_MAPPING = { prefix: '/nba', target: new URL(CDN_ORIGIN).host };
 
 const CLIENT_ID: string = import.meta.env.VITE_DISCORD_CLIENT_ID ?? '';
 
