@@ -80,7 +80,7 @@ function bindPace(moduleRef: ModuleRef) {
     { provide: DAY_KEY_GUARD, useExisting: RedisDayKeyGuard },
     SlatePoster,
     { provide: SLATE_PACE, useFactory: bindPace, inject: [ModuleRef] },
-    // The board (0.6.0): the one post the bot still makes on a schedule.
+    // The board (0.5.1): the one post the bot still makes on a schedule.
     BoardRepository,
     RecapPoster,
     BoardScheduler,

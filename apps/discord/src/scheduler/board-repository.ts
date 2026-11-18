@@ -1,5 +1,5 @@
 /**
- * The database half of the daily board (0.6.0).
+ * The database half of the daily board (0.5.1).
  *
  * Two questions, and nothing else: how the recent league days stand, and how many
  * picks settled on one of them for one guild. `board.ts` decides with the answers;

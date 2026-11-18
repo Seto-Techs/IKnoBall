@@ -35,8 +35,8 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: '0.6.0',
-    date: '2026-11-17',
+    version: '0.5.1',
+    date: '2026-11-18',
     headline: 'The leaderboard posts itself every day, and picks live in the Activity.',
     changes: [
       {

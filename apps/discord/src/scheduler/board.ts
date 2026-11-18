@@ -1,5 +1,5 @@
 /**
- * The bot's one scheduled post: the daily leaderboard (0.6.0).
+ * The bot's one scheduled post: the daily leaderboard (0.5.1).
  *
  * The bot used to post two things: the pick cards at each guild's local hour, and a
  * recap of the finished slate the moment the next day's cards rolled out. Picks moved

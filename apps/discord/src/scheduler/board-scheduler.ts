@@ -33,7 +33,7 @@ export interface BoardOutcome {
 }
 
 /**
- * The minute cron that posts each guild its daily leaderboard (0.6.0).
+ * The minute cron that posts each guild its daily leaderboard (0.5.1).
  *
  * Picks live in the Activity now, so the bot no longer posts cards and there is no
  * slate to roll over. What is left is the one post that is still the bot's job: the

@@ -1,7 +1,7 @@
 /**
  * `bun run force:slate` — post one slate day's cards now, from a shell.
  *
- * Since 0.6.0 no cron posts cards at all — picks are made in the Activity — so this
+ * Since 0.5.1 no cron posts cards at all — picks are made in the Activity — so this
  * is the *only* way a slate goes into a channel, and it exists for the case it always
  * did: an operator who needs a day's cards in front of people, now, without waiting
  * for a schedule that no longer posts them.

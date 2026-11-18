@@ -382,7 +382,7 @@ guild that invited the bot and never finished setup. `locked` should be close to
 `posted` minus today's open cards; `settled` trails `locked` by the worker's
 settlement cadence.
 
-`last slate post` and the `cards:` counts are history as of 0.6.0: picks are made in
+`last slate post` and the `cards:` counts are history as of 0.5.1: picks are made in
 the Discord Activity, so the bot no longer posts cards and these only move when
 someone runs the `force:slate` op. What posts daily now is the **leaderboard**, once
 per guild at its `/setup` hour — if a guild is `configured` and `active` but no board
