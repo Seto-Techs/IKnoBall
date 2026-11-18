@@ -513,6 +513,10 @@ The other lines worth knowing:
   the rest of the sweep continues. The same logger also says
   `DISCORD_ENABLED=false: no leaderboard is being posted in any guild.` once a minute
   while the kill switch is off.
+- `RecapPoster`: `Lebronnect card skipped for guild <id> on <day>: <reason>` — the
+  board still went out, without its picture. A day with no results, a puzzle that was
+  never published, or an image fetch that timed out all land here, and none of them is
+  worth an alert: the leaderboard is the post, the card is the extra.
 - `CardSweep`: `tip-off lock: edited N card(s) in M message(s)…`,
   `settlement: edited …`, `… is dead, dropping N card(s)` (a 403/404/unknown
   message, never retried), `… pausing for Ns (failure N)` (a transient failure:
