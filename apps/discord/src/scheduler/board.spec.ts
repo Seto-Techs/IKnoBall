@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAY_OVER_GRACE_MS,
+  formatDayLabel,
   isDayOver,
   latestFinishedDay,
   recapIntro,
@@ -109,6 +110,22 @@ describe('whether a board is worth posting', () => {
 
   it('posts for a single settled pick', () => {
     expect(shouldPostRecap(1)).toBe(true);
+  });
+});
+
+describe('the day label on the recap card', () => {
+  it('reads as a day, not as a key', () => {
+    expect(formatDayLabel('2026-11-12')).toBe('Thu 12 Nov');
+  });
+
+  it('does not shift across a month boundary', () => {
+    expect(formatDayLabel('2026-12-01')).toBe('Tue 1 Dec');
+  });
+
+  it('hands back anything that is not a day key unchanged', () => {
+    // The card is drawn from a database value; a surprise should read oddly, not throw
+    // and cost the guild its leaderboard.
+    expect(formatDayLabel('not-a-day')).toBe('not-a-day');
   });
 });
 
