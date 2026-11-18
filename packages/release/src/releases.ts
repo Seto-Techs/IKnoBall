@@ -35,6 +35,26 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.2',
+    date: '2026-11-18',
+    headline:
+      'The daily board comes with the day’s LeBronnect recap, and a button to play the next one.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Your server’s daily board now carries a LeBronnect recap: the top five players in your server that day, best chain first, each with their picture and their five blocks, so you can compare runs without leaving the message.',
+      },
+      {
+        kind: 'added',
+        text: 'A Play Now button under the recap opens the game right in the channel.',
+      },
+      {
+        kind: 'improved',
+        text: 'The recap pictures yesterday’s chain and today’s, with both players’ faces and names, so you can see what everyone was chasing and what is waiting for you.',
+      },
+    ],
+  },
+  {
     version: '0.5.1',
     date: '2026-11-18',
     headline: 'The leaderboard posts itself every day, and picks live in the Activity.',
