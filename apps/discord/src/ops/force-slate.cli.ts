@@ -45,8 +45,8 @@ import { paused } from './kill-switch';
  * The smallest context that can post a slate: the database it reads and claims in,
  * the poster that does it, the guilds it posts to, and a client for the sends.
  *
- * `RedisService` is deliberately absent. The post path never touches Redis — the day
- * key belongs to `SlateScheduler` — and a command that connects to Redis only to
+ * `RedisService` is deliberately absent. The post path never touches Redis — the board
+ * key belongs to `BoardScheduler` — and a command that connects to Redis only to
  * disconnect would fail for no reason when it is not reachable from where it runs.
  */
 @Module({

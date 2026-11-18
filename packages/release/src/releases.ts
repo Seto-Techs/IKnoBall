@@ -35,6 +35,21 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.1',
+    date: '2026-11-18',
+    headline: 'The leaderboard posts itself every day, and picks live in the Activity.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Your server gets the leaderboard every day at the hour you set with /setup, for the last slate that finished. It no longer waits on someone making a pick, so a quiet night still ends with a board.',
+      },
+      {
+        kind: 'improved',
+        text: 'Picks are made in the Activity now — type /iknoball in a channel — so the bot posts one leaderboard a day instead of a wall of pick cards.',
+      },
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-11-17',
     headline:
@@ -42,7 +57,7 @@ export const RELEASES: Release[] = [
     changes: [
       {
         kind: 'added',
-        text: 'Type /launch in a channel and the game opens right there. Picks, LeBronnect and the leaderboard all live inside Discord, so you never have to leave the conversation to play.',
+        text: 'Type /iknoball in a channel and the game opens right there. Picks, LeBronnect and the leaderboard all live inside Discord, so you never have to leave the conversation to play.',
       },
       {
         kind: 'added',

@@ -328,53 +328,6 @@ describe('selection inside a post', () => {
   });
 });
 
-describe('the /setup preview', () => {
-  it('shows today’s cards with the buttons inert and claims nothing', async () => {
-    const discord = fakeDiscord();
-    const { store, claims } = fakeStore(Array.from({ length: 6 }, (_, index) => game(index)));
-    const poster = new SlatePoster(store, discord.infra);
-
-    const preview = await poster.preview(MORNING);
-
-    expect(preview.etKey).toBe('2026-10-27');
-    expect(preview.games).toBe(6);
-    // Three fit in the ephemeral reply's embed budget; the count above them says 6.
-    expect(preview.payloads).toHaveLength(3);
-    expect(claims).toHaveLength(0);
-    expect(discord.channel.send).not.toHaveBeenCalled();
-
-    for (const payload of preview.payloads) {
-      for (const row of payload.components) {
-        for (const component of row.components) {
-          expect(component.disabled).toBe(true);
-        }
-      }
-    }
-  });
-
-  it('says a day with no games has nothing to post', async () => {
-    const discord = fakeDiscord();
-    const { store } = fakeStore([]);
-    const poster = new SlatePoster(store, discord.infra);
-
-    expect(await poster.preview(MORNING)).toEqual({
-      etKey: '2026-10-27',
-      games: 0,
-      payloads: [],
-    });
-  });
-
-  it('shows every card of a short day', async () => {
-    const discord = fakeDiscord();
-    const { store } = fakeStore([game(0), game(1)]);
-    const poster = new SlatePoster(store, discord.infra);
-
-    const preview = await poster.preview(MORNING);
-
-    expect(preview.payloads).toHaveLength(2);
-  });
-});
-
 describe('the message shape', () => {
   it('carries a real card, not a placeholder', async () => {
     const discord = fakeDiscord();

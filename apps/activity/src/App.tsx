@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { ActivityError, connectDiscord } from './lib/discord';
+import { ActivityError, connectDiscord, isInsideDiscord } from './lib/discord';
 import { fetchMe, messageOf, setBearer, type Me } from './lib/api';
 import { TopBar } from './components/TopBar';
 import { ProfileSheet } from './components/Profile';
@@ -48,7 +48,14 @@ export function App() {
     };
   }, []);
 
-  if (failure) return <BootError message={failure.message} unlinked={failure.unlinked} />;
+  if (failure)
+    return (
+      <BootError
+        message={failure.message}
+        unlinked={failure.unlinked}
+        outside={!isInsideDiscord()}
+      />
+    );
   if (!me) return <Booting />;
 
   return (
@@ -128,7 +135,15 @@ function Booting() {
   );
 }
 
-function BootError({ message, unlinked }: { message: string; unlinked: boolean }) {
+function BootError({
+  message,
+  unlinked,
+  outside,
+}: {
+  message: string;
+  unlinked: boolean;
+  outside: boolean;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 bg-stone-200 px-6 text-center">
       <img src="/brand/iknoball-mark.svg" alt="" className="h-12 w-12 opacity-60" />
@@ -136,7 +151,11 @@ function BootError({ message, unlinked }: { message: string; unlinked: boolean }
         <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-brand-red" aria-hidden />
         <div>
           <p className="font-heading text-[17px] font-semibold uppercase tracking-wide text-brand-ink">
-            {unlinked ? 'Link your account first' : 'Could not open the activity'}
+            {unlinked
+              ? 'Link your account first'
+              : outside
+                ? 'Open this from Discord'
+                : 'Could not open the activity'}
           </p>
           <p className="mt-1 text-[13.5px] leading-relaxed text-stone-600">{message}</p>
           {unlinked && (
@@ -147,13 +166,16 @@ function BootError({ message, unlinked }: { message: string; unlinked: boolean }
           )}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => window.location.reload()}
-        className="rounded-lg bg-brand-navy px-4 py-2 font-heading text-[13px] font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-brand-navyDark"
-      >
-        Try again
-      </button>
+      {/* A reload cannot put the page inside Discord, so it is not offered. */}
+      {!outside && (
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="rounded-lg bg-brand-navy px-4 py-2 font-heading text-[13px] font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-brand-navyDark"
+        >
+          Try again
+        </button>
+      )}
     </div>
   );
 }

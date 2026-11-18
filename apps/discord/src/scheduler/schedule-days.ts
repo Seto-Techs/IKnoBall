@@ -4,8 +4,9 @@
  * Two readers ask the same two questions — "which day is this game on" and "which
  * days can still be picked" — and they have to answer them identically, or the bot
  * posts a slate for a day it will not fill. So the expression and the query live
- * here once and both callers come through it: `RolloverRepository`, which decides
- * when to roll, and `DrizzleSlateStore`, which the timed post asks for the day.
+ * here once and both callers come through it: `BoardRepository`, which groups the
+ * recent league days for the daily board, and `DrizzleSlateStore`, which the card
+ * post asks for its day.
  *
  * **Duplication worth knowing about.** The ET slate day is derived with the same
  * rule the schedule crawler uses: the feed's `gameDate`, else the tip-off's date.
@@ -43,11 +44,11 @@ export const STATUS_SCHEDULED = 1;
  * ascending and capped.
  *
  * Not "days with games": a day whose games have all tipped off has nothing left to
- * pick, and a post for it sends an empty slate. Offering one to the rollover wedges
- * the guild — the roll succeeds as `empty`, the day key is purposely not remembered
- * for an empty day, so the next tick makes the same choice every minute with
- * `lastPostedKey` never moving. A guild two days behind would never catch up, and
- * only its timed post would rescue it.
+ * pick, and a post for it sends an empty slate. Offering one to the old rollover
+ * wedged the guild — the roll succeeded as `empty`, the day key was purposely not
+ * remembered for an empty day, so the next tick made the same choice every minute
+ * with `lastPostedKey` never moving. The board does not select days this way, but the
+ * card post still does, and the off-day note asks which day to name next.
  *
  * So this answers the question both callers actually ask: from this day on (never a
  * day already finished), which days still have a game a reader can pick. Same rule
