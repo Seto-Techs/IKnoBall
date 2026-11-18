@@ -10,6 +10,7 @@ import { InteractionRouter } from './interactions/router';
 import { PingCommand } from './interactions/ping.command';
 import { PickHandler } from './interactions/pick.handler';
 import { LinkHandler } from './interactions/link.handler';
+import { PlayHandler } from './interactions/play.handler';
 import { PicksCommand } from './picks/picks.command';
 import { LeaderboardCommand } from './leaderboard/leaderboard.command';
 import { SetupCommand } from './setup/setup.command';
@@ -42,6 +43,7 @@ import { MembersModule } from './members/members.module';
     PingCommand,
     PickHandler,
     LinkHandler,
+    PlayHandler,
     PicksCommand,
     LeaderboardCommand,
     SetupCommand,
