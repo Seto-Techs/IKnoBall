@@ -47,6 +47,21 @@
 }
 
 @layer base {
+  /* Discord's mobile clients draw their own chrome on top of the activity — the
+     minimise control sits over the top-left corner, which is where the back
+     button was, so a player who opened a game could not tap their way out. The
+     space that chrome takes is published to the page as
+     --discord-safe-area-inset-* (see Discord's "Mobile" guide), so the shell
+     reserves it instead of guessing at a pixel height. env() is the fallback for
+     a notched device outside Discord; inside Discord the variable wins, so the
+     padding tracks whatever the client actually covers. */
+  :root {
+    --safe-top: var(--discord-safe-area-inset-top, env(safe-area-inset-top, 0px));
+    --safe-right: var(--discord-safe-area-inset-right, env(safe-area-inset-right, 0px));
+    --safe-bottom: var(--discord-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+    --safe-left: var(--discord-safe-area-inset-left, env(safe-area-inset-left, 0px));
+  }
+
   /* The app owns the whole iframe, and every screen scrolls in its own pane, so
      the document itself must never scroll — a mobile-landscape Discord window is
      ~390px tall and a stray document scrollbar eats it. */
@@ -60,5 +75,8 @@
     @apply bg-stone-200 font-sans text-brand-ink antialiased;
     overflow: hidden;
     overscroll-behavior: none;
+    /* Padding, not inset: every child measures itself against what is left, so
+       the top bar lands below Discord's chrome and `main` still fits exactly. */
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   }
 }
