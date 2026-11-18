@@ -3,6 +3,7 @@ import type { ButtonHandler, CommandHandler } from './handler.types';
 import { PingCommand } from './ping.command';
 import { PickHandler } from './pick.handler';
 import { LinkHandler } from './link.handler';
+import { PlayHandler, PLAY_PREFIX } from './play.handler';
 import { PicksCommand } from '../picks/picks.command';
 import { LeaderboardCommand } from '../leaderboard/leaderboard.command';
 import { SetupCommand } from '../setup/setup.command';
@@ -21,13 +22,14 @@ import { UnlinkCommand } from '../linking/unlink.command';
  * Button `custom_id`s are namespaced (`pick:<gameId>:<side>`), so dispatch is a
  * prefix match rather than a lookup of the full id.
  */
-export const BUTTON_PREFIXES = ['pick:', 'link:', 'refresh:'] as const;
+export const BUTTON_PREFIXES = ['pick:', 'link:', 'refresh:', PLAY_PREFIX] as const;
 
 export type ButtonPrefix = (typeof BUTTON_PREFIXES)[number];
 
 export const BUTTON_HANDLERS: Readonly<Record<string, Type<ButtonHandler> | undefined>> = {
   'pick:': PickHandler,
   'link:': LinkHandler,
+  [PLAY_PREFIX]: PlayHandler,
   // `refresh:` is routed so a stale card can ask to be re-rendered, but no chunk
   // owns a handler for it yet. The router answers "unknown action" until one does.
 };
