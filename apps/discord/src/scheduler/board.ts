@@ -109,3 +109,38 @@ export function recapIntro(day: string, settledPicks: number): string {
   const picks = settledPicks === 1 ? '1 pick' : `${settledPicks} picks`;
   return `**${day} is final** — ${picks} settled. How the server finished:`;
 }
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+/**
+ * `2026-11-17` as `Tue 17 Nov`, for the recap card's date line.
+ *
+ * Built from the parts rather than through a locale: the card is a picture, so the
+ * words cannot be left to whatever ICU the container happens to ship. The key is
+ * parsed at noon UTC because a bare date parses as UTC midnight, and formatting that
+ * in a zone west of UTC names the day before.
+ */
+export function formatDayLabel(dayKey: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayKey);
+  if (!match) return dayKey;
+
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12));
+  if (Number.isNaN(date.getTime())) return dayKey;
+
+  return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+}

@@ -1,12 +1,14 @@
 /**
  * The database half of the daily board (0.5.1).
  *
- * Two questions, and nothing else: how the recent league days stand, and how many
- * picks settled on one of them for one guild. `board.ts` decides with the answers;
- * `BoardScheduler` asks every minute.
+ * Four questions, and nothing else: how the recent league days stand, how many picks
+ * settled on one of them for one guild, how that guild's Lebronnect players did on
+ * one puzzle day, and which players two chain pairs point at. `board.ts` decides with
+ * the answers; `BoardScheduler` asks every minute.
  *
- * Two queries per tick for the days, plus one per guild that is due — the days are
- * league-wide, so one answer covers every server.
+ * Two queries per tick for the days, plus one per guild that is due — and, for a
+ * guild whose board carries a recap card, three more: the day's results, the two
+ * puzzle pairs, and the players behind them.
  *
  * The slate-day expression lives in `schedule-days.ts`, because `DrizzleSlateStore`
  * asks the same question and the two answers must not drift.
@@ -19,13 +21,17 @@
  * life of the feature. `scheduler.module.spec.ts` guards the whole module against it.
  */
 import { Injectable } from '@nestjs/common';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import {
   account,
   discordLinks,
   discordMembers,
+  miniGamePuzzles,
+  miniGameResults,
+  players,
   predictionPicks,
   scheduleGames,
+  user,
   type Database,
 } from '@iknoball/database';
 import { STATUS_FINAL } from '../lock/card-edit';
@@ -36,6 +42,41 @@ import { etDateKey, shiftDateKey } from './slate-date';
 
 /** How far back the per-day query looks; a board older than this is not worth posting. */
 const DAY_WINDOW_DAYS = 7;
+
+/** The one mini game on the shelf. Named here so the two queries cannot disagree. */
+const LEBRONNECT = 'lebronnect';
+
+/** One guild member's result on one puzzle day, with what the card draws. */
+export interface RecapEntry {
+  userId: string;
+  name: string;
+  /** The Better Auth avatar, which for a Discord sign-in is the Discord CDN URL. */
+  avatarUrl: string | null;
+  players: number;
+  par: number;
+  /** The grade frozen on the row: 5 at par, one fewer per hop over. */
+  blocks: number;
+  submittedAt: Date;
+}
+
+/** One end of a chain: the graph's id for a player, and the name to draw. */
+export interface RecapPlayerRef {
+  externalId: string;
+  name: string;
+}
+
+/** Everything the recap card needs for one guild and one puzzle day. */
+export interface LebronnectRecapDay {
+  puzzleDate: string;
+  par: number;
+  /** How many guild members played, which is usually more than the rows returned. */
+  played: number;
+  rows: RecapEntry[];
+  /** The pair the rows are results for. */
+  chain: { from: RecapPlayerRef; to: RecapPlayerRef };
+  /** The pair today's puzzle is about. */
+  today: { from: RecapPlayerRef; to: RecapPlayerRef };
+}
 
 @Injectable()
 export class BoardRepository {
@@ -121,6 +162,160 @@ export class BoardRepository {
   }
 
   /**
+   * One guild's Lebronnect day, as the recap card draws it.
+   *
+   * **Scoped to the guild's members**, not to everyone who played: the board it sits
+   * under ranks this server, so a top five drawn from the whole league would name
+   * strangers. The membership cut is `guildMembers`, the same one the board's own
+   * ranking uses — a member who played on the website or in the Activity counts.
+   *
+   * Ordered by distance from par, then by submission time, which is the order the
+   * card claims: closest to the shortest route wins, and an identical score is broken
+   * by who got there first. `limit` bounds the rows drawn while `played` still counts
+   * everyone, because "7 played" over five rows is the point of a top five.
+   *
+   * Answers null rather than throwing when the day cannot be drawn — no results, or no
+   * puzzle published for today. The card is an addition to the board post and must not
+   * be able to cost it, so every "no" here means "send the board alone".
+   */
+  async lebronnectRecap(
+    guildId: string,
+    puzzleDate: string,
+    todayDate: string,
+    limit: number,
+  ): Promise<LebronnectRecapDay | null> {
+    // A board posted late enough that its day *is* today would show the same chain
+    // twice, once as history and once as the ask. Nothing to recap yet.
+    if (puzzleDate === todayDate) return null;
+
+    const members = this.guildMembers(guildId);
+
+    const rows = await this.db
+      .select({
+        userId: miniGameResults.userId,
+        name: sql<string>`coalesce(nullif(btrim(${user.name}), ''), ${members.displayName}, 'Unknown player')`,
+        avatarUrl: user.image,
+        players: miniGameResults.players,
+        par: miniGameResults.par,
+        blocks: miniGameResults.blocks,
+        submittedAt: miniGameResults.createdAt,
+        startPlayerId: miniGameResults.startPlayerId,
+        targetPlayerId: miniGameResults.targetPlayerId,
+        played: sql<number>`count(*) over ()`,
+      })
+      .from(miniGameResults)
+      .innerJoin(members, eq(members.userId, miniGameResults.userId))
+      .leftJoin(user, eq(user.id, miniGameResults.userId))
+      .where(and(eq(miniGameResults.game, LEBRONNECT), eq(miniGameResults.puzzleDate, puzzleDate)))
+      .orderBy(
+        asc(sql`${miniGameResults.players} - ${miniGameResults.par}`),
+        asc(miniGameResults.createdAt),
+      )
+      .limit(limit);
+
+    if (rows.length === 0) return null;
+
+    const [yesterday, today] = await Promise.all([
+      this.puzzlePair(puzzleDate),
+      this.puzzlePair(todayDate),
+    ]);
+    // Today's puzzle is the footer's whole purpose; without it there is nothing to
+    // persuade anyone to play, so the card is not drawn at all.
+    if (!today) return null;
+
+    // Results carry the pair they were played on, which is the fallback for a day
+    // whose puzzle row predates `puzzleId` — the column is nullable for exactly that.
+    const chain = yesterday ?? {
+      startPlayerId: rows[0].startPlayerId,
+      targetPlayerId: rows[0].targetPlayerId,
+    };
+
+    const refs = await this.playerRefs([
+      chain.startPlayerId,
+      chain.targetPlayerId,
+      today.startPlayerId,
+      today.targetPlayerId,
+    ]);
+
+    const from = refs.get(chain.startPlayerId);
+    const to = refs.get(chain.targetPlayerId);
+    const todayFrom = refs.get(today.startPlayerId);
+    const todayTo = refs.get(today.targetPlayerId);
+    // A player row that is not there means the graph was rebuilt under a live puzzle;
+    // the card would have to draw a blank name, so it does not draw.
+    if (!from || !to || !todayFrom || !todayTo) return null;
+
+    return {
+      puzzleDate,
+      par: rows[0].par,
+      played: Number(rows[0].played),
+      rows: rows.map((row) => ({
+        userId: row.userId,
+        name: row.name,
+        avatarUrl: row.avatarUrl,
+        players: row.players,
+        par: row.par,
+        blocks: row.blocks,
+        submittedAt: row.submittedAt,
+      })),
+      chain: { from, to },
+      today: { from: todayFrom, to: todayTo },
+    };
+  }
+
+  /** The pair one puzzle day was drawn on, or null when no puzzle was published. */
+  private async puzzlePair(
+    puzzleDate: string,
+  ): Promise<{ startPlayerId: string; targetPlayerId: string } | null> {
+    const [row] = await this.db
+      .select({
+        startPlayerId: miniGamePuzzles.startPlayerId,
+        targetPlayerId: miniGamePuzzles.targetPlayerId,
+      })
+      .from(miniGamePuzzles)
+      .where(and(eq(miniGamePuzzles.game, LEBRONNECT), eq(miniGamePuzzles.puzzleDate, puzzleDate)));
+
+    return row ?? null;
+  }
+
+  /**
+   * Names and headshot ids for a handful of players, keyed by `players.id`.
+   *
+   * **Keyed by the row id, not the NBA id.** A puzzle's `startPlayerId` and a result's
+   * pair are foreign keys to `players.id` (a UUID); `players.externalId` is the NBA
+   * person id (`1642276`). They are easy to confuse — this method looked players up by
+   * `externalId` at first, which matched nothing, and every card came back null.
+   * `externalId` is still what the headshot URL needs, so it travels out on the ref.
+   */
+  private async playerRefs(playerIds: string[]): Promise<Map<string, RecapPlayerRef>> {
+    const unique = [...new Set(playerIds)];
+    if (unique.length === 0) return new Map();
+
+    const rows = await this.db
+      .select({
+        id: players.id,
+        externalId: players.externalId,
+        displayName: players.displayName,
+        firstName: players.firstName,
+        lastName: players.lastName,
+      })
+      .from(players)
+      .where(inArray(players.id, unique));
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        // `displayName` is the name the graph and the site use ("Nikola Jokić"), and
+        // it is nullable because the feed does not always carry one.
+        {
+          externalId: row.externalId,
+          name: row.displayName?.trim() || `${row.firstName} ${row.lastName}`,
+        },
+      ]),
+    );
+  }
+
+  /**
    * The users who are in one guild right now, one row each.
    *
    * The same cut `InternalLeaderboardService.guildMembers` makes, and for the same
@@ -147,7 +342,13 @@ export class BoardRepository {
       .as('discord_identities');
 
     return this.db
-      .select({ userId: identities.userId })
+      .select({
+        userId: identities.userId,
+        // The name to fall back on when the Better Auth name is blank. `min` only
+        // because the `group by` needs an aggregate; a user with two Discord
+        // accounts in one server has two display names and either will do.
+        displayName: sql<string | null>`min(${discordMembers.displayName})`.as('displayName'),
+      })
       .from(identities)
       .innerJoin(
         discordMembers,

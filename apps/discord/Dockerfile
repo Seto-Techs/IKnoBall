@@ -51,6 +51,10 @@ USER app
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/apps/discord/node_modules ./node_modules
 COPY --from=builder /app/apps/discord/dist ./dist
+# The recap card's fonts and wordmark. `recap-fonts.ts` points fontconfig at
+# `assets/fonts`, and the renderer reads `assets/brand/iknoball-ink.svg`; without this
+# line every card renders in boxes, or not at all.
+COPY --from=builder /app/apps/discord/assets ./assets
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/apps/discord/package.json ./package.json
 
