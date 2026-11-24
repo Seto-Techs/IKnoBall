@@ -23,6 +23,9 @@ import { InternalTokenGuard } from './internal-token.guard';
     InternalLeaderboardController,
   ],
   providers: [InternalTokenGuard, InternalLeaderboardService],
-  exports: [InternalTokenGuard],
+  // Exported for the activity's per-server board read: the public leaderboard
+  // endpoint delegates here rather than re-deriving the membership join, so a
+  // server's board has exactly one definition.
+  exports: [InternalTokenGuard, InternalLeaderboardService],
 })
 export class InternalModule {}

@@ -14,6 +14,8 @@ import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { response, type ApiResponse } from './common/http/response';
 import { ApiDataResponse } from './common/openapi/response';
 import { PredictionsService } from './predictions.service';
+import { InternalLeaderboardService } from './internal/leaderboard.service';
+import { DiscordLinkService } from './discord-link/discord-link.service';
 import type { OddsSide, PredictionMode } from '@iknoball/predictions';
 
 const MODES: PredictionMode[] = ['flat', 'weighted'];
@@ -151,7 +153,11 @@ class OddsPreviewResponse {
 @ApiTags('Predictions')
 @Controller('predictions')
 export class PredictionsController {
-  constructor(private readonly predictions: PredictionsService) {}
+  constructor(
+    private readonly predictions: PredictionsService,
+    private readonly guildBoard: InternalLeaderboardService,
+    private readonly links: DiscordLinkService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Place a pick. Locks both modes and returns both rows.' })
@@ -194,7 +200,7 @@ export class PredictionsController {
   }
 
   @Get('leaderboard')
-  @ApiOperation({ summary: 'Standings for one mode' })
+  @ApiOperation({ summary: 'Standings for one mode, globally or for one Discord server' })
   @ApiDataResponse(
     LeaderboardEntryResponse,
     HttpStatus.OK,
@@ -205,11 +211,33 @@ export class PredictionsController {
   async leaderboard(
     @Session() session: UserSession,
     @Query('mode') mode: string,
+    @Query('guildId') guildId?: string,
   ): Promise<ApiResponse<LeaderboardEntryResponse[]>> {
     const resolved = (mode ?? 'flat') as PredictionMode;
     if (!MODES.includes(resolved)) {
       throw new BadRequestException(`mode must be one of: ${MODES.join(', ')}`);
     }
+
+    // A `guildId` asks for that server's board instead of the global one: the
+    // activity shows a rank per scope, so it reads each mode twice. The query
+    // lives in `InternalLeaderboardService` because it joins `discord_members`,
+    // which keeps the web board's SQL free of guild scoping and gives a server's
+    // board one definition, shared with the bot's `/leaderboard`.
+    //
+    // The guild id is client-supplied and not checked against membership. It is
+    // only obtainable from inside the server, and what it returns — the same
+    // points table the bot posts in that server's channel — is a scoreboard, not
+    // a secret. Nothing here writes, so a wrong id costs an empty board.
+    if (guildId) {
+      const { discordUserId } = await this.links.statusForUser(session.user.id as string);
+      const rows = await this.guildBoard.board({
+        guildId,
+        mode: resolved,
+        viewerDiscordUserId: discordUserId ?? undefined,
+      });
+      return response(true, 'Leaderboard fetched.', rows);
+    }
+
     const rows = await this.predictions.leaderboard(resolved, session.user.id as string);
     return response(true, 'Leaderboard fetched.', rows);
   }
