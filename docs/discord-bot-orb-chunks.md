@@ -269,8 +269,9 @@ runs `bun run generate`.
 - `discord_links`: `userId` unique, `discordUserId` unique, `createdAt`. Prefer this over
   hand-writing Better Auth's `account` rows — the bot then reads one table Better Auth will
   never rewrite.
-- `discord_guilds`: `guildId` pk, `channelId`, `postHour`, `timezone`, `enabled`,
-  `installedAt`, `leftAt`.
+- `discord_guilds`: `guildId` pk, `channelId`, `enabled`, `installedAt`, `leftAt`.
+  (`postHour` / `timezone` were added here and never removed, but nothing reads them: the
+  board posts on one ET schedule for every guild.)
 - `prediction_picks`: add nullable `source` (`web` | `discord`) and `guildId`, index
   `(guildId, mode, status)`.
 - One migration, generated once with `bun run generate`.
@@ -380,21 +381,21 @@ the other cards intact.
 
 **Issues:** DISC-09, DISC-10. **Wave 2.**
 
-**Goal.** Each server gets its own channel, local hour, and one message per day with that
-day's cards.
+**Goal.** Each server gets its own channel and one message per day with that day's cards, at
+one ET time everyone shares.
 
 **Owns.** `apps/discord/src/setup/**`, `apps/discord/src/scheduler/**`.
 
 **Build.**
 
-- `/setup channel: hour: timezone:` requiring Manage Server; validate the zone against
-  `Intl.supportedValuesOf('timeZone')`. No-arg `/setup` shows current config and a card
-  preview.
+- `/setup channel:` requiring Manage Server. No-arg `/setup` shows current config. There is
+  no posting hour or timezone to choose: the board posts at one ET time for every guild, so a
+  per-guild hour would only be a way to get it wrong.
 - `guildCreate` DMs the installer a one-line "run /setup" hint; `guildDelete` sets `leftAt`
   rather than deleting the row.
-- Minute scheduler: for each enabled guild, when local time matches `postHour` and
-  `guildId:YYYY-MM-DD` is not in Redis, post. Write `discord_cards` rows **before** sending so
-  a restart cannot double-post.
+- Minute scheduler: for each enabled guild, when that slate's recap is due — 15 minutes after
+  the last final, or noon ET, whichever is later — and `guildId:YYYY-MM-DD` is not in Redis,
+  post. Write `discord_cards` rows **before** sending so a restart cannot double-post.
 - Select games with `gameStatus = 1` and `gameDateTimeUTC > now`, mapped to the guild's local
   day via the same ET date-key logic the web slate uses. One card per message: a message's
   embeds all render above its components, so cards can only sit above their own buttons if they
@@ -402,9 +403,9 @@ day's cards.
 
 **Must not touch.** `cards/**`, `lock/**`, `packages/database`.
 
-**Done when.** Two guilds with different hours and timezones each get their slate at their own
-local hour; a restart at 9:05 does not re-post; a guild that removes and re-adds the bot gets
-its channel config back.
+**Done when.** Two guilds each get their slate in their own channel at the same ET instant; a
+restart after that instant does not re-post; a guild that removes and re-adds the bot gets its
+channel config back.
 
 ---
 

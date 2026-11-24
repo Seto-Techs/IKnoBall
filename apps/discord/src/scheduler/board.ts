@@ -7,12 +7,13 @@
  * recap is what is left — it no longer rides on another post.
  *
  * That leaves one question: **which league day is the board for?** The most recent
- * day whose games are all done, so the board a guild sees at 9 a.m. is the board for
+ * day whose games are all done, so the board a guild sees at noon is the board for
  * last night. `BoardRepository` asks Postgres; this file decides, and it is pure — no
  * clock, no database, no gateway — so every branch is a unit test rather than a timed
  * integration.
  */
 import type { PredictionMode } from '@iknoball/predictions';
+import { etNoon, shiftDateKey } from './slate-date';
 
 /**
  * How long after the last scheduled tip-off a league day counts as over, even if the
@@ -26,12 +27,30 @@ import type { PredictionMode } from '@iknoball/predictions';
  */
 export const DAY_OVER_GRACE_MS = 4 * 60 * 60 * 1000;
 
+/**
+ * How long after the last final the board waits before it goes out.
+ *
+ * Settlement runs after the buzzer, and a board posted on the buzzer ranks the night
+ * without its last picks. Fifteen minutes is long enough for that pass and short
+ * enough that nobody is still watching the game when it lands.
+ */
+export const RECAP_SETTLE_MS = 15 * 60 * 1000;
+
 /** One league day, as `schedule_games` sees it. */
 export interface DayState {
   slateKey: string;
   games: number;
   finals: number;
   lastTipOff: Date | null;
+  /**
+   * When the last game of the day finished, or null when the feed never said.
+   *
+   * Derived from the box score summary (`gameTimeUTC` + `duration`), because
+   * `schedule_games` only knows the tip-off: a row's `updatedAt` is when the crawler
+   * last saw it, which lags the buzzer by up to half an hour and would push the board
+   * later for no reason.
+   */
+  lastFinalAt: Date | null;
 }
 
 /**
@@ -52,12 +71,15 @@ export function isDayOver(day: DayState, now: Date): boolean {
  *
  * The **latest** finished day, not today's: the board ranks settled picks, and today's
  * are not settled until the last game of tonight is. Choosing the latest one is also
- * what lets a failed post retry — the next tick sees the same day — so a failure inside
- * the guild's `postHour` hour costs a late board rather than a missing one.
+ * what lets a failed post retry — the next tick sees the same day — so a failure
+ * before the board's minute costs a late board rather than a missing one.
  *
- * That window is the hour, not the day. `BoardScheduler.runForGuild` answers `not-due`
- * outside it, so a deploy that spans the whole hour loses that morning's board: by the
- * next tick there is a newer finished day, and the one that was missed is behind it.
+ * That minute is `recapDueAt`, not the day. A deploy that spans it loses that day's
+ * board: by the next tick there is a newer finished day, and the one that was missed
+ * is behind it. The window is deliberately wide in practice — `latestFinishedDay` only
+ * stops offering a day when a newer one is *also* over, which for a back-to-back
+ * schedule is the following night — so a bot that is down for an evening still posts
+ * that evening's board the next morning.
  *
  * The `games === 0` skip is defensive. `BoardRepository.daysSince` groups from
  * `schedule_games`, so a day with no games produces no row at all, and an off day is
@@ -74,6 +96,31 @@ export function latestFinishedDay(days: readonly DayState[], now: Date): DayStat
   }
 
   return latest;
+}
+
+/**
+ * When a finished day's board may go out.
+ *
+ * Two floors, and the later one wins:
+ *
+ * - **Noon ET the day after the slate.** The board is a morning paper. A recap that
+ *   lands at 1 a.m. is read by nobody, and the league day is US/Eastern for every
+ *   guild, so this is one instant for the whole fleet rather than one per server.
+ * - **Fifteen minutes after the last final** (`RECAP_SETTLE_MS`). The floor that makes
+ *   noon safe: if a slate ever ran past noon — a delayed or replayed game — the board
+ *   waits for the game instead of recapping a night that was not over.
+ *
+ * A day the feed never marked final falls back to the last tip-off plus
+ * `DAY_OVER_GRACE_MS`, the same backstop `isDayOver` uses, so a missing box score
+ * summary costs the board its exact minute rather than the board.
+ */
+export function recapDueAt(day: DayState): Date {
+  const noon = etNoon(shiftDateKey(day.slateKey, 1)).getTime();
+  const final =
+    day.lastFinalAt ??
+    (day.lastTipOff ? new Date(day.lastTipOff.getTime() + DAY_OVER_GRACE_MS) : null);
+
+  return new Date(final === null ? noon : Math.max(noon, final.getTime() + RECAP_SETTLE_MS));
 }
 
 /**

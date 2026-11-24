@@ -204,7 +204,7 @@ current help article — <https://support-dev.discord.com/hc/en-us/articles/6378
 > a leaderboard: they can't be bought, sold, transferred, or redeemed for anything.
 >
 > **Commands:** `/picks` (your picks, visible only to you) · `/leaderboard` (this server's board,
-> both modes) · `/setup` (channel, posting hour and timezone — needs Manage Server) · `/link` and
+> both modes) · `/setup` (the channel the daily board goes to — needs Manage Server) · `/link` and
 > `/unlink` (connect or disconnect your IKnoBall account).
 
 Two deliberate choices in that copy: no point figures, and no mention of how the weighting is
