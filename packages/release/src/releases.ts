@@ -35,6 +35,22 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.5',
+    date: '2026-11-24',
+    headline:
+      'The page scrolls again from inside a game card, and the daily recap names who made the board.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'With a finger on the middle of a game card, scrolling stopped working and the page would not move. It moves now, and the card still scrolls while it has somewhere to go.',
+      },
+      {
+        kind: 'improved',
+        text: 'The daily recap names the players on each board — the top five — and says how many more played that day.',
+      },
+    ],
+  },
+  {
     version: '0.5.4',
     date: '2026-11-24',
     headline:
