@@ -47,9 +47,30 @@
 }
 
 @layer base {
+  /* Discord's mobile client does not give the activity its own window: it draws
+     its own chrome — the activity menu pill on the left, the Leave button on the
+     right — as an overlay across the top of the iframe. Anything the app paints
+     in that band is covered, which put our own back button underneath Discord's
+     pill and left no way out of a screen.
+     
+     The client publishes the space its chrome occupies as
+     `--discord-safe-area-inset-*`, so the app starts below it. Outside Discord
+     those variables are absent and `env()` answers instead: the notch on iOS,
+     and zero in a desktop browser, which is why the app looks unchanged there. */
+  :root {
+    --sait: var(--discord-safe-area-inset-top, env(safe-area-inset-top, 0px));
+    --saib: var(--discord-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+    --sail: var(--discord-safe-area-inset-left, env(safe-area-inset-left, 0px));
+    --sair: var(--discord-safe-area-inset-right, env(safe-area-inset-right, 0px));
+  }
+
   /* The app owns the whole iframe, and every screen scrolls in its own pane, so
      the document itself must never scroll — a mobile-landscape Discord window is
-     ~390px tall and a stray document scrollbar eats it. */
+     ~390px tall and a stray document scrollbar eats it.
+     
+     `border-box` is what makes the safe-area padding safe here: the padding comes
+     out of the 100% height rather than adding to it, so the app still fits the
+     frame instead of pushing its own bottom off the screen. */
   html,
   body,
   #root {
@@ -58,6 +79,14 @@
 
   body {
     @apply bg-stone-200 font-sans text-brand-ink antialiased;
+    /* White behind the top band only, because that band continues the header
+       rather than the page: Discord's chrome is a translucent scrim, so whatever
+       sits under it shows through. A single white body would instead put a pale
+       strip under the app wherever the bottom inset is non-zero. */
+    background-image: linear-gradient(#fff, #fff);
+    background-repeat: no-repeat;
+    background-size: 100% var(--sait);
+    padding: var(--sait) var(--sair) var(--saib) var(--sail);
     overflow: hidden;
     overscroll-behavior: none;
   }
