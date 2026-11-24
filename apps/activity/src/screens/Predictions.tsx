@@ -243,7 +243,7 @@ function GameRow({
   const homeReward = sideReward(state, odds, weighted, settled, 'home');
 
   return (
-    <li className="px-2.5 py-2 sm:px-4 sm:py-2.5">
+    <li className="px-3 py-2 sm:px-4 sm:py-2.5">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
         {/* The matchup is its own column, split from the result column beside
          * it: a pick mark at the card's outer edge sat past the score, reading
@@ -254,8 +254,16 @@ function GameRow({
          * leaves the mark stranded at the far edge of empty space, which is the
          * same orphaned tick as before, just inside the card. Sized tracks keep
          * every row's marks at the same x, and the group centres itself, so the
-         * marks sit right beside the names they are for. */}
-        <div className="grid w-full min-w-0 grid-cols-[1rem_5.5rem_auto_5.5rem_1rem] items-center justify-center gap-x-1.5 sm:grid-cols-[1rem_minmax(0,16rem)_auto_minmax(0,16rem)_1rem] sm:gap-x-2">
+         * marks sit right beside the names they are for.
+         *
+         * On a phone the team tracks are `1fr` rather than a fixed 5.5rem. The
+         * fixed tracks made the row a minimum 254px wide inside the ~218px a
+         * 360px screen leaves for it, and a grid that cannot fit overflows both
+         * ways from its centre — the away mark spilled past the card's left
+         * edge and was clipped by its rounded corner. Letting the two team
+         * tracks take what is there keeps the marks inside the card at every
+         * width; the sides truncate their own text, so nothing else moves. */}
+        <div className="grid w-full min-w-0 grid-cols-[1rem_minmax(0,1fr)_auto_minmax(0,1fr)_1rem] items-center gap-x-1 sm:grid-cols-[1rem_minmax(0,16rem)_auto_minmax(0,16rem)_1rem] sm:justify-center sm:gap-x-2">
           <PickSlot picked={side === 'away'} pending={busy === 'away'} outcome={outcome} />
           <TeamSide
             side="away"

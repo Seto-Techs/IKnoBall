@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/brand/iknoball-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `viewport-fit=cover` is what makes `env(safe-area-inset-*)` report the
+         real notch instead of 0: without it iOS letterboxes the page and every
+         inset resolves to zero. The activity pads itself with those insets in
+         src/index.css, so this attribute is load-bearing, not cosmetic. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>IKnoBall</title>
     <!-- No Google Fonts: the activity runs under Discord's CSP, which does not
          allow fonts.googleapis.com. Oswald and Poppins are served from
