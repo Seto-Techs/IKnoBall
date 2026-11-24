@@ -87,7 +87,7 @@ export interface Game {
 
 export type PickSide = 'home' | 'away';
 export type PredictionMode = 'flat' | 'weighted';
-export type PickStatus = 'pending' | 'settled' | 'void';
+export type PickStatus = 'pending' | 'settled' | 'voided';
 
 export interface Pick {
   gameId: string;
