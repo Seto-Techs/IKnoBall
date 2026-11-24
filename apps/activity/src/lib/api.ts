@@ -154,6 +154,8 @@ export interface Me {
   id: string;
   email: string;
   name: string;
+  /** Avatar URL from the sign-in provider, or null when the account has none. */
+  image: string | null;
   role: string;
   isVerified: boolean;
   favoriteTeam: string | null;

@@ -75,7 +75,7 @@ export function TopBar({
           onClick={onProfile}
           className="flex h-9 items-center gap-2 rounded-lg pl-1 pr-2 text-[13px] font-semibold text-brand-ink transition-colors hover:bg-brand-cream"
         >
-          <Avatar name={me.name} size={28} />
+          <Avatar name={me.name} image={me.image} size={28} />
           <span className="hidden max-w-[9rem] truncate sm:inline">{me.name}</span>
           <span className="sr-only sm:hidden">Your profile</span>
         </button>
