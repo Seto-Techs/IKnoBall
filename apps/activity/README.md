@@ -1,8 +1,8 @@
 # IKnoBall Activity
 
 The play surface. A Discord Activity — a React app that runs inside Discord's
-iframe, launched from a channel by the app's entry point command, which is
-named `iknoball` so it reads `/iknoball`.
+iframe, launched from a channel by the `/iknoball` command (or from the App
+Launcher).
 
 It replaces the bot as the place where people play: picks, Lebronnect, and the
 leaderboard. The bot keeps doing notifications.
@@ -42,11 +42,18 @@ endpoint never creates a user.
 ## Images
 
 Headshots and team logos come from `cdn.nba.com`, which Discord's CSP blocks.
-The activity registers the URL mapping `/nba → https://cdn.nba.com` with
+The activity registers the URL mapping `/nba → cdn.nba.com` with
 `patchUrlMappings(mappings, { patchSrcAttributes: true })`. The second argument
 is required: the default only patches fetch/XHR/WebSocket, which leaves every
 `<img src>` blocked. With it, the SDK watches `src` attributes and added nodes,
 so React-mounted avatars are caught too.
+
+`target` is a **bare host**, never a URL. The SDK builds its matcher with
+`new URL('https://' + target)`, so `'https://cdn.nba.com'` parses to the host
+`https` and matches no image at all. That failure is silent: the portal mapping
+looks right, no `/nba` request is ever made, and every image stays blocked by
+CSP while the avatar (a `cdn.discordapp.com` URL the CSP already allows) renders
+fine. `src/lib/discord.ts` derives it from `CDN_ORIGIN` so the two cannot drift.
 
 ## Deploy
 
@@ -85,21 +92,29 @@ Same application as the bot. None of this can be scripted from the repo:
    Order matters: Discord matches globs shortest-last, so `/` goes at the bottom
    or it swallows `/be` and `/nba`.
 
-3. **Entry Point command** — enabling Activities creates one named "Launch".
-   Rename it to `iknoball`; do not add a second, an app may have exactly one and
-   it must be global:
+3. **Commands** — two of them, and they are not interchangeable:
 
-   ```bash
-   # Find it: the entry point is the command with "type": 4.
-   curl -s https://discord.com/api/v10/applications/1531941991875743744/commands \
-     -H "Authorization: Bot $DISCORD_TOKEN" | jq '.[] | select(.type == 4) | {id, name}'
+   - The **entry point** (type `4`, handler `2`) is what lists the app in the App
+     Launcher. Enabling Activities creates one named "Launch"; rename it to
+     `iknoball`. An app may have exactly one and it must be global. It is not
+     reachable by typing in a channel.
 
-   # Rename it. Only the name and description are settable on this route.
-   curl -s -X PATCH \
-     https://discord.com/api/v10/applications/1531941991875743744/commands/<id> \
-     -H "Authorization: Bot $DISCORD_TOKEN" -H 'content-type: application/json' \
-     -d '{"name":"iknoball","description":"Play IKnoBall"}'
-   ```
+     ```bash
+     # Find it: the entry point is the command with "type": 4.
+     curl -s https://discord.com/api/v10/applications/1531941991875743744/commands \
+       -H "Authorization: Bot $DISCORD_TOKEN" | jq '.[] | select(.type == 4) | {id, name}'
+
+     # Rename it. Only the name and description are settable on this route.
+     curl -s -X PATCH \
+       https://discord.com/api/v10/applications/1531941991875743744/commands/<id> \
+       -H "Authorization: Bot $DISCORD_TOKEN" -H 'content-type: application/json' \
+       -d '{"name":"iknoball","description":"Play IKnoBall"}'
+     ```
+
+   - The **chat command** (type `1`, name `iknoball`) is the one people type. The
+     bot registers it from `apps/discord/src/interactions/iknoball.command.ts`
+     and it answers with callback type `12`, which opens the Activity. Names are
+     unique per type, so it coexists with the entry point above.
 
 4. **OAuth2 → Redirects** — the SDK's `authorize` does not need a redirect URI,
    but the site's Discord sign-in still does.

@@ -17,8 +17,14 @@ export const CDN_ORIGIN = 'https://cdn.nba.com';
  * `patchUrlMappings` matches on the target host, so an absolute
  * `https://cdn.nba.com/...` URL from the API is rewritten to `/nba/...` on the
  * activity's own origin.
+ *
+ * `target` is a bare host, not a URL. The SDK builds its matcher with
+ * `new URL('https://' + target)`, so `'https://cdn.nba.com'` parses to the host
+ * `https` and matches nothing — every image keeps pointing at the CDN and gets
+ * blocked by Discord's `img-src`. It fails silently, which is why the portal
+ * mapping looked correct while no `/nba` request was ever made.
  */
-const CDN_MAPPING = { prefix: '/nba', target: CDN_ORIGIN };
+const CDN_MAPPING = { prefix: '/nba', target: new URL(CDN_ORIGIN).host };
 
 const CLIENT_ID: string = import.meta.env.VITE_DISCORD_CLIENT_ID ?? '';
 
@@ -61,6 +67,24 @@ export interface ActivitySession {
   user: { id: string; name: string; image: string | null };
 }
 
+/**
+ * The guild this activity was launched from — the scope of a server board.
+ *
+ * Discord puts it in the iframe URL and the SDK reads it during construction, so
+ * after `ready()` it is simply `sdk.guildId`; a DM launch has none. In
+ * development there is no SDK, so `?guild=` or `VITE_DISCORD_DEV_GUILD_ID`
+ * answers instead — without one the screens show the global board alone, which is
+ * exactly what a DM launch shows.
+ */
+let guildId: string | null = null;
+
+export function currentGuildId(): string | null {
+  if (guildId) return guildId;
+  if (!import.meta.env.DEV) return null;
+  const fromUrl = new URLSearchParams(window.location.search).get('guild');
+  return fromUrl ?? (import.meta.env.VITE_DISCORD_DEV_GUILD_ID || null);
+}
+
 /** Something the player can act on: shown verbatim, never swallowed. */
 export class ActivityError extends Error {
   /** The API's status, when the failure came from it rather than from Discord. */
@@ -82,7 +106,27 @@ export class ActivityError extends Error {
  * `src` attributes and added nodes, which is what catches headshots and logos
  * that React mounts after the initial paint.
  */
-export async function connectDiscord(): Promise<ActivitySession> {
+export function connectDiscord(): Promise<ActivitySession> {
+  connecting ??= handshake();
+  return connecting;
+}
+
+/**
+ * The one handshake this iframe will ever do.
+ *
+ * A `DiscordSDK` instance is bound to the frame it was constructed in: Discord
+ * accepts one `HANDSHAKE` for a given `frame_id` and ignores any that follow. So
+ * a second instance is not merely wasteful, it hangs — its `ready()` waits for a
+ * `READY` that will never come. React StrictMode mounts effects twice in
+ * development, which used to produce exactly that: two instances, the first one
+ * already discarded by its own cleanup, the second waiting forever, and the app
+ * frozen on the boot screen while a production build (which mounts once) worked.
+ * Memoising the in-flight promise keeps the frame to a single handshake however
+ * many times `connectDiscord` is called.
+ */
+let connecting: Promise<ActivitySession> | null = null;
+
+async function handshake(): Promise<ActivitySession> {
   if (!CLIENT_ID) {
     throw new ActivityError(
       'VITE_DISCORD_CLIENT_ID is not set, so the activity cannot ask Discord who you are.',
@@ -97,6 +141,9 @@ export async function connectDiscord(): Promise<ActivitySession> {
 
   const sdk = new DiscordSDK(CLIENT_ID);
   await sdk.ready();
+  // Read once, after `ready()`: the SDK has taken the guild from the iframe URL
+  // by then, and it cannot change for the life of the frame.
+  guildId = sdk.guildId;
   patchUrlMappings([CDN_MAPPING], { patchSrcAttributes: true });
 
   const { code } = await sdk.commands.authorize({

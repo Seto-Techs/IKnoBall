@@ -54,7 +54,7 @@ export function ProfileSheet({
         className="relative flex h-full w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl"
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-brand-line px-4 py-3">
-          <Avatar name={me.name} size={44} />
+          <Avatar name={me.name} image={me.image} size={44} />
           <div className="min-w-0 flex-1">
             <p className="truncate font-heading text-[19px] font-semibold uppercase leading-none tracking-wide text-brand-ink">
               {me.name}

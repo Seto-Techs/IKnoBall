@@ -10,8 +10,9 @@
  *   `etDateKey`, `shiftEtDate`, `gameDateKey`), and this file derives the same
  *   keys with the same `Intl` calls, so the bot and the site cannot disagree
  *   about which day a game is on.
- * - **When a guild gets its post** is that guild's own wall clock (`localHour`).
- *   Storing a UTC hour instead would put somebody's slate at 3 a.m. (DISC-09).
+ * - **When the board goes out** is also ET (`etNoon`), because it recaps the league
+ *   day rather than the reader's: one instant for every guild beats one per server,
+ *   and noon ET is the morning after for the people who watched the games.
  *
  * Nothing here reads the clock on its own: every function takes the instant it
  * should reason about, which is what makes the scheduler testable at any hour.
@@ -43,6 +44,52 @@ export function dateKeyIn(date: Date, timezone: string): string {
 /** The US/Eastern calendar date of `date`, as `YYYY-MM-DD` — the slate day key. */
 export function etDateKey(date: Date): string {
   return dateKeyIn(date, ET_TIME_ZONE);
+}
+
+/**
+ * How far US/Eastern is from UTC at an instant, in milliseconds.
+ *
+ * Asked of `Intl` rather than assumed: the offset changes twice a year, and a board
+ * that is an hour out is a board that misses its own minute.
+ */
+function etOffsetMs(instant: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ET_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+  const value = (type: Intl.DateTimeFormatPartTypes): number =>
+    Number(parts.find((part) => part.type === type)?.value);
+
+  const wall = Date.UTC(
+    value('year'),
+    value('month') - 1,
+    value('day'),
+    value('hour'),
+    value('minute'),
+    value('second'),
+  );
+  return wall - instant.getTime();
+}
+
+/**
+ * Noon in US/Eastern on an ET date key, as an instant.
+ *
+ * The board's posting time: `2026-11-24` gives `2026-11-24T17:00:00Z` in November and
+ * `2026-07-01T16:00:00Z` in July, which is 12:00 on New York's wall clock either way.
+ */
+export function etNoon(dayKey: string): Date {
+  const anchor = new Date(`${dayKey}T12:00:00.000Z`);
+  if (Number.isNaN(anchor.getTime())) return anchor;
+
+  // The offset is read at the anchor, where New York's wall clock is 07:00 or 08:00 on
+  // the same calendar day — so the reading is stable and no DST edge can land on it.
+  return new Date(anchor.getTime() - etOffsetMs(anchor));
 }
 
 /**
@@ -78,14 +125,9 @@ export function shiftDateKey(key: string, days: number): string {
   return anchor.toISOString().slice(0, 10);
 }
 
-/** The hour (0–23) on the wall clock of `timezone`. */
-export function localHour(date: Date, timezone: string): number {
-  const hour = partOf(date, timezone, { hour: '2-digit', hourCycle: 'h23' }, 'hour');
-  return Number.parseInt(hour, 10);
-}
-
 /**
- * `HH:MM` on the wall clock of `timezone`, for the `/setup` summary.
+ * `HH:MM` on the wall clock of `timezone`, for the tip-off column on `/slate`-style
+ * output.
  *
  * Both parts come from one `formatToParts` call: asking for minutes alone gives
  * `0`, not `00`, in en-US.

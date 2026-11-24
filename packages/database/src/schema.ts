@@ -703,22 +703,23 @@ export const discordLinks = pgTable('discord_links', {
  * Per-guild configuration, written by `/setup`.
  *
  * The row is kept when the bot is removed (`leftAt` set) rather than deleted, so
- * a reinstall restores the channel and posting hour instead of asking the admin
- * to configure the server again — and so a server board's history still has a
- * guild to belong to. `guildId` is the Discord id and the primary key: there is
- * exactly one config per server and nothing else to key it by.
+ * a reinstall restores the channel instead of asking the admin to configure the
+ * server again — and so a server board's history still has a guild to belong to.
+ * `guildId` is the Discord id and the primary key: there is exactly one config
+ * per server and nothing else to key it by.
  *
- * The defaults are what make the bot work before `/setup` is run: 9am in
- * `America/New_York` is the NBA convention. Posting still needs a `channelId`,
- * which the admin must supply, so a defaulted row cannot post into a guessed
- * channel.
+ * **`postHour` and `timezone` are vestigial.** They were the per-guild posting
+ * hour; the board now goes out on one ET schedule for every guild (15 minutes
+ * after the last final, or noon ET, whichever is later), so nothing writes or
+ * reads either column. They stay because dropping them would be a migration for
+ * no behaviour, and a later per-guild schedule could want them back.
  */
 export const discordGuilds = pgTable('discord_guilds', {
   guildId: text('guildId').primaryKey(),
   channelId: text('channelId').notNull(),
-  /** Local hour, 0–23, in `timezone`. */
+  /** Unused: kept from the per-guild posting hour. See the table comment. */
   postHour: integer('postHour').notNull().default(9),
-  /** IANA zone, validated against `Intl.supportedValuesOf('timeZone')`. */
+  /** Unused: kept from the per-guild posting hour. See the table comment. */
   timezone: text('timezone').notNull().default('America/New_York'),
   enabled: boolean('enabled').notNull().default(true),
   installedAt: timestamp('installedAt', { precision: 3 }).notNull().defaultNow(),

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DAY_OVER_GRACE_MS,
+  RECAP_SETTLE_MS,
   formatDayLabel,
   isDayOver,
   latestFinishedDay,
+  recapDueAt,
   recapIntro,
   recapModes,
   shouldPostRecap,
@@ -22,7 +24,14 @@ import {
 const TIP_OFF = new Date('2026-10-27T23:30:00.000Z');
 
 function day(overrides: Partial<DayState> = {}): DayState {
-  return { slateKey: '2026-10-27', games: 2, finals: 2, lastTipOff: TIP_OFF, ...overrides };
+  return {
+    slateKey: '2026-10-27',
+    games: 2,
+    finals: 2,
+    lastTipOff: TIP_OFF,
+    lastFinalAt: new Date('2026-10-28T03:00:00.000Z'),
+    ...overrides,
+  };
 }
 
 describe('isDayOver', () => {
@@ -82,14 +91,71 @@ describe('latestFinishedDay', () => {
   it('answers the same day on a later tick, which is how a missed morning catches up', () => {
     const days = [day({ slateKey: '2026-10-26' }), day({ slateKey: '2026-10-27', finals: 1 })];
 
-    // 9 a.m. on the 27th: only the 26th is finished.
+    // Morning of the 27th: only the 26th is finished.
     expect(latestFinishedDay(days, new Date('2026-10-27T13:00:00.000Z'))?.slateKey).toBe(
       '2026-10-26',
     );
-    // 9 a.m. on the 28th, having missed the 27th entirely: the 27th is finished now.
+    // Morning of the 28th, having missed the 27th entirely: the 27th is finished now.
     expect(latestFinishedDay(days, new Date('2026-10-28T13:00:00.000Z'))?.slateKey).toBe(
       '2026-10-27',
     );
+  });
+});
+
+describe('when the board is due', () => {
+  it('is noon ET the day after the slate, even though the games ended hours earlier', () => {
+    // The 27th's last buzzer was 03:00 UTC on the 28th; noon in New York (EDT) is
+    // 16:00 UTC.
+    expect(recapDueAt(day()).toISOString()).toBe('2026-10-28T16:00:00.000Z');
+  });
+
+  it('is noon in January too, which is 17:00 UTC once the clocks are back', () => {
+    const winter = day({
+      slateKey: '2027-01-05',
+      lastTipOff: new Date('2027-01-06T00:30:00.000Z'),
+      lastFinalAt: new Date('2027-01-06T03:00:00.000Z'),
+    });
+
+    expect(recapDueAt(winter).toISOString()).toBe('2027-01-06T17:00:00.000Z');
+  });
+
+  it('waits fifteen minutes after a buzzer that lands past noon', () => {
+    const late = day({ lastFinalAt: new Date('2026-10-28T17:00:00.000Z') });
+
+    expect(recapDueAt(late).toISOString()).toBe('2026-10-28T17:15:00.000Z');
+  });
+
+  it('still leaves the settlement window when the buzzer is just before noon', () => {
+    // A final at 15:45 UTC would be due at 16:00 — the same instant as noon, so noon
+    // wins and nothing is lost. One minute later and the settle window is the floor.
+    const justBefore = day({ lastFinalAt: new Date('2026-10-28T15:45:00.000Z') });
+    const justAfter = day({ lastFinalAt: new Date('2026-10-28T15:46:00.000Z') });
+
+    expect(recapDueAt(justBefore).toISOString()).toBe('2026-10-28T16:00:00.000Z');
+    expect(recapDueAt(justAfter).toISOString()).toBe('2026-10-28T16:01:00.000Z');
+  });
+
+  it('falls back to the tip-off grace when the feed never said when the game ended', () => {
+    // No box score summary: the day counts as over four hours after the last tip-off,
+    // and the board waits `RECAP_SETTLE_MS` after that.
+    const quiet = day({
+      lastFinalAt: null,
+      lastTipOff: new Date('2026-10-28T14:00:00.000Z'),
+    });
+
+    const expected = new Date(
+      new Date('2026-10-28T14:00:00.000Z').getTime() + DAY_OVER_GRACE_MS + RECAP_SETTLE_MS,
+    );
+    expect(recapDueAt(quiet).toISOString()).toBe(expected.toISOString());
+    expect(recapDueAt(quiet).getTime()).toBeGreaterThan(
+      new Date('2026-10-28T16:00:00.000Z').getTime(),
+    );
+  });
+
+  it('is noon alone when the day has neither a buzzer nor a tip-off', () => {
+    const bare = day({ lastFinalAt: null, lastTipOff: null });
+
+    expect(recapDueAt(bare).toISOString()).toBe('2026-10-28T16:00:00.000Z');
   });
 });
 

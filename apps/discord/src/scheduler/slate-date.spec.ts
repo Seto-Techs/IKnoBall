@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   dateKeyIn,
   etDateKey,
+  etNoon,
   formatDayKey,
   isDateKey,
   localClock,
-  localHour,
   shiftDateKey,
   shiftEtDate,
   slateDateKey,
@@ -70,23 +70,50 @@ describe('a game’s slate day', () => {
   });
 });
 
-describe('the guild’s wall clock', () => {
+describe('the wall clock a tip-off is shown in', () => {
   const instant = new Date('2026-10-27T13:00:00.000Z');
 
   it('is 9 a.m. in New York', () => {
-    expect(localHour(instant, 'America/New_York')).toBe(9);
     expect(localClock(instant, 'America/New_York')).toBe('09:00');
   });
 
   it('is 1 p.m. in London', () => {
-    expect(localHour(instant, 'Europe/London')).toBe(13);
+    expect(localClock(instant, 'Europe/London')).toBe('13:00');
   });
 
   it('is already the next morning in Sydney', () => {
-    // 13:00 UTC on the 27th is 00:00 on the 28th in AEDT… which is the point:
-    // the hour, not the date, decides whether a guild posts.
-    expect(localHour(instant, 'Australia/Sydney')).toBe(0);
-    expect(localHour(new Date('2026-10-27T22:00:00.000Z'), 'Australia/Sydney')).toBe(9);
+    // 13:00 UTC on the 27th is 00:00 on the 28th in AEDT.
+    expect(localClock(instant, 'Australia/Sydney')).toBe('00:00');
+  });
+
+  it('pads the minutes, which a bare minute format does not', () => {
+    expect(localClock(new Date('2026-10-27T13:05:00.000Z'), 'America/New_York')).toBe('09:05');
+  });
+});
+
+describe('noon in US/Eastern', () => {
+  it('is 16:00 UTC while New York is on daylight time', () => {
+    expect(etNoon('2026-10-27').toISOString()).toBe('2026-10-27T16:00:00.000Z');
+  });
+
+  it('is 17:00 UTC after the clocks go back', () => {
+    expect(etNoon('2026-11-24').toISOString()).toBe('2026-11-24T17:00:00.000Z');
+  });
+
+  it('is 16:00 UTC again in July', () => {
+    expect(etNoon('2026-07-01').toISOString()).toBe('2026-07-01T16:00:00.000Z');
+  });
+
+  it('reads the offset at the right instant on the day the clocks change', () => {
+    // 1 November 2026: 2 a.m. EDT becomes 1 a.m. EST. Noon is after the shift, so it
+    // is 17:00 UTC, not 16:00.
+    expect(etNoon('2026-11-01').toISOString()).toBe('2026-11-01T17:00:00.000Z');
+    // 8 March 2026: 2 a.m. EST becomes 3 a.m. EDT. Noon is after the shift, so 16:00.
+    expect(etNoon('2026-03-08').toISOString()).toBe('2026-03-08T16:00:00.000Z');
+  });
+
+  it('hands back an invalid date for a key that is not one', () => {
+    expect(Number.isNaN(etNoon('not-a-day').getTime())).toBe(true);
   });
 });
 

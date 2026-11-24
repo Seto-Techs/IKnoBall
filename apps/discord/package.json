@@ -1,6 +1,6 @@
 {
   "name": "iknoball-discord",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -8,7 +8,7 @@
     "test": "vitest run --config vitest.config.mjs",
     "start": "node dist/main.js",
     "start:dev": "bun run src/main.ts",
-    "dev": "bun run start:dev",
+    "dev": "bun --watch run src/main.ts",
     "force:slate": "bun run src/ops/force-slate.cli.ts"
   },
   "dependencies": {

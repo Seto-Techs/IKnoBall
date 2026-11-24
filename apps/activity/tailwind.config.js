@@ -25,6 +25,7 @@ export default {
           cream: '#FCF3DC',
           gold: '#FDB927',
           red: '#882233',
+          green: '#1C7A4A',
           ink: '#20201E',
           line: '#E8E3DD',
         },

@@ -307,22 +307,22 @@ The original recommendation was **A**. **Decided: B** (user, 27 October 2026), w
 - **Status:** Doable · Priority: P1 · Depends: DISC-01
 
 **Problem**
-Posting needs a target channel, a posting hour, and a timezone. None of that can be guessed, and per-guild settings are what makes a multi-server bot sane.
+Posting needs a target channel, and that cannot be guessed. Everything else about the schedule is the league's, not the guild's, so it is not a setting.
 
 **Change**
 
-- Table `discord_guilds`: `guildId` pk, `channelId`, `postHour` (0–23), `timezone` (IANA), `enabled`, `installedAt`, `leftAt`.
-- `/setup channel:#nba hour:9 timezone:America/New_York` — requires Manage Server. Validate the timezone against `Intl.supportedValuesOf('timeZone')` rather than a regex.
-- `/setup` with no args shows current config plus a preview of tonight's card.
+- Table `discord_guilds`: `guildId` pk, `channelId`, `enabled`, `installedAt`, `leftAt`. The `postHour` and `timezone` columns exist but nothing writes or reads them.
+- `/setup channel:#nba` — requires Manage Server.
+- `/setup` with no args shows current config.
 - On `guildCreate`, DM the installer a one-line "run /setup" hint; on `guildDelete`, set `leftAt` rather than deleting the row (keeps the board history for a reinstall).
-- Default `postHour` = 9 in `America/New_York` (NBA convention), so the bot works if the admin skips `/setup` — but post into a channel only after `/setup`, never into a guessed channel.
+- Never post into a guessed channel: a guild posts only after `/setup`.
 
 **Acceptance**
-Two guilds configured with different hours and timezones both get their slate at their own local hour. Removing the bot and re-adding it restores the previous channel config.
+Two guilds both get their slate in their own channel at the same ET instant. Removing the bot and re-adding it restores the previous channel config.
 
 **Tradeoffs**
 
-- Storing an IANA timezone per guild means the scheduler must be timezone-aware; the alternative (UTC hour) produces 3 a.m. posts for someone. The `Intl` API covers DST correctly, so this is cheap.
+- No per-guild hour. A guild in Sydney that wants a different time is the case this gives up; the board is a daily recap of one league's night, so there is one correct time for it.
 - One channel per guild. Multi-channel setups wait for demand.
 
 ---
@@ -336,14 +336,14 @@ The bot has to decide, per guild, which games to post and when — and the games
 
 **Change**
 
-- A minute-resolution scheduler that walks `discord_guilds` and posts when the guild's local time matches `postHour` and it has not posted today (idempotency key `guildId:YYYY-MM-DD` in Redis).
+- A minute-resolution scheduler that walks `discord_guilds` and posts when the slate's recap is due — 15 minutes after the last final, or noon ET, whichever is later — and it has not posted today (idempotency key `guildId:YYYY-MM-DD` in Redis).
 - Games: the guild's local "today" mapped to US/Eastern dates (the repo's `gameDateKey` / `shiftEtDate` helpers in `apps/frontend/src/lib/game-utils` are the same logic the slate uses), filtered to `gameStatus=1` and `gameDateTimeUTC > now`.
 - Post one card per game in a single message batch where possible: Discord allows up to 10 embeds per message, so a 4-game slate is one message with four cards and one action row each — that stays under 5 action rows per message. Beyond 4 games, thread the remainder.
 - Post nothing on a day with no games; do not send an "enjoy the break" message.
 - Guard against double posts after a restart by writing `discord_cards` rows before sending, not after.
 
 **Acceptance**
-A guild set to 9 a.m. local receives exactly one message containing today's cards, and a bot restart at 9:05 does not re-post.
+A guild receives exactly one message containing that slate's cards once the last final is 15 minutes old (or noon ET, if later), and a bot restart after that instant does not re-post.
 
 **Tradeoffs**
 

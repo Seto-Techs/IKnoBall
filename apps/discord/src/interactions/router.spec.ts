@@ -115,6 +115,7 @@ describe('InteractionRouter', () => {
     const definitions = routerWith().commandDefinitions();
 
     expect(definitions.map((definition) => definition.name).sort()).toEqual([
+      'iknoball',
       'leaderboard',
       'link',
       'picks',

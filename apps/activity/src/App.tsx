@@ -70,7 +70,7 @@ export function App() {
       <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {screen === 'home' && (
           <div className="h-full overflow-y-auto overscroll-contain">
-            <Home onOpen={setScreen} />
+            <Home me={me} onOpen={setScreen} />
           </div>
         )}
         {screen === 'predictions' && <Predictions />}

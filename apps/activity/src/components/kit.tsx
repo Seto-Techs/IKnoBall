@@ -1,6 +1,32 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import type { Club } from '../lib/teams';
+
+/* ── Waiting ──────────────────────────────────────────────────
+ * Placeholders, not spinners: a spinner says "hold on", a skeleton says "this
+ * is the shape of what is coming", and only the second one keeps the page from
+ * jumping when the data lands. Each block carries its own size and radius
+ * because the thing it stands in for is what decides them.
+ */
+
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <span aria-hidden className={`block motion-safe:animate-pulse ${className}`} />;
+}
+
+/**
+ * Fade an image in once it has actually decoded.
+ *
+ * The ref checks `complete` as well as the load event: React drops an `onLoad`
+ * that fires before the handler is attached, which is exactly what a cached
+ * image does, and a headshot stuck at opacity 0 is worse than a snap.
+ */
+function useFadeIn() {
+  const [shown, setShown] = useState(false);
+  const ref = useCallback((img: HTMLImageElement | null) => {
+    if (img?.complete) setShown(true);
+  }, []);
+  return { shown, ref, onLoad: () => setShown(true) };
+}
 
 /* ── Marks ────────────────────────────────────────────────────
  * The league's own artwork, shown as it comes: no circular crop, no ring, no
@@ -9,29 +35,48 @@ import type { Club } from '../lib/teams';
  * it so a row reads as one line rather than as a picture with a caption.
  */
 
-export function TeamMark({ club, size = 32 }: { club: Club; size?: number }) {
+export function TeamMark({
+  club,
+  size = 32,
+  fallback = true,
+  fallbackClassName = '',
+}: {
+  club: Club;
+  size?: number;
+  /** When the code is printed beside the mark, the mark must not repeat it. */
+  fallback?: boolean;
+  /** Extra classes on the fallback code, e.g. to hide it where the code is printed anyway. */
+  fallbackClassName?: string;
+}) {
   const [failed, setFailed] = useState(false);
+  const fade = useFadeIn();
 
   if (club.logoUrl && !failed) {
     return (
       <img
+        ref={fade.ref}
         src={club.logoUrl}
         alt=""
         aria-hidden
         width={size}
         height={size}
         loading="lazy"
+        onLoad={fade.onLoad}
         onError={() => setFailed(true)}
-        className="shrink-0 object-contain"
+        className={`shrink-0 object-contain transition-opacity duration-200 ${
+          fade.shown ? 'opacity-100' : 'opacity-0'
+        }`}
         style={{ width: size, height: size }}
       />
     );
   }
 
+  if (!fallback) return null;
+
   return (
     <span
       aria-hidden
-      className="flex shrink-0 items-center justify-center font-heading font-bold uppercase text-stone-400"
+      className={`flex shrink-0 items-center justify-center font-heading font-bold uppercase text-stone-400 ${fallbackClassName}`}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.34) }}
     >
       {club.abbreviation}
@@ -60,16 +105,21 @@ export function Avatar({
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
+  const fade = useFadeIn();
 
   if (image && !failed) {
     return (
       <img
+        ref={fade.ref}
         src={image}
         alt=""
         width={size}
         height={size}
+        onLoad={fade.onLoad}
         onError={() => setFailed(true)}
-        className={`shrink-0 rounded-full bg-stone-100 object-cover ${className}`}
+        className={`shrink-0 rounded-full bg-stone-100 object-cover transition-opacity duration-200 ${
+          fade.shown ? 'opacity-100' : 'opacity-0'
+        } ${className}`}
         style={{ width: size, height: size }}
       />
     );

@@ -14,7 +14,60 @@ import {
 } from '../lib/lebronnect';
 import { SplitHero } from '../components/connect/layouts';
 import { HouseRules, HowTo } from '../components/connect/parts';
-import { ErrorNote, Spinner } from '../components/kit';
+import { Skeleton } from '../components/kit';
+
+/**
+ * The board before it lands.
+ *
+ * A spinner in the middle of an empty card tells you to wait; a skeleton in the
+ * board's own shape tells you what is coming and holds the space, so the card
+ * does not jump from a spinner to a two-column board. The blocks follow the real
+ * layout — stat strip, navy panel with two faces and the input, then the chain —
+ * which is why they are sized here rather than reused from a generic row.
+ */
+function BoardSkeleton() {
+  return (
+    <section
+      aria-busy
+      className="flex min-h-[19rem] flex-1 flex-col overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm"
+    >
+      <div className="flex items-center gap-2 border-b border-brand-line bg-stone-50 px-4 py-2">
+        <Skeleton className="h-3 w-24 rounded bg-stone-200" />
+        <Skeleton className="h-3 w-10 rounded bg-stone-200" />
+        <Skeleton className="ml-auto h-3 w-16 rounded bg-stone-200" />
+      </div>
+
+      <div className="grid min-h-0 flex-1 sm:grid-cols-[minmax(0,16.5rem)_minmax(0,1fr)] lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-3 bg-brand-navyDark px-4 py-3.5">
+          <div className="flex w-full items-start gap-2">
+            <div className="flex flex-1 flex-col items-start gap-1.5">
+              <Skeleton className="h-[58px] w-[58px] rounded-full bg-white/10" />
+              <Skeleton className="h-3 w-20 rounded bg-white/10" />
+            </div>
+            <Skeleton className="mt-6 h-4 w-4 rounded bg-white/10" />
+            <div className="flex flex-1 flex-col items-end gap-1.5">
+              <Skeleton className="h-[58px] w-[58px] rounded-full bg-white/10" />
+              <Skeleton className="h-3 w-20 rounded bg-white/10" />
+            </div>
+          </div>
+          <div className="flex flex-1 flex-col justify-center">
+            <Skeleton className="h-11 w-full rounded-lg bg-white/10" />
+            <Skeleton className="mt-1.5 h-3 w-40 rounded bg-white/10" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1 px-4 py-2.5">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="flex items-center gap-2.5 py-1.5">
+              <Skeleton className="h-[42px] w-[42px] rounded-full bg-stone-200" />
+              <Skeleton className="h-3.5 w-32 rounded bg-stone-200" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 /**
  * Lebronnect: the daily teammate chain.
@@ -167,22 +220,34 @@ export function Lebronnect({ me }: { me: Me }) {
             onPick={pick}
             clubOf={clubOf}
           />
-        ) : (
+        ) : failure ? (
           <section className="flex min-h-[19rem] flex-1 flex-col overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm">
             <div className="flex items-center justify-between gap-3 border-b border-brand-line bg-stone-50 px-4 py-2">
               <span className="font-heading text-[12px] font-bold uppercase tracking-[0.22em] text-brand-navyDark">
                 Lebronnect
               </span>
               <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-stone-400">
-                {failure ? 'Board unavailable' : 'Loading board'}
+                Board unavailable
               </span>
             </div>
-            {failure ? (
-              <ErrorNote message={failure} />
-            ) : (
-              <Spinner label="Fetching today’s two players…" />
-            )}
+            {/* A failed board is a dead end otherwise: nothing on this screen
+                refetches, so the only way back would be closing the activity. */}
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
+              <p className="text-sm font-medium leading-snug text-brand-red">{failure}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  puzzle.reload();
+                  record.reload();
+                }}
+                className="rounded-md bg-brand-navy px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-brand-navyDark"
+              >
+                Try again
+              </button>
+            </div>
           </section>
+        ) : (
+          <BoardSkeleton />
         )}
 
         {/* The card fills the window, so the reference panels sit under it — the

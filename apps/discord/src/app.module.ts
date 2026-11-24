@@ -8,6 +8,7 @@ import { DiscordClientService } from './infrastructure/discord-client.service';
 import { IknoballClient } from './api/iknoball.client';
 import { InteractionRouter } from './interactions/router';
 import { PingCommand } from './interactions/ping.command';
+import { LaunchCommand } from './interactions/iknoball.command';
 import { PickHandler } from './interactions/pick.handler';
 import { LinkHandler } from './interactions/link.handler';
 import { PlayHandler } from './interactions/play.handler';
@@ -41,6 +42,7 @@ import { MembersModule } from './members/members.module';
     // into one without editing this file: the registry names them, this list
     // only instantiates them.
     PingCommand,
+    LaunchCommand,
     PickHandler,
     LinkHandler,
     PlayHandler,

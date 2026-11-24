@@ -35,6 +35,38 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.3',
+    date: '2026-11-24',
+    headline:
+      'Type /iknoball and the game opens: your server’s board, everyone’s board, and the whole day at a glance.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'The game opens when you type /iknoball. It used to start and then sit on a blank screen with no pictures, and now it loads.',
+      },
+      {
+        kind: 'improved',
+        text: 'Home is three doors — Prediction, Lebronnect, and what is coming next — over today’s games, with the tip-off countdown and your streak.',
+      },
+      {
+        kind: 'added',
+        text: 'The leaderboard has two boards side by side — your server and everyone — each in flat and weighted scoring, so you can see where you stand in the room you are actually in.',
+      },
+      {
+        kind: 'improved',
+        text: 'Lebronnect tells you how long the chain is open, so the day turning over is never a surprise.',
+      },
+      {
+        kind: 'improved',
+        text: 'The daily board arrives fifteen minutes after the last game of the slate goes final, or at noon ET, whichever is later — instead of an hour each server had to set.',
+      },
+      {
+        kind: 'fixed',
+        text: 'Pictures in the daily recap keep the jersey instead of cropping down to the face.',
+      },
+    ],
+  },
+  {
     version: '0.5.2',
     date: '2026-11-18',
     headline:
