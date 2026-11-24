@@ -5,14 +5,17 @@ import type { LeaderboardEntry } from '../api/types';
 /**
  * Rows a board shows before the caller's own row is appended.
  *
- * Matches the API's cut: the endpoint returns at most `BOARD_SIZE` rows, and an
- * eleventh only when the caller is outside them. That eleventh row is the
- * caller's, at its true rank.
+ * Matches the API's cut (`GUILD_LEADERBOARD_SIZE` in
+ * `apps/backend/src/internal/leaderboard.service.ts`): the endpoint returns at most
+ * `BOARD_SIZE` rows, and one more only when the caller is outside them. That extra
+ * row is the caller's, at its true rank. The two constants must move together — a bot
+ * that trimmed while the API still returned ten would read the sixth row as the
+ * caller's and label a real sixth place "Your row".
+ *
+ * Five, because the recap post stacks this board under a Lebronnect field and a card:
+ * ten rows pushes everything else off a phone screen.
  */
-export const BOARD_SIZE = 10;
-
-/** Longest name rendered in a row, so ten rows cannot overflow a 1,024-char field. */
-const MAX_NAME_LENGTH = 24;
+export const BOARD_SIZE = 5;
 
 const MODE_LABELS: Record<PredictionMode, string> = {
   flat: 'Flat',
@@ -57,7 +60,7 @@ export function leaderboardEmbed(
       value: fieldValue(board),
       inline: false,
     })),
-    footer: { text: 'Top 10 · settled picks only' },
+    footer: { text: 'Top 5 · settled picks only' },
   };
 }
 
@@ -69,15 +72,30 @@ function fieldValue(board: ModeBoard): string {
   if (top.length === 0) return 'No settled picks yet.';
 
   const lines = top.map(rowLine);
-  // A blank line between the board and the appended row, so a viewer ranked 12th
-  // is not read as eleventh.
+  // A blank line between the board and the appended row, so a viewer ranked 9th
+  // is not read as sixth.
   if (viewer) lines.push('', `Your row — ${rowLine(viewer)}`);
 
   return lines.join('\n');
 }
 
+/**
+ * One row: `3. @mira · 18 pts · 7 picks`.
+ *
+ * A mention rather than a bold name, so a reader can tell who is who at a glance and
+ * tap through to the person. It does not notify — Discord only pings from message
+ * content, never from an embed — which is what makes it safe to mention everybody on
+ * a board that goes out every day. It also bounds the row: a mention is at most a
+ * fixed token however long the player's name is, so five rows cannot overflow the
+ * 1,024-char field.
+ */
 function rowLine(entry: LeaderboardEntry): string {
-  return `${entry.rank}. **${truncate(entry.name)}** · ${points(entry.points)} · ${picks(entry.picks)}`;
+  return `${entry.rank}. ${who(entry)} · ${points(entry.points)} · ${picks(entry.picks)}`;
+}
+
+/** A row's owner, as the mention Discord renders as their name. */
+export function who(entry: { discordUserId: string }): string {
+  return `<@${entry.discordUserId}>`;
 }
 
 function points(value: number): string {
@@ -86,9 +104,4 @@ function points(value: number): string {
 
 function picks(value: number): string {
   return `${value} ${value === 1 ? 'pick' : 'picks'}`;
-}
-
-function truncate(name: string): string {
-  const trimmed = name.trim() || 'Unknown player';
-  return trimmed.length > MAX_NAME_LENGTH ? `${trimmed.slice(0, MAX_NAME_LENGTH - 1)}…` : trimmed;
 }

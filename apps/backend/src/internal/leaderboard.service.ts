@@ -5,8 +5,29 @@ import type { PredictionMode } from '@iknoball/predictions';
 import { DatabaseService } from '../infrastructure/database/database.service';
 import type { LeaderboardRow } from '../predictions.service';
 
-/** Rows the board shows before the caller's own row is appended. */
-export const GUILD_LEADERBOARD_SIZE = 10;
+/**
+ * Rows the board shows before the caller's own row is appended.
+ *
+ * Five, because the board's one reader is Discord: the recap post and `/leaderboard`
+ * both render it as embed fields, and a ten-row field is a wall of text on a phone.
+ * `leaderboard.embed.ts` in the bot reads the same cut — the two must move together,
+ * or the row this service appends for a viewer outside the cut lands where the bot
+ * expects a tenth place.
+ */
+export const GUILD_LEADERBOARD_SIZE = 5;
+
+/**
+ * A board row plus the Discord account behind it.
+ *
+ * The id is here so the bot can render a row as a mention rather than a name — the
+ * same person reads differently as `@mira` than as `mira`, and a mention is the only
+ * thing in an embed that looks like one. It comes from the membership join that the
+ * board already makes, so this costs no extra query.
+ */
+export interface GuildLeaderboardRow extends LeaderboardRow {
+  /** The user's Discord account id, one of them when they have several. */
+  discordUserId: string;
+}
 
 export interface GuildLeaderboardQuery {
   /** Discord guild id. Membership in this guild is the board's filter. */
@@ -54,7 +75,7 @@ export class InternalLeaderboardService {
    * viewer-below-the-cut pattern `PredictionsService.leaderboard` uses, with the
    * membership join added.
    */
-  async board(query: GuildLeaderboardQuery): Promise<LeaderboardRow[]> {
+  async board(query: GuildLeaderboardQuery): Promise<GuildLeaderboardRow[]> {
     const totals = this.guildTotals(query.guildId, query.mode);
 
     const rows = await this.database.db
@@ -64,6 +85,7 @@ export class InternalLeaderboardService {
         points: totals.points,
         picks: totals.picks,
         correct: totals.correct,
+        discordUserId: totals.discordUserId,
       })
       .from(totals)
       .orderBy(desc(totals.points))
@@ -107,12 +129,15 @@ export class InternalLeaderboardService {
         correct: sql<number>`count(*) filter (where ${predictionPicks.points} > 0)::int`.as(
           'correct',
         ),
+        // Carried through so the bot can mention the row. Aggregated in the subquery
+        // already, so grouping by it cannot split a user in two.
+        discordUserId: members.discordUserId,
       })
       .from(predictionPicks)
       .innerJoin(user, eq(user.id, predictionPicks.userId))
       .innerJoin(members, eq(members.userId, predictionPicks.userId))
       .where(and(eq(predictionPicks.mode, mode), eq(predictionPicks.status, 'settled')))
-      .groupBy(predictionPicks.userId, user.name, members.displayName)
+      .groupBy(predictionPicks.userId, user.name, members.displayName, members.discordUserId)
       .as('totals');
   }
 
@@ -144,6 +169,10 @@ export class InternalLeaderboardService {
       .select({
         userId: identities.userId,
         displayName: sql<string | null>`min(${discordMembers.displayName})`.as('displayName'),
+        // The id to mention the row by. `min` for the same reason as the name, and
+        // the same reason it is an aggregate at all: a user with two Discord accounts
+        // in one server has two, and any of them reaches them.
+        discordUserId: sql<string>`min(${identities.discordUserId})`.as('discordUserId'),
       })
       .from(identities)
       .innerJoin(
@@ -165,7 +194,7 @@ export class InternalLeaderboardService {
   private async viewerRank(
     totals: ReturnType<InternalLeaderboardService['guildTotals']>,
     viewerId: string,
-  ): Promise<LeaderboardRow | null> {
+  ): Promise<GuildLeaderboardRow | null> {
     const [mine] = await this.database.db
       .select({
         userId: totals.userId,
@@ -173,6 +202,7 @@ export class InternalLeaderboardService {
         points: totals.points,
         picks: totals.picks,
         correct: totals.correct,
+        discordUserId: totals.discordUserId,
       })
       .from(totals)
       .where(eq(totals.userId, viewerId));

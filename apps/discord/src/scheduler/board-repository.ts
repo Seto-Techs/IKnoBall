@@ -51,6 +51,12 @@ const LEBRONNECT = 'lebronnect';
 export interface RecapEntry {
   userId: string;
   name: string;
+  /**
+   * The Discord id to mention the row by, so the text half of the recap names people
+   * the way the board above it does. Taken from the membership join the query already
+   * makes; the card itself draws names, not mentions.
+   */
+  discordUserId: string;
   /** The Better Auth avatar, which for a Discord sign-in is the Discord CDN URL. */
   avatarUrl: string | null;
   players: number;
@@ -231,6 +237,7 @@ export class BoardRepository {
       .select({
         userId: miniGameResults.userId,
         name: sql<string>`coalesce(nullif(btrim(${user.name}), ''), ${members.displayName}, 'Unknown player')`,
+        discordUserId: members.discordUserId,
         avatarUrl: user.image,
         players: miniGameResults.players,
         par: miniGameResults.par,
@@ -289,6 +296,7 @@ export class BoardRepository {
       rows: rows.map((row) => ({
         userId: row.userId,
         name: row.name,
+        discordUserId: row.discordUserId,
         avatarUrl: row.avatarUrl,
         players: row.players,
         par: row.par,
@@ -385,6 +393,9 @@ export class BoardRepository {
         // because the `group by` needs an aggregate; a user with two Discord
         // accounts in one server has two display names and either will do.
         displayName: sql<string | null>`min(${discordMembers.displayName})`.as('displayName'),
+        // The id to mention the row by, aggregated for the same reason: one is enough
+        // to reach the user, and two would fan the row out and double their picks.
+        discordUserId: sql<string>`min(${identities.discordUserId})`.as('discordUserId'),
       })
       .from(identities)
       .innerJoin(
