@@ -1,21 +1,82 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Re-claim the stable portal hostname after an orb wakes or a new orb starts.
+# Runs after this orb activates and every time it wakes. Amp waits about ten
+# seconds and then carries on without us.
+
+cd "$(dirname "$0")/.."
+
+log="$HOME/.cache/amp/logs/resume.log"
+mkdir -p "$(dirname "$log")"
+say() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$log"; }
+
+# Re-claim the stable portal hostname.
 #
 # Portal hostnames are per-thread by default, so the Discord redirect URI would
 # change with every orb. PORTAL_HOSTNAME (a project env var) holds the stable
 # managed hostname instead, and `--take-over` moves it from the previous orb.
-# Without that variable this is a no-op.
+# Without that variable there is nothing to claim.
 
-cd "$(dirname "$0")/.."
-
-hostname="${PORTAL_HOSTNAME:-}"
-
-# Portals only exist in orbs, and the hostname is optional configuration.
-if [ -z "$hostname" ] || [ -z "${AMP_ORB:-}" ]; then
-  exit 0
+if [ -n "${AMP_ORB:-}" ] && [ -n "${PORTAL_HOSTNAME:-}" ]; then
+  # Must match the frontend service's port in .amp/services.yaml.
+  amp orb portal 5173 --hostname "$PORTAL_HOSTNAME" --take-over >/dev/null 2>&1 || true
 fi
 
-# Must match the frontend service's port in .amp/services.yaml.
-amp orb portal 5173 --hostname "$hostname" --take-over >/dev/null 2>&1 || true
+# Restart the dev loop's two outbound-connection services.
+#
+# A pause tears down every established connection but leaves the processes
+# running, so `amp orb service list` still says "active" for a tunnel that
+# answers Cloudflare with 530 and for a bot that never sees an interaction.
+# Neither reconnects on its own, and the failure is silent: `/iknoball` does
+# nothing at all, or the launch lands on a dead tunnel.
+#
+# They are restarted unconditionally rather than probed, because a socket that
+# survived a pause still reads ESTABLISHED with a peer that is gone, so a
+# liveness check would happily pass a zombie. A wake means the connections were
+# dropped anyway, so there is nothing healthy to preserve.
+
+# `amp orb service list` prints one line per service, e.g.
+#   amp-svc-discord-bot active (running) pid=26316 name=discord-bot home=/…
+# Match on the space-delimited field so `activity` cannot match `activity-tunnel`.
+is_declared() {
+  amp orb service list 2>/dev/null | grep -q " name=$1 "
+}
+
+# Both are started in the background and waited on together: a restart takes
+# about eleven seconds, and running them one after the other would double it.
+jobs=()
+
+revive() {
+  local name="$1" command="$2"
+
+  if is_declared "$name"; then
+    say "$name: restarting"
+    amp orb service restart "$name" >/dev/null 2>&1 &
+  else
+    # A fresh orb has neither service; only the portal's own services come from
+    # .amp/services.yaml.
+    say "$name: not running, starting"
+    amp orb service start "$name" --command "$command" >/dev/null 2>&1 &
+  fi
+
+  jobs+=("$!")
+}
+
+# Each is optional: the tunnel needs its token file and the bot needs a token,
+# and both are orb-local rather than committed. A missing one is a setup gap for
+# whoever is using the orb, not something this script can repair.
+if [ -n "${DISCORD_TOKEN:-}" ]; then
+  revive discord-bot 'cd apps/discord && bun run src/main.ts'
+fi
+
+if [ -f "$HOME/.cloudflared/iknoball-dev.token" ]; then
+  revive activity-tunnel \
+    '"$HOME/.local/bin/cloudflared" tunnel run --token-file "$HOME/.cloudflared/iknoball-dev.token" --protocol http2'
+fi
+
+if [ "${#jobs[@]}" -gt 0 ]; then
+  # Not fatal: a service that will not come up should not block the session.
+  # The log names the culprit and `amp orb service logs <name>` has the reason.
+  wait "${jobs[@]}" || say "a revival failed — check amp orb service logs"
+  say "revival finished"
+fi

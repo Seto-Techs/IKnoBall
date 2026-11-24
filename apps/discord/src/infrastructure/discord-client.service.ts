@@ -61,6 +61,29 @@ export class DiscordClientService implements OnModuleDestroy {
     this.raw.on(Events.Error, (error) => {
       this.logger.error(`Discord client error: ${error.message}`, error.stack);
     });
+
+    /**
+     * The gateway's own lifecycle, logged.
+     *
+     * discord.js reconnects on its own, but a socket that dies without a close
+     * frame — a suspended machine, a dropped NAT entry — leaves the client
+     * waiting on a connection that will never deliver an event again. Nothing
+     * throws, nothing warns, and the first symptom is a command that silently
+     * does nothing. These four events are the difference between "the bot is
+     * dead" and "the bot is fine and Discord never sent anything".
+     */
+    this.raw.on(Events.ShardDisconnect, (event, shardId) => {
+      this.logger.warn(`Discord: shard ${shardId} disconnected (code ${event.code}).`);
+    });
+    this.raw.on(Events.ShardReconnecting, (shardId) => {
+      this.logger.warn(`Discord: shard ${shardId} reconnecting.`);
+    });
+    this.raw.on(Events.ShardResume, (shardId, replayed) => {
+      this.logger.log(`Discord: shard ${shardId} resumed (${replayed} event(s) replayed).`);
+    });
+    this.raw.on(Events.ShardError, (error, shardId) => {
+      this.logger.error(`Discord: shard ${shardId} error: ${error.message}`, error.stack);
+    });
   }
 
   /**
@@ -111,6 +134,12 @@ export class DiscordClientService implements OnModuleDestroy {
    * command, which Discord creates when Activities are enabled and which the
    * developer portal owns. A bulk overwrite that omits it is rejected with
    * 50240, so whatever entry point already exists is carried through untouched.
+   *
+   * A local bot sets `DISCORD_DEV_GUILD_ID` instead, and the same bulk overwrite
+   * is aimed at that one guild: guild commands appear in seconds where a global
+   * PUT waits on Discord's propagation, and nothing half-finished reaches the
+   * application's real users. Entry points are global-only, so the dev path does
+   * not carry one.
    */
   private async registerCommands(): Promise<void> {
     const application = this.raw.application;
@@ -120,6 +149,18 @@ export class DiscordClientService implements OnModuleDestroy {
     }
 
     const commands = this.router.commandDefinitions();
+    const devGuildId = this.config.devGuildId;
+
+    if (devGuildId) {
+      await application.commands.set(commands, devGuildId);
+      this.logger.log(
+        `Discord: registered ${commands.length} commands in dev guild ${devGuildId} (${commands
+          .map((command) => `/${command.name}`)
+          .join(', ')})`,
+      );
+      return;
+    }
+
     // Echoed back by name rather than id: the bulk overwrite upserts on the
     // pair (type, name), so this preserves the entry point instead of deleting
     // and recreating it.
