@@ -67,6 +67,24 @@ export interface ActivitySession {
   user: { id: string; name: string; image: string | null };
 }
 
+/**
+ * The guild this activity was launched from — the scope of a server board.
+ *
+ * Discord puts it in the iframe URL and the SDK reads it during construction, so
+ * after `ready()` it is simply `sdk.guildId`; a DM launch has none. In
+ * development there is no SDK, so `?guild=` or `VITE_DISCORD_DEV_GUILD_ID`
+ * answers instead — without one the screens show the global board alone, which is
+ * exactly what a DM launch shows.
+ */
+let guildId: string | null = null;
+
+export function currentGuildId(): string | null {
+  if (guildId) return guildId;
+  if (!import.meta.env.DEV) return null;
+  const fromUrl = new URLSearchParams(window.location.search).get('guild');
+  return fromUrl ?? (import.meta.env.VITE_DISCORD_DEV_GUILD_ID || null);
+}
+
 /** Something the player can act on: shown verbatim, never swallowed. */
 export class ActivityError extends Error {
   /** The API's status, when the failure came from it rather than from Discord. */
@@ -123,6 +141,9 @@ async function handshake(): Promise<ActivitySession> {
 
   const sdk = new DiscordSDK(CLIENT_ID);
   await sdk.ready();
+  // Read once, after `ready()`: the SDK has taken the guild from the iframe URL
+  // by then, and it cannot change for the life of the frame.
+  guildId = sdk.guildId;
   patchUrlMappings([CDN_MAPPING], { patchSrcAttributes: true });
 
   const { code } = await sdk.commands.authorize({
