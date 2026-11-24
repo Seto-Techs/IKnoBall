@@ -48,8 +48,8 @@ export class LeaderboardCommand implements CommandHandler {
     // Public, and deferred: the reply is a shared board, not a personal one.
     await interaction.deferReply();
 
-    // The viewer's own id is what earns them a row below the top ten, so a regular
-    // who is ranked eleventh still sees where they stand.
+    // The viewer's own id is what earns them a row below the top five, so a regular
+    // who is ranked sixth still sees where they stand.
     const viewerDiscordUserId = interaction.user.id;
     const boards: ModeBoard[] = await Promise.all(
       modes.map(async (mode) => ({

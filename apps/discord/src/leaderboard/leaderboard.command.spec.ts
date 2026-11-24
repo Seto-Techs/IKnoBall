@@ -16,7 +16,15 @@ import { BOARD_SIZE } from './leaderboard.embed';
  */
 
 function entry(rank: number, name: string, points: number, picks = 1): LeaderboardEntry {
-  return { rank, userId: `user-${rank}`, name, points, picks, correct: Math.min(picks, 1) };
+  return {
+    rank,
+    userId: `user-${rank}`,
+    name,
+    points,
+    picks,
+    correct: Math.min(picks, 1),
+    discordUserId: `discord-${rank}`,
+  };
 }
 
 function fakeClient(rows: Partial<Record<PredictionMode, LeaderboardEntry[]>> = {}) {
@@ -114,10 +122,10 @@ describe('LeaderboardCommand', () => {
     expect(embed.description).toContain('on the website or in Discord');
     expect(embed.fields.map((field) => field.name)).toEqual(['Flat points', 'Weighted points']);
     expect(embed.fields[0].value).toBe(
-      '1. **Finny** · 4 pts · 14 picks\n2. **Raka** · 1 pt · 2 picks',
+      '1. <@discord-1> · 4 pts · 14 picks\n2. <@discord-2> · 1 pt · 2 picks',
     );
-    expect(embed.fields[1].value).toBe('1. **Gangsit** · 234 pts · 42 picks');
-    expect(embed.footer.text).toContain('Top 10');
+    expect(embed.fields[1].value).toBe('1. <@discord-1> · 234 pts · 42 picks');
+    expect(embed.footer.text).toContain('Top 5');
   });
 
   it("asks for the caller's own row, by their Discord id", async () => {
@@ -129,7 +137,7 @@ describe('LeaderboardCommand', () => {
     );
 
     // Without this the API cannot tell whose row to append, and a viewer ranked
-    // eleventh sees a board that does not mention them.
+    // sixth sees a board that does not mention them.
     expect(leaderboard).toHaveBeenCalledWith({
       guildId: 'guild-1',
       mode: 'flat',
@@ -141,7 +149,7 @@ describe('LeaderboardCommand', () => {
     const top = Array.from({ length: BOARD_SIZE }, (_, index) =>
       entry(index + 1, `Player ${index + 1}`, 100 - index),
     );
-    // The API appends the caller as an eleventh row, at its true rank.
+    // The API appends the caller as a sixth row, at its true rank.
     const { client } = fakeClient({ flat: [...top, entry(12, 'Me', 7, 3)] });
     const interaction = commandInteraction({ mode: 'flat' });
 
@@ -153,8 +161,8 @@ describe('LeaderboardCommand', () => {
     const lines = field.value.split('\n');
 
     expect(lines).toHaveLength(BOARD_SIZE + 2);
-    expect(lines.at(-1)).toBe('Your row — 12. **Me** · 7 pts · 3 picks');
-    expect(lines.join('\n')).not.toContain('11. **Me**');
+    expect(lines.at(-1)).toBe('Your row — 12. <@discord-12> · 7 pts · 3 picks');
+    expect(lines.join('\n')).not.toContain('11. <@discord-12>');
   });
 
   it('shows only the requested mode', async () => {
