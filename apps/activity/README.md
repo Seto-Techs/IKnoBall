@@ -42,11 +42,18 @@ endpoint never creates a user.
 ## Images
 
 Headshots and team logos come from `cdn.nba.com`, which Discord's CSP blocks.
-The activity registers the URL mapping `/nba → https://cdn.nba.com` with
+The activity registers the URL mapping `/nba → cdn.nba.com` with
 `patchUrlMappings(mappings, { patchSrcAttributes: true })`. The second argument
 is required: the default only patches fetch/XHR/WebSocket, which leaves every
 `<img src>` blocked. With it, the SDK watches `src` attributes and added nodes,
 so React-mounted avatars are caught too.
+
+`target` is a **bare host**, never a URL. The SDK builds its matcher with
+`new URL('https://' + target)`, so `'https://cdn.nba.com'` parses to the host
+`https` and matches no image at all. That failure is silent: the portal mapping
+looks right, no `/nba` request is ever made, and every image stays blocked by
+CSP while the avatar (a `cdn.discordapp.com` URL the CSP already allows) renders
+fine. `src/lib/discord.ts` derives it from `CDN_ORIGIN` so the two cannot drift.
 
 ## Deploy
 

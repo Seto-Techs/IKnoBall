@@ -17,8 +17,14 @@ export const CDN_ORIGIN = 'https://cdn.nba.com';
  * `patchUrlMappings` matches on the target host, so an absolute
  * `https://cdn.nba.com/...` URL from the API is rewritten to `/nba/...` on the
  * activity's own origin.
+ *
+ * `target` is a bare host, not a URL. The SDK builds its matcher with
+ * `new URL('https://' + target)`, so `'https://cdn.nba.com'` parses to the host
+ * `https` and matches nothing — every image keeps pointing at the CDN and gets
+ * blocked by Discord's `img-src`. It fails silently, which is why the portal
+ * mapping looked correct while no `/nba` request was ever made.
  */
-const CDN_MAPPING = { prefix: '/nba', target: CDN_ORIGIN };
+const CDN_MAPPING = { prefix: '/nba', target: new URL(CDN_ORIGIN).host };
 
 const CLIENT_ID: string = import.meta.env.VITE_DISCORD_CLIENT_ID ?? '';
 
@@ -82,7 +88,27 @@ export class ActivityError extends Error {
  * `src` attributes and added nodes, which is what catches headshots and logos
  * that React mounts after the initial paint.
  */
-export async function connectDiscord(): Promise<ActivitySession> {
+export function connectDiscord(): Promise<ActivitySession> {
+  connecting ??= handshake();
+  return connecting;
+}
+
+/**
+ * The one handshake this iframe will ever do.
+ *
+ * A `DiscordSDK` instance is bound to the frame it was constructed in: Discord
+ * accepts one `HANDSHAKE` for a given `frame_id` and ignores any that follow. So
+ * a second instance is not merely wasteful, it hangs — its `ready()` waits for a
+ * `READY` that will never come. React StrictMode mounts effects twice in
+ * development, which used to produce exactly that: two instances, the first one
+ * already discarded by its own cleanup, the second waiting forever, and the app
+ * frozen on the boot screen while a production build (which mounts once) worked.
+ * Memoising the in-flight promise keeps the frame to a single handshake however
+ * many times `connectDiscord` is called.
+ */
+let connecting: Promise<ActivitySession> | null = null;
+
+async function handshake(): Promise<ActivitySession> {
   if (!CLIENT_ID) {
     throw new ActivityError(
       'VITE_DISCORD_CLIENT_ID is not set, so the activity cannot ask Discord who you are.',
