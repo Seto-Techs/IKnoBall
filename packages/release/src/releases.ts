@@ -35,6 +35,22 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.4',
+    date: '2026-11-24',
+    headline:
+      'IKnoBall works on a phone: the way back is yours again, and every pick shows its tick.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'On a phone, the back button sat underneath Discord’s own controls, so a screen had no way out of it. It clears them now.',
+      },
+      {
+        kind: 'fixed',
+        text: 'The tick beside a pick no longer gets clipped by the edge of the card.',
+      },
+    ],
+  },
+  {
     version: '0.5.3',
     date: '2026-11-24',
     headline:
