@@ -9,7 +9,7 @@ import { z } from 'zod';
  * `PredictionMode` in `@iknoball/predictions`.
  *
  * `viewerDiscordUserId` is optional and only adds a row: the caller's own, at its
- * true rank, when the top ten does not already contain it. It is a Discord user
+ * true rank, when the top five does not already contain it. It is a Discord user
  * id rather than an IKnoBall one because that is what an interaction carries, and
  * the API owns the identity lookup that turns it into a user.
  */

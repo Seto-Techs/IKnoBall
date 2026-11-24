@@ -3,6 +3,7 @@ import './recap-fonts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import sharp from 'sharp';
+import { who } from '../leaderboard/leaderboard.embed';
 import { FONT_FAMILIES } from './recap-fonts';
 
 /**
@@ -101,10 +102,59 @@ export function gradeLabel(blocks: number): string {
   return over > 3 ? 'Off by 3+' : `Off by ${over}`;
 }
 
-/** Card height for a given row count, so callers can sanity-check a render. */
-export function cardHeight(rowCount: number): number {
+/** The line under the rows that says how many players the cut left out. */
+const OVERFLOW_H = 22;
+
+/**
+ * Card height for a given row count, so callers can sanity-check a render.
+ *
+ * `overflow` is whether a "+ N other players" line is drawn under the rows, which
+ * adds one line's worth of height. It is a parameter rather than derived from
+ * `rowCount`, because the cut hides the difference: five rows and nine players is
+ * still five rows.
+ */
+export function cardHeight(rowCount: number, overflow = false): number {
   const shown = Math.min(rowCount, MAX_ROWS);
-  return PAD + HEADER_H + 16 + shown * ROW_H + 18 + FOOTER_H;
+  return PAD + HEADER_H + 16 + shown * ROW_H + 18 + (overflow ? OVERFLOW_H : 0) + FOOTER_H;
+}
+
+/** One row of the recap, as the embed field needs it — the card's rows, minus pictures. */
+export interface RecapFieldRow {
+  name: string;
+  players: number;
+  blocks: number;
+  discordUserId: string;
+}
+
+export interface RecapFieldInput {
+  /** The day the rows are for, as it should read: `Mon 23 Nov`. */
+  day: string;
+  /** How many played, which may exceed the rows listed. */
+  played: number;
+  rows: readonly RecapFieldRow[];
+}
+
+/**
+ * The Lebronnect half of the recap embed, as text: five numbered rows, then how many
+ * players the cut left out.
+ *
+ * The same five rows the card draws, in the same order, with the same grade words —
+ * `renderRecapCard` and this read one day object, so the picture and the text cannot
+ * disagree. Text as well as a picture because a card is a PNG: unsearchable,
+ * unreadable to a screen reader, and gone if the render fails. This field is built
+ * before any image is fetched, so that failure costs the picture only.
+ */
+export function recapField(recap: RecapFieldInput): string {
+  const rows = recap.rows.slice(0, MAX_ROWS);
+  const lines = rows.map(
+    (row, index) =>
+      `${index + 1}. ${who(row)} · ${row.players} ${row.players === 1 ? 'player' : 'players'} · ${gradeLabel(row.blocks)}`,
+  );
+
+  const others = recap.played - rows.length;
+  if (others > 0) lines.push(`*+ ${others} ${others === 1 ? 'other' : 'others'} played*`);
+
+  return lines.join('\n');
 }
 
 const esc = (s: string): string =>
@@ -237,9 +287,12 @@ async function fitNames(
 /** Render the card. Throws only if sharp or the fonts are unusable. */
 export async function renderRecapCard(card: RecapCard): Promise<Buffer> {
   const shown = card.rows.slice(0, MAX_ROWS);
+  // The cut, on the card as well as in the field: the header already says how many
+  // played, but five rows over nine players reads as a bug unless it is spelled out.
+  const others = card.played - shown.length;
   const rowsTop = PAD + HEADER_H + 16;
-  const footerTop = rowsTop + shown.length * ROW_H + 18;
-  const height = cardHeight(shown.length);
+  const footerTop = rowsTop + shown.length * ROW_H + 18 + (others > 0 ? OVERFLOW_H : 0);
+  const height = cardHeight(shown.length, others > 0);
   const parts: string[] = [];
 
   // ── Header: the wordmark left, yesterday's pair right ──
@@ -294,6 +347,14 @@ export async function renderRecapCard(card: RecapCard): Promise<Buffer> {
     }
     parts.push(
       `<text x="${CARD_WIDTH - PAD}" y="${y + 52}" text-anchor="end" font-family="${FONT_FAMILIES.medium}" font-size="12" fill="${MUTED}">${gradeLabel(row.blocks)}</text>`,
+    );
+  }
+
+  // ── The cut, said out loud: how many played who are not drawn above ──
+  if (others > 0) {
+    const label = others === 1 ? '1 other player' : `${others} other players`;
+    parts.push(
+      `<text x="${PAD}" y="${rowsTop + shown.length * ROW_H + 14}" font-family="${FONT_FAMILIES.regular}" font-size="13" fill="${MUTED}">+ ${label} played today</text>`,
     );
   }
 

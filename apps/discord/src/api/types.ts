@@ -56,7 +56,8 @@ export interface ListPicksQuery {
   mode?: PredictionMode;
 }
 
-/** `PredictionsService.LeaderboardRow`, ranked within one mode. */
+/** `PredictionsService.LeaderboardRow`, ranked within one mode, plus the Discord
+ * account the row belongs to. */
 export interface LeaderboardEntry {
   rank: number;
   userId: string;
@@ -64,6 +65,11 @@ export interface LeaderboardEntry {
   points: number;
   picks: number;
   correct: number;
+  /**
+   * The Discord id to mention the row by. Always present: the board's rows come from
+   * a membership join, so every row has at least one Discord account behind it.
+   */
+  discordUserId: string;
 }
 
 export interface LeaderboardQuery {
@@ -71,7 +77,7 @@ export interface LeaderboardQuery {
   mode: PredictionMode;
   /**
    * The caller's Discord user id, so the board can append their own row when the
-   * top ten does not contain it. `/leaderboard` always sends it.
+   * top five does not contain it. `/leaderboard` always sends it.
    */
   viewerDiscordUserId?: string;
 }

@@ -4,6 +4,7 @@ import {
   MAX_ROWS,
   cardHeight,
   gradeLabel,
+  recapField,
   renderRecapCard,
   type RecapCard,
   type RecapRow,
@@ -54,6 +55,49 @@ describe('gradeLabel', () => {
   });
 });
 
+describe('recapField', () => {
+  const entry = (i: number, blocks = 5) => ({
+    name: `Player ${i}`,
+    players: 3,
+    blocks,
+    discordUserId: `d${i}`,
+  });
+
+  it('lists rows as mentions, with the grade words the card draws', () => {
+    const value = recapField({ day: 'Mon 23 Nov', played: 2, rows: [entry(1), entry(2, 4)] });
+
+    expect(value).toBe('1. <@d1> · 3 players · Par\n2. <@d2> · 3 players · Off by 1');
+  });
+
+  it('counts the players the cut leaves out, not everyone who played', () => {
+    const rows = Array.from({ length: 7 }, (_, i) => entry(i + 1));
+    const lines = recapField({ day: 'Mon 23 Nov', played: 7, rows }).split('\n');
+
+    expect(lines).toHaveLength(MAX_ROWS + 1);
+    expect(lines.at(-1)).toBe('*+ 2 others played*');
+    // Numbering follows the rows drawn, so a cut board never reads "1..7".
+    expect(lines.join('\n')).not.toContain('6.');
+  });
+
+  it('drops the plural for a single player and a single other', () => {
+    const rows = [
+      { ...entry(1), players: 1 },
+      ...Array.from({ length: 4 }, (_, i) => entry(i + 2)),
+    ];
+    const lines = recapField({ day: 'Mon 23 Nov', played: 6, rows }).split('\n');
+
+    expect(lines[0]).toBe('1. <@d1> · 1 player · Par');
+    expect(lines.at(-1)).toBe('*+ 1 other played*');
+  });
+
+  it('says nothing extra when the cut showed everybody', () => {
+    const rows = Array.from({ length: MAX_ROWS }, (_, i) => entry(i + 1));
+    const lines = recapField({ day: 'Mon 23 Nov', played: MAX_ROWS, rows }).split('\n');
+
+    expect(lines).toHaveLength(MAX_ROWS);
+  });
+});
+
 describe('cardHeight', () => {
   it('grows by one row per player', () => {
     expect(cardHeight(2) - cardHeight(1)).toBe(cardHeight(1) - cardHeight(0));
@@ -61,6 +105,10 @@ describe('cardHeight', () => {
 
   it('stops growing at the five-row cut', () => {
     expect(cardHeight(MAX_ROWS)).toBe(cardHeight(MAX_ROWS + 3));
+  });
+
+  it('reserves a line for the players the cut left out', () => {
+    expect(cardHeight(MAX_ROWS, true) - cardHeight(MAX_ROWS, false)).toBeGreaterThan(0);
   });
 });
 
@@ -79,7 +127,17 @@ describe('renderRecapCard', () => {
     const seven = await renderRecapCard(card([1, 2, 3, 4, 5, 6, 7].map((n) => row(`P${n}`, 4))));
 
     expect((await pngMetadata(five)).height).toBe(cardHeight(MAX_ROWS));
-    expect((await pngMetadata(seven)).height).toBe(cardHeight(MAX_ROWS));
+    // Seven played, five drawn: same five rows, plus the line naming the other two.
+    expect((await pngMetadata(seven)).height).toBe(cardHeight(MAX_ROWS, true));
+  }, 30_000);
+
+  it('makes room for the cut line when more players played than are drawn', async () => {
+    const rows = [1, 2, 3, 4, 5].map((n) => row(`P${n}`, 4));
+    const exact = await renderRecapCard(card(rows));
+    const cut = await renderRecapCard({ ...card(rows), played: 9 });
+
+    expect((await pngMetadata(exact)).height).toBe(cardHeight(MAX_ROWS, false));
+    expect((await pngMetadata(cut)).height).toBe(cardHeight(MAX_ROWS, true));
   }, 30_000);
 });
 
