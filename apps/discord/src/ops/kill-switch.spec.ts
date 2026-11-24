@@ -29,8 +29,6 @@ function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
   return {
     guildId: 'guild-1',
     channelId: 'channel-1',
-    postHour: 9,
-    timezone: 'America/New_York',
     enabled: true,
     installedAt: new Date('2026-10-01T00:00:00.000Z'),
     leftAt: null,
@@ -41,15 +39,16 @@ function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
 /** Last night's slate, every game final. */
 function finishedDay(): DayState {
   return {
-    slateKey: '2026-10-27',
+    slateKey: '2026-10-26',
     games: 2,
     finals: 2,
-    lastTipOff: new Date('2026-10-27T23:30:00.000Z'),
+    lastTipOff: new Date('2026-10-26T23:30:00.000Z'),
+    lastFinalAt: new Date('2026-10-27T02:00:00.000Z'),
   };
 }
 
-/** 9 a.m. in New York on 27 October 2026 — the hour the guild posts at. */
-const NINE_ET = new Date('2026-10-27T13:00:00.000Z');
+/** Noon in New York on 27 October 2026, when that board is due. */
+const NOON_ET = new Date('2026-10-27T16:00:00.000Z');
 
 /** The poster, with only the calls this file cares about standing in for it. */
 function poster(): SlatePoster {
@@ -107,7 +106,7 @@ describe('the switch stops the board post', () => {
   it('posts nothing, and does not even ask which guilds are due', async () => {
     const { instance, post, listEnabled } = scheduler(false);
 
-    expect(await instance.tick(NINE_ET)).toEqual([]);
+    expect(await instance.tick(NOON_ET)).toEqual([]);
     expect(listEnabled).not.toHaveBeenCalled();
     expect(post).not.toHaveBeenCalled();
   });
@@ -128,9 +127,9 @@ describe('the switch stops the board post', () => {
       { has: async () => false, remember: async () => {} } as unknown as DayKeyGuard,
     );
 
-    expect(await instance.tick(NINE_ET)).toEqual([]);
+    expect(await instance.tick(NOON_ET)).toEqual([]);
     config.enabled = true;
-    expect((await instance.tick(NINE_ET))[0].status).toBe('posted');
+    expect((await instance.tick(NOON_ET))[0].status).toBe('posted');
     expect(post).toHaveBeenCalledTimes(1);
   });
 });

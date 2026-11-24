@@ -385,8 +385,9 @@ settlement cadence.
 `last slate post` and the `cards:` counts are history as of 0.5.1: picks are made in
 the Discord Activity, so the bot no longer posts cards and these only move when
 someone runs the `force:slate` op. What posts daily now is the **leaderboard**, once
-per guild at its `/setup` hour — if a guild is `configured` and `active` but no board
-arrived today, look for `Leaderboard post failed` in the log rather than at this line.
+per guild at noon ET the day after a slate (or 15 minutes after that slate's last
+final, if later) — if a guild is `configured` and `active` but no board arrived today,
+look for `Leaderboard post failed` in the log rather than at this line.
 
 ### 7.4 Token rotation
 
@@ -397,7 +398,9 @@ arrived today, look for `Leaderboard post failed` in the log rather than at this
 2. Dokploy → `production` compose → Environment → set `DISCORD_TOKEN`. Same for
    the `staging` compose, with the staging token — the two environments must not
    share a bot token: one gateway session per token, and two processes on one
-   token means duplicated posts and double the rate-limit spend.
+   token means duplicated posts and double the rate-limit spend. A local bot is a
+   third environment and needs a third token; see
+   [discord-dev-loop.md](discord-dev-loop.md).
 3. **Deploy** the compose (recreate, so the new `env_file` is read). Restarting
    the container alone re-reads the old env file.
 4. The old token stops working the moment it is reset. The running container keeps

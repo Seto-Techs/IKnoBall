@@ -47,4 +47,9 @@ export class DiscordConfigService {
   get enabled(): boolean {
     return this.settings.enabled;
   }
+
+  /** The dev/test guild, when this process is a local bot. See `DISCORD_DEV_GUILD_ID`. */
+  get devGuildId(): string | undefined {
+    return this.settings.devGuildId;
+  }
 }

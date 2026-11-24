@@ -278,7 +278,14 @@ export function SplitHero({ puzzle, chain, result, onPick, clubOf }: SplitHeroPr
         </div>
 
         <div className="flex min-h-0 flex-col px-4 py-1.5">
-          <div ref={columnRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* `-mx-1 px-1` is not decoration: a scroll container clips both axes,
+              and the avatars sit flush against its left edge with a 2px
+              `box-shadow` ring, which would be sliced off. The padding gives the
+              ring room and the negative margin cancels it, so nothing moves. */}
+          <div
+            ref={columnRef}
+            className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1"
+          >
             {chain.map((link, index) =>
               hop(
                 link,

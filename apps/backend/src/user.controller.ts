@@ -17,6 +17,13 @@ export class UserProfile {
   @ApiProperty({ example: 'Player' })
   name!: string;
 
+  @ApiProperty({
+    example: 'https://cdn.discordapp.com/avatars/609335685899354124/11580aa8.png',
+    nullable: true,
+    description: 'Avatar URL from the sign-in provider, or null when the account has none',
+  })
+  image!: string | null;
+
   @ApiProperty({ example: 'user' })
   role!: string;
 
@@ -55,6 +62,7 @@ export class UserController {
         id: user.id,
         email: user.email,
         name: user.name,
+        image: user.image,
         role: user.role,
         emailVerified: user.emailVerified,
         favoriteTeam: user.favoriteTeam,
@@ -70,6 +78,7 @@ export class UserController {
       id: u.id,
       email: u.email,
       name: u.name,
+      image: u.image ?? null,
       role: u.role ?? 'user',
       isVerified: u.emailVerified ?? false,
       favoriteTeam: u.favoriteTeam ?? null,
@@ -93,6 +102,7 @@ export class UserController {
         id: user.id,
         email: user.email,
         name: user.name,
+        image: user.image,
         role: user.role,
         emailVerified: user.emailVerified,
         favoriteTeam: user.favoriteTeam,
@@ -108,6 +118,7 @@ export class UserController {
       id: u.id,
       email: u.email,
       name: u.name,
+      image: u.image ?? null,
       role: u.role ?? 'user',
       isVerified: u.emailVerified ?? false,
       favoriteTeam: u.favoriteTeam ?? null,

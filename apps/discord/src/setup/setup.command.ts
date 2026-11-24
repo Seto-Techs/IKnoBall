@@ -1,34 +1,25 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { CommandHandler } from '../interactions/handler.types';
-import { localClock } from '../scheduler/slate-date';
 import type { GuildConfigService, GuildSettings } from './guild-config.service';
 import { GUILD_CONFIG } from './tokens';
-import {
-  DEFAULT_POST_HOUR,
-  DEFAULT_TIMEZONE,
-  TIMEZONE_HINT,
-  canManageServer,
-  channelProblem,
-  formatPostHour,
-  isSupportedPostHour,
-  isSupportedTimezone,
-} from './guild-settings';
+import { canManageServer, channelProblem } from './guild-settings';
 
 /**
- * `/setup` — where and when this server gets its daily leaderboard.
+ * `/setup` — where this server gets its daily leaderboard.
  *
- * The board is the bot's only scheduled post now that picks live in the Activity, so
- * the channel and hour configured here are about that one post.
+ * The board is the bot's only scheduled post now that picks live in the Activity, and
+ * it goes out at one instant for the whole fleet (the later of noon ET and fifteen
+ * minutes after the last buzzer — see `recapDueAt`). That leaves the channel, and only
+ * the channel, for an admin to choose: an hour option would be a setting that no
+ * longer moves anything.
  *
  * Three rules the command enforces before it writes anything:
  *
  * - **Manage Server**, because the bot does not hold that permission itself and a
  *   member should not be able to point the bot at their own channel (DISC-09).
- * - A real IANA zone and an hour in 0–23, checked against `Intl` rather than a
- *   regex, so the scheduler can never be handed a zone it cannot format.
- * - A channel the bot can actually post in, so the failure shows up here instead
- *   of silently at 9 a.m.
+ * - A channel the bot can actually post in, so the failure shows up here instead of
+ *   silently the next morning.
  *
  * With no options it reports the current config. It no longer previews the day's
  * cards: the bot does not post them, and an admin should not be shown a post that will
@@ -40,22 +31,9 @@ export class SetupCommand implements CommandHandler {
 
   readonly data = new SlashCommandBuilder()
     .setName('setup')
-    .setDescription('Configure where and when this server gets the daily leaderboard.')
+    .setDescription('Configure where this server gets the daily leaderboard.')
     .addChannelOption((option) =>
       option.setName('channel').setDescription('Channel to post the daily leaderboard in.'),
-    )
-    .addIntegerOption((option) =>
-      option
-        .setName('hour')
-        .setDescription('Local hour to post at, 0-23.')
-        .setMinValue(0)
-        .setMaxValue(23),
-    )
-    .addStringOption((option) =>
-      option
-        .setName('timezone')
-        .setDescription('IANA timezone, e.g. America/New_York.')
-        .setMaxLength(64),
     );
 
   /**
@@ -67,7 +45,7 @@ export class SetupCommand implements CommandHandler {
    * finished evaluating is `undefined` when the decorator metadata is built — Nest
    * would then have nothing to inject and the bot would fail to resolve `/setup` at
    * boot. The token in `./tokens` is a string in a file that imports nothing, so this
-   * file's only runtime dependencies are the validators and the date helpers.
+   * file's only runtime dependencies are the validators.
    */
   constructor(@Inject(GUILD_CONFIG) private readonly config: GuildConfigService) {}
 
@@ -84,56 +62,24 @@ export class SetupCommand implements CommandHandler {
     }
 
     const channel = interaction.options.getChannel('channel');
-    const hour = interaction.options.getInteger('hour');
-    const timezone = interaction.options.getString('timezone');
-
-    if (!channel && hour === null && timezone === null) {
+    if (!channel) {
       await this.showCurrent(interaction, guildId);
-      return;
-    }
-
-    if (hour !== null && !isSupportedPostHour(hour)) {
-      await reply(interaction, 'The posting hour has to be a whole hour from 0 to 23.');
-      return;
-    }
-
-    if (timezone !== null && !isSupportedTimezone(timezone)) {
-      await reply(interaction, `\`${timezone}\` is not a timezone I know. ${TIMEZONE_HINT}`);
       return;
     }
 
     const botMember = interaction.guild?.members.me ?? null;
     const botPermissions =
-      channel && botMember && 'permissionsFor' in channel
-        ? channel.permissionsFor(botMember)
-        : null;
+      'permissionsFor' in channel && botMember ? channel.permissionsFor(botMember) : null;
 
-    if (channel) {
-      const problem = channelProblem(channel, guildId, botPermissions);
-      if (problem) {
-        await reply(interaction, problem);
-        return;
-      }
-    }
-
-    const existing = await this.config.get(guildId);
-    const channelId = channel?.id ?? existing?.channelId ?? null;
-
-    if (!channelId) {
-      await reply(
-        interaction,
-        'Choose the channel first: `/setup channel:#nba hour:9 timezone:America/New_York`.',
-      );
+    const problem = channelProblem(channel, guildId, botPermissions);
+    if (problem) {
+      await reply(interaction, problem);
       return;
     }
 
-    const saved = await this.config.save({ guildId, channelId, postHour: hour, timezone });
+    const saved = await this.config.save({ guildId, channelId: channel.id });
 
-    this.logger.log(
-      `Leaderboard configured for guild ${guildId}: <#${saved.channelId}> ${formatPostHour(
-        saved.postHour,
-      )} ${saved.timezone}`,
-    );
+    this.logger.log(`Leaderboard configured for guild ${guildId}: <#${saved.channelId}>`);
 
     await reply(interaction, confirmation(saved));
   }
@@ -144,21 +90,18 @@ export class SetupCommand implements CommandHandler {
     guildId: string,
   ): Promise<void> {
     const settings = await this.config.get(guildId);
-    const now = new Date();
 
     const lines = settings
       ? [
           `**Channel:** <#${settings.channelId}>`,
-          `**Posts:** the leaderboard for the last finished slate, every day at ` +
-            `${formatPostHour(settings.postHour)} ${settings.timezone}` +
-            ` (it is ${localClock(now, settings.timezone)} there now)`,
+          `**Posts:** ${POSTS_LINE}`,
           `**Status:** ${settings.enabled ? 'enabled' : 'paused'}`,
           '',
-          'Change it with `/setup channel:#nba hour:9 timezone:America/New_York`.',
+          'Change it with `/setup channel:#nba`.',
         ]
       : [
           'This server is not set up yet, so no leaderboard is posted.',
-          `**Defaults:** every day at ${formatPostHour(DEFAULT_POST_HOUR)} ${DEFAULT_TIMEZONE}.`,
+          `**Posts:** ${POSTS_LINE}`,
           'Start with `/setup channel:#nba`.',
         ];
 
@@ -168,11 +111,20 @@ export class SetupCommand implements CommandHandler {
   }
 }
 
+/**
+ * What `/setup` says the board's timing is.
+ *
+ * Worded as a rule rather than a clock time, because the exact minute moves with the
+ * last game of the slate: noon ET is the floor, not the schedule.
+ */
+const POSTS_LINE =
+  'the leaderboard for the last finished slate, 15 minutes after the final game or at 12:00 ET, whichever is later.';
+
 function confirmation(settings: GuildSettings): string {
   return [
     '**Leaderboard configured for this server.**',
     `**Channel:** <#${settings.channelId}>`,
-    `**Posts:** every day at ${formatPostHour(settings.postHour)} ${settings.timezone}`,
+    `**Posts:** ${POSTS_LINE}`,
   ].join('\n');
 }
 

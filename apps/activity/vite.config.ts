@@ -33,6 +33,12 @@ export default defineConfig({
         target: API_TARGET,
         changeOrigin: true,
       },
+      // Headshots and team logos are **not** proxied here. `patchUrlMappings`
+      // rewrites an absolute `https://cdn.nba.com/...` to `/nba/...`, but only
+      // inside Discord, and Discord's own edge serves that prefix from the
+      // portal's `/nba` mapping. In a dev-token browser tab the rewrite never
+      // runs, so the URL stays absolute and this proxy would never be reached.
+      // A proxy here would only hide a missing portal mapping.
       '/auth': {
         target: API_TARGET,
         // Keep the browser's Host so the backend can resolve its public origin

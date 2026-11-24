@@ -30,6 +30,7 @@ import {
   miniGameResults,
   players,
   predictionPicks,
+  scheduleBoxscoreSummaries,
   scheduleGames,
   user,
   type Database,
@@ -100,28 +101,64 @@ export class BoardRepository {
    * bound — the days ahead are in the answer and `latestFinishedDay` ignores them,
    * which is cheaper than a second query that has to agree with this one about what
    * "today" means.
+   *
+   * `lastFinalAt` comes from a second query over the box score summaries, joined back
+   * by slate day. `schedule_games` has no "finished at" column — its `updatedAt` is
+   * when the crawler last touched the row, which lags the buzzer by up to half an hour
+   * — so the buzzer is estimated as tip-off plus the summary's `duration`. The cast is
+   * guarded: `duration` is text, and a non-numeric one must not fail the whole tick.
    */
   async daysSince(now: Date = new Date()): Promise<DayState[]> {
     const from = shiftDateKey(etDateKey(now), -DAY_WINDOW_DAYS);
 
-    const rows = await this.db
-      .select({
-        slateKey: slateDaySql,
-        games: count(),
-        finals: sql<number>`count(*) filter (where ${scheduleGames.gameStatus} = ${STATUS_FINAL})`,
-        lastTipOff: sql<Date | string | null>`max(${scheduleGames.gameDateTimeUTC})`,
-      })
-      .from(scheduleGames)
-      .where(sql`${slateDaySql} >= ${from}`)
-      .groupBy(slateDaySql);
+    const [days, finals] = await Promise.all([
+      this.db
+        .select({
+          slateKey: slateDaySql,
+          games: count(),
+          finals: sql<number>`count(*) filter (where ${scheduleGames.gameStatus} = ${STATUS_FINAL})`,
+          lastTipOff: sql<Date | string | null>`max(${scheduleGames.gameDateTimeUTC})`,
+        })
+        .from(scheduleGames)
+        .where(sql`${slateDaySql} >= ${from}`)
+        .groupBy(slateDaySql),
+      this.db
+        .select({
+          slateKey: slateDaySql,
+          lastFinalAt: sql<Date | string | null>`max(
+            case
+              when ${scheduleBoxscoreSummaries.gameStatus} = ${STATUS_FINAL}
+                and ${scheduleBoxscoreSummaries.duration} ~ '^[0-9]+$'
+                and ${scheduleBoxscoreSummaries.gameTimeUTC} is not null
+              then ${scheduleBoxscoreSummaries.gameTimeUTC}
+                + ${scheduleBoxscoreSummaries.duration}::int * interval '1 minute'
+            end
+          )`,
+        })
+        .from(scheduleGames)
+        .innerJoin(
+          scheduleBoxscoreSummaries,
+          eq(scheduleBoxscoreSummaries.scheduleGameId, scheduleGames.id),
+        )
+        .where(sql`${slateDaySql} >= ${from}`)
+        .groupBy(slateDaySql),
+    ]);
 
-    return rows.map((row) => ({
+    const buzzer = new Map(
+      finals.map((row) => [
+        row.slateKey,
+        row.lastFinalAt === null ? null : new Date(row.lastFinalAt),
+      ]),
+    );
+
+    return days.map((row) => ({
       slateKey: row.slateKey,
       games: Number(row.games),
       finals: Number(row.finals),
       // `pg` hands a `timestamp` back as a `Date`, but the column carries no zone, so
       // it is normalised here rather than trusted.
       lastTipOff: row.lastTipOff === null ? null : new Date(row.lastTipOff),
+      lastFinalAt: buzzer.get(row.slateKey) ?? null,
     }));
   }
 

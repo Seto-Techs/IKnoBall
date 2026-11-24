@@ -97,8 +97,3 @@ export function relativeToTipoff(dateTime: string, now: number = Date.now()): st
 export function formatPoints(points: number): string {
   return `${points} ${points === 1 ? 'pt' : 'pts'}`;
 }
-
-/** `18 pts if correct` — reward copy, never a price. */
-export function rewardLabel(points: number): string {
-  return `${points} pts if correct`;
-}

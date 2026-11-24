@@ -23,7 +23,7 @@ function game(overrides: Partial<SlateGame> & { gameId: string }): SlateGame {
   };
 }
 
-/** 9 a.m. ET on 27 October: the moment a New York guild posts. */
+/** 9 a.m. ET on 27 October: a fixed morning instant, before that day's games tip off. */
 const MORNING = new Date('2026-10-27T13:00:00.000Z');
 const ET_KEY = '2026-10-27';
 

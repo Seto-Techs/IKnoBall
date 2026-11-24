@@ -81,6 +81,11 @@ export function seasonRun(seasons: string[]): string {
  */
 export function ReceiptPill({ row, club }: { row: Receipt; club?: ClubMark }) {
   const colour = club?.primaryColor ?? '#64748B';
+  // A logo that fails to load has to draw something: the league CDN is a
+  // cross-origin request that Discord's proxy can refuse, and an `<img>` with no
+  // error handler leaves the browser's broken-image glyph sitting in the badge.
+  const [failed, setFailed] = useState(false);
+
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-stone-300 bg-white py-[2px] pl-[2px] pr-2 shadow-sm">
       <span
@@ -88,11 +93,12 @@ export function ReceiptPill({ row, club }: { row: Receipt; club?: ClubMark }) {
         style={{ '--tw-ring-color': colour } as CSSProperties}
         title={row.team}
       >
-        {club?.logoUrl ? (
+        {club?.logoUrl && !failed ? (
           <img
             src={club.logoUrl}
             alt={row.team}
             loading="lazy"
+            onError={() => setFailed(true)}
             className="h-[17px] w-[17px] object-contain"
           />
         ) : (
@@ -131,13 +137,16 @@ export function ReceiptLine({ receipt, clubOf }: { receipt: Receipt[]; clubOf?: 
  * The grade, as five blocks — the shape Wordle players already read as a score,
  * counting the other way: a full five is par and each player over takes one
  * away. The colour carries the judgement on top of the count.
+ *
+ * A rating of 0 is a board that has not been played: five empty blocks, which
+ * is how the launch card shows today before there is a result to show.
  */
 export function ScoreMeter({
   rating,
   label,
   tone = 'dark',
 }: {
-  rating: LebronnectGrade;
+  rating: 0 | LebronnectGrade;
   label: string;
   tone?: 'dark' | 'light';
 }) {
@@ -157,7 +166,7 @@ export function ScoreMeter({
 }
 
 /** One place decides what a rating looks like, so the share string says the same thing. */
-function gradeTone(rating: LebronnectGrade) {
+function gradeTone(rating: number) {
   if (rating === 5) return { fill: 'bg-brand-gold', block: '🟨', empty: '⬜' };
   if (rating === 4) return { fill: 'bg-basketball-400', block: '🟧', empty: '⬜' };
   if (rating === 3) return { fill: 'bg-basketball-700', block: '🟫', empty: '⬜' };
@@ -200,6 +209,11 @@ export function GuessBox({
   // A rejected guess keeps its text so the player can fix a typo, but the list
   // has to close or it covers the message explaining the rejection.
   const [listOpen, setListOpen] = useState(false);
+  // The list is an overlay, so on a short window it has to decide which side of
+  // the field it hangs from. A landscape activity window is about 350px tall and
+  // the field sits near the bottom of the navy panel, so opening downwards put
+  // every suggestion below the fold — the game was unplayable at that height.
+  const [flip, setFlip] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -238,6 +252,23 @@ export function GuessBox({
     [matches, exclude],
   );
   const open = listOpen && needle.trim().length >= 2;
+
+  // Re-measured on open and on resize: Discord resizes the activity window when the
+  // player flips orientation or drags the sidebar, and a stale flip puts the list
+  // off-screen in exactly the window shape where it matters most.
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const box = inputRef.current?.getBoundingClientRect();
+      if (!box) return;
+      const below = window.innerHeight - box.bottom;
+      // 200px is roughly four rows: enough to feel like a list rather than a peek.
+      setFlip(below < 200 && box.top > below);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [open]);
 
   async function choose(player: PlayerSuggestion) {
     if (!current || pending) return;
@@ -317,7 +348,9 @@ export function GuessBox({
           <ul
             id="connect-suggestions"
             role="listbox"
-            className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-lg border border-brand-line bg-white shadow-lg"
+            className={`absolute left-0 right-0 z-30 max-h-[min(18rem,50vh)] overflow-y-auto overscroll-contain rounded-lg border border-brand-line bg-white shadow-lg ${
+              flip ? 'bottom-full mb-1' : 'top-full mt-1'
+            }`}
           >
             {suggestions.map((player, index) => (
               <li key={player.id} role="option" aria-selected={index === active}>

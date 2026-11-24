@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiUrl } from './discord';
+import { apiUrl, currentGuildId } from './discord';
 
 /* ── Transport ─────────────────────────────────────────────────
  * One wrapper, because every screen needs the same three things: the bearer
@@ -87,7 +87,7 @@ export interface Game {
 
 export type PickSide = 'home' | 'away';
 export type PredictionMode = 'flat' | 'weighted';
-export type PickStatus = 'pending' | 'settled' | 'void';
+export type PickStatus = 'pending' | 'settled' | 'voided';
 
 export interface Pick {
   gameId: string;
@@ -154,6 +154,8 @@ export interface Me {
   id: string;
   email: string;
   name: string;
+  /** Avatar URL from the sign-in provider, or null when the account has none. */
+  image: string | null;
   role: string;
   isVerified: boolean;
   favoriteTeam: string | null;
@@ -182,8 +184,25 @@ export function fetchOdds(gameId: string): Promise<OddsPreview> {
   return apiGet<OddsPreview>(`/predictions/odds/${gameId}`);
 }
 
-export function fetchLeaderboard(): Promise<LeaderboardRow[]> {
-  return apiGet<LeaderboardRow[]>('/predictions/leaderboard?mode=flat');
+/** Which pond a board counts: everyone, or the server this activity runs in. */
+export type LeaderboardScope = 'global' | 'server';
+
+/**
+ * One board: a mode, and a scope.
+ *
+ * A `server` board is the bot's `/leaderboard` — everyone who is in this guild
+ * right now, wherever they placed their pick — so it ranks the same players on a
+ * narrower field than `global`. A DM launch has no guild, and an empty list is
+ * the honest answer: there is no server to rank.
+ */
+export function fetchLeaderboard(
+  mode: PredictionMode,
+  scope: LeaderboardScope = 'global',
+): Promise<LeaderboardRow[]> {
+  const guildId = scope === 'server' ? currentGuildId() : null;
+  if (scope === 'server' && !guildId) return Promise.resolve([]);
+  const query = `mode=${mode}${guildId ? `&guildId=${encodeURIComponent(guildId)}` : ''}`;
+  return apiGet<LeaderboardRow[]>(`/predictions/leaderboard?${query}`);
 }
 
 export function fetchStandings(): Promise<Standings> {

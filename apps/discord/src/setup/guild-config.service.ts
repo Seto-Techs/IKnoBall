@@ -2,15 +2,18 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { discordGuilds } from '@iknoball/database';
 import { Infrastructure } from '../scheduler/infrastructure';
-import { DEFAULT_POST_HOUR, DEFAULT_TIMEZONE } from './guild-settings';
 
-/** One row of `discord_guilds`, which is the whole of a guild's slate config. */
+/**
+ * One row of `discord_guilds`, which is the whole of a guild's board config.
+ *
+ * `postHour` and `timezone` are still columns, but nothing reads them: the board goes
+ * out at one league-wide instant now (`recapDueAt`), so an admin cannot move it. They
+ * are left in the table rather than dropped so this change needs no migration, and a
+ * row written before the switch keeps whatever it had.
+ */
 export interface GuildSettings {
   guildId: string;
   channelId: string;
-  /** Local hour, 0–23, in `timezone`. */
-  postHour: number;
-  timezone: string;
   enabled: boolean;
   installedAt: Date;
   /** Set when the bot was removed; the row survives so a reinstall keeps it. */
@@ -20,8 +23,6 @@ export interface GuildSettings {
 export interface SaveGuildSettings {
   guildId: string;
   channelId: string;
-  postHour?: number | null;
-  timezone?: string | null;
 }
 
 /**
@@ -29,8 +30,8 @@ export interface SaveGuildSettings {
  *
  * The table is the bot's memory of a server across restarts and across being
  * removed: `leftAt` is set on `guildDelete` and cleared on `guildCreate`, and the
- * row itself is never deleted, so re-adding the bot restores the channel and hour
- * the admin chose (DISC-09).
+ * row itself is never deleted, so re-adding the bot restores the channel the admin
+ * chose (DISC-09).
  */
 @Injectable()
 export class GuildConfigService {
@@ -49,8 +50,8 @@ export class GuildConfigService {
   /**
    * Write the guild's config, keeping whatever the admin did not respecify.
    *
-   * `/setup channel:#nba` alone must not reset the hour back to 9, so a missing
-   * field falls back to the stored value and only then to the default.
+   * `installedAt` is the first `/setup` and never moves; re-running the command with a
+   * new channel must not make the guild look newly added.
    */
   async save(input: SaveGuildSettings): Promise<GuildSettings> {
     const existing = await this.get(input.guildId);
@@ -58,8 +59,6 @@ export class GuildConfigService {
     const values = {
       guildId: input.guildId,
       channelId: input.channelId,
-      postHour: input.postHour ?? existing?.postHour ?? DEFAULT_POST_HOUR,
-      timezone: input.timezone ?? existing?.timezone ?? DEFAULT_TIMEZONE,
       enabled: true,
       installedAt: existing?.installedAt ?? new Date(),
       leftAt: null,
@@ -72,8 +71,6 @@ export class GuildConfigService {
         target: discordGuilds.guildId,
         set: {
           channelId: values.channelId,
-          postHour: values.postHour,
-          timezone: values.timezone,
           enabled: true,
           leftAt: null,
         },

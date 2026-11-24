@@ -5,10 +5,10 @@ import { GuildConfigService, type GuildSettings } from './guild-config.service';
 /**
  * `discord_guilds` read/write, against a fake Drizzle client.
  *
- * The fake records what the service would write, which is enough to pin the rule
- * that matters: `/setup channel:#nba` must not reset an hour the admin chose, and
- * a reinstall must clear `leftAt` instead of starting over. The real SQL is
- * exercised by the chunk's live proof against Postgres.
+ * The fake records what the service would write, which is enough to pin the rules
+ * that matter: `installedAt` is the first `/setup` and never moves, and a reinstall
+ * must clear `leftAt` instead of starting over. The real SQL is exercised by the
+ * chunk's live proof against Postgres.
  */
 
 interface FakeDb {
@@ -77,8 +77,6 @@ function row(overrides: Partial<GuildSettings> = {}): GuildSettings {
   return {
     guildId: 'guild-1',
     channelId: 'channel-1',
-    postHour: 14,
-    timezone: 'Europe/London',
     enabled: true,
     installedAt: new Date('2026-10-01T00:00:00.000Z'),
     leftAt: null,
@@ -99,7 +97,7 @@ describe('reading a guild', () => {
 });
 
 describe('writing a guild', () => {
-  it('defaults to 9 a.m. New York when the admin says nothing', async () => {
+  it('writes the channel, and nothing the board does not read', async () => {
     const { service, writes } = serviceFor([]);
 
     await service.save({ guildId: 'guild-1', channelId: 'channel-1' });
@@ -107,40 +105,21 @@ describe('writing a guild', () => {
     expect(writes.inserted).toMatchObject({
       guildId: 'guild-1',
       channelId: 'channel-1',
-      postHour: 9,
-      timezone: 'America/New_York',
       enabled: true,
       leftAt: null,
     });
+    expect(writes.inserted).not.toHaveProperty('postHour');
+    expect(writes.inserted).not.toHaveProperty('timezone');
   });
 
-  it('keeps the hour and zone when only the channel is respecified', async () => {
+  it('keeps the install date when the channel changes', async () => {
     const { service, writes } = serviceFor([row()]);
 
     await service.save({ guildId: 'guild-1', channelId: 'channel-2' });
 
     expect(writes.inserted).toMatchObject({
       channelId: 'channel-2',
-      postHour: 14,
-      timezone: 'Europe/London',
       installedAt: new Date('2026-10-01T00:00:00.000Z'),
-    });
-  });
-
-  it('writes what the admin asked for', async () => {
-    const { service, writes } = serviceFor([row()]);
-
-    await service.save({
-      guildId: 'guild-1',
-      channelId: 'channel-3',
-      postHour: 7,
-      timezone: 'Australia/Sydney',
-    });
-
-    expect(writes.inserted).toMatchObject({
-      channelId: 'channel-3',
-      postHour: 7,
-      timezone: 'Australia/Sydney',
     });
     expect(writes.conflict).toBeDefined();
   });
@@ -156,7 +135,7 @@ describe('writing a guild', () => {
   it('returns the row it wrote', async () => {
     const { service } = serviceFor([]);
     const saved = await service.save({ guildId: 'guild-1', channelId: 'channel-1' });
-    expect(saved).toMatchObject({ guildId: 'guild-1', channelId: 'channel-1', postHour: 9 });
+    expect(saved).toMatchObject({ guildId: 'guild-1', channelId: 'channel-1' });
   });
 });
 
@@ -168,7 +147,6 @@ describe('guild lifecycle', () => {
 
     expect(writes.updated).toMatchObject({ leftAt: expect.any(Date) });
     expect(writes.updated).not.toHaveProperty('channelId');
-    expect(writes.updated).not.toHaveProperty('postHour');
   });
 
   it('clears leftAt on a reinstall', async () => {

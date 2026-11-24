@@ -46,8 +46,6 @@ function channel(
 
 interface InteractionOptions {
   channel?: ReturnType<typeof channel> | null;
-  hour?: number | null;
-  timezone?: string | null;
   memberPermissions?: PermissionsBitField | null;
   guildId?: string | null;
 }
@@ -61,8 +59,6 @@ function interaction(options: InteractionOptions = {}) {
     guild: { members: { me: { id: 'bot-1' } } },
     options: {
       getChannel: () => options.channel ?? null,
-      getInteger: () => options.hour ?? null,
-      getString: () => options.timezone ?? null,
     },
     reply,
   };
@@ -74,8 +70,6 @@ function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
   return {
     guildId: 'guild-1',
     channelId: 'channel-1',
-    postHour: 9,
-    timezone: 'America/New_York',
     enabled: true,
     installedAt: new Date('2026-10-01T00:00:00.000Z'),
     leftAt: null,
@@ -84,18 +78,11 @@ function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
 }
 
 function harness(options: { existing?: GuildSettings | null } = {}) {
-  // Mirrors the service: an unspecified field keeps the stored value, and only
-  // then falls back to the default.
+  // Mirrors the service: the row keeps its identity and install date, and only the
+  // channel is the admin's to change.
   const save = vi.fn(async (input: Parameters<GuildConfigService['save']>[0]) => {
     const base = options.existing ?? settings();
-    return {
-      ...base,
-      ...input,
-      postHour: input.postHour ?? base.postHour,
-      timezone: input.timezone ?? base.timezone,
-      enabled: true,
-      leftAt: null,
-    };
+    return { ...base, channelId: input.channelId, enabled: true, leftAt: null };
   });
   const get = vi.fn(async () => options.existing ?? null);
 
@@ -134,27 +121,6 @@ describe('who may run it', () => {
 });
 
 describe('what it accepts', () => {
-  it('rejects an hour off the 24-hour clock', async () => {
-    const { command, save } = harness({ existing: settings() });
-    const { interaction: fake, reply } = interaction({ hour: 24 });
-
-    await command.execute(fake);
-
-    expect(replyText(reply)).toContain('0 to 23');
-    expect(save).not.toHaveBeenCalled();
-  });
-
-  it('rejects a timezone the runtime cannot format', async () => {
-    const { command, save } = harness({ existing: settings() });
-    const { interaction: fake, reply } = interaction({ timezone: 'Mars/Olympus_Mons' });
-
-    await command.execute(fake);
-
-    expect(replyText(reply)).toContain('not a timezone I know');
-    expect(replyText(reply)).toContain('America/New_York');
-    expect(save).not.toHaveBeenCalled();
-  });
-
   it('rejects a channel from another server', async () => {
     const { command, save } = harness({ existing: settings() });
     const { interaction: fake, reply } = interaction({ channel: channel({ guildId: 'guild-2' }) });
@@ -188,53 +154,28 @@ describe('what it accepts', () => {
     expect(replyText(reply)).toContain('Send Messages');
     expect(save).not.toHaveBeenCalled();
   });
-
-  it('asks for a channel before writing a row', async () => {
-    const { command, save } = harness({ existing: null });
-    const { interaction: fake, reply } = interaction({ hour: 8 });
-
-    await command.execute(fake);
-
-    expect(replyText(reply)).toContain('Choose the channel first');
-    expect(save).not.toHaveBeenCalled();
-  });
 });
 
 describe('saving', () => {
-  it('writes the channel, hour, and zone it was given', async () => {
+  it('writes the channel it was given', async () => {
     const { command, save } = harness({ existing: null });
-    const { interaction: fake, reply } = interaction({
-      channel: channel(),
-      hour: 14,
-      timezone: 'Europe/London',
-    });
+    const { interaction: fake, reply } = interaction({ channel: channel({ id: 'channel-7' }) });
 
     await command.execute(fake);
 
-    expect(save).toHaveBeenCalledWith({
-      guildId: 'guild-1',
-      channelId: 'channel-1',
-      postHour: 14,
-      timezone: 'Europe/London',
-    });
-    expect(replyText(reply)).toContain('<#channel-1>');
-    expect(replyText(reply)).toContain('14:00 Europe/London');
+    expect(save).toHaveBeenCalledWith({ guildId: 'guild-1', channelId: 'channel-7' });
+    expect(replyText(reply)).toContain('<#channel-7>');
   });
 
-  it('leaves the hour and zone alone when only the channel is given', async () => {
-    const { command, save } = harness({ existing: settings({ postHour: 7 }) });
-    const { interaction: fake, reply } = interaction({ channel: channel({ id: 'channel-9' }) });
+  it('states the posting rule, because the time is not the admin\u2019s to set', async () => {
+    const { command } = harness({ existing: null });
+    const { interaction: fake, reply } = interaction({ channel: channel() });
 
     await command.execute(fake);
 
-    expect(save).toHaveBeenCalledWith({
-      guildId: 'guild-1',
-      channelId: 'channel-9',
-      postHour: null,
-      timezone: null,
-    });
-    // The confirmation reports the stored hour, not a reset one.
-    expect(replyText(reply)).toContain('07:00 America/New_York');
+    const text = replyText(reply);
+    expect(text).toContain('15 minutes after the final game');
+    expect(text).toContain('12:00 ET');
   });
 
   it('accepts a channel with just the posting permissions it needs', async () => {
@@ -256,16 +197,17 @@ describe('saving', () => {
 
 describe('no arguments', () => {
   it('shows the current config and sends nothing else', async () => {
-    const { command } = harness({ existing: settings() });
+    const { command, save } = harness({ existing: settings() });
     const { interaction: fake, reply } = interaction();
 
     await command.execute(fake);
 
     const text = replyText(reply);
     expect(text).toContain('<#channel-1>');
-    expect(text).toContain('09:00 America/New_York');
+    expect(text).toContain('12:00 ET');
     expect(text).toContain('enabled');
     expect(text).toContain('Picks are made in the Activity — type `/iknoball`');
+    expect(save).not.toHaveBeenCalled();
 
     // No embeds and no buttons: the cards are gone, so there is nothing to preview.
     const [replyPayload] = reply.mock.calls[0] as unknown as [
@@ -276,7 +218,7 @@ describe('no arguments', () => {
     expect(replyPayload.flags).toBe(MessageFlags.Ephemeral);
   });
 
-  it('says the server is not set up yet, and what the defaults are', async () => {
+  it('says the server is not set up yet, and how to start', async () => {
     const { command, save } = harness({ existing: null });
     const { interaction: fake, reply } = interaction();
 
@@ -284,8 +226,8 @@ describe('no arguments', () => {
 
     const text = replyText(reply);
     expect(text).toContain('not set up yet');
-    expect(text).toContain('09:00 America/New_York');
     expect(text).toContain('no leaderboard is posted');
+    expect(text).toContain('/setup channel:#nba');
     expect(text).toContain('/iknoball');
     expect(save).not.toHaveBeenCalled();
   });

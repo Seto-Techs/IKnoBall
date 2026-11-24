@@ -29,8 +29,6 @@ function settings(guildId: string): GuildSettings {
   return {
     guildId,
     channelId: `channel-${guildId}`,
-    postHour: 9,
-    timezone: 'America/New_York',
     enabled: true,
     installedAt: new Date('2026-10-01T00:00:00.000Z'),
     leftAt: null,
@@ -40,15 +38,16 @@ function settings(guildId: string): GuildSettings {
 /** Last night's slate, every game final. */
 function finishedDay(): DayState {
   return {
-    slateKey: '2026-10-27',
+    slateKey: '2026-10-26',
     games: 2,
     finals: 2,
-    lastTipOff: new Date('2026-10-27T23:30:00.000Z'),
+    lastTipOff: new Date('2026-10-26T23:30:00.000Z'),
+    lastFinalAt: new Date('2026-10-27T02:00:00.000Z'),
   };
 }
 
-/** 9 a.m. in New York on 27 October 2026. */
-const NINE_ET = new Date('2026-10-27T13:00:00.000Z');
+/** Noon in New York on 27 October 2026, when that board is due. */
+const NOON_ET = new Date('2026-10-27T16:00:00.000Z');
 
 function harness(guildIds: string[], failFor: string) {
   const keys = new Set<string>();
@@ -90,10 +89,10 @@ describe('per-guild isolation', () => {
       'locked-out',
     );
 
-    expect(await scheduler.tick(NINE_ET)).toEqual([
-      { guildId: 'locked-out', day: '2026-10-27', status: 'failed' },
-      { guildId: 'guild-b', day: '2026-10-27', status: 'posted' },
-      { guildId: 'guild-c', day: '2026-10-27', status: 'posted' },
+    expect(await scheduler.tick(NOON_ET)).toEqual([
+      { guildId: 'locked-out', day: '2026-10-26', status: 'failed' },
+      { guildId: 'guild-b', day: '2026-10-26', status: 'posted' },
+      { guildId: 'guild-c', day: '2026-10-26', status: 'posted' },
     ]);
 
     // Every guild after the broken one was still attempted, in order.
@@ -103,23 +102,23 @@ describe('per-guild isolation', () => {
       'guild-c',
     ]);
     // …and their boards are on the record, not just attempted.
-    expect(boardKeys()).toEqual(['recap:guild-b:2026-10-27', 'recap:guild-c:2026-10-27']);
+    expect(boardKeys()).toEqual(['recap:guild-b:2026-10-26', 'recap:guild-c:2026-10-26']);
   });
 
   it('does not spend the broken guild’s day key, so it retries once the channel is fixed', async () => {
     const { scheduler, keys } = harness(['locked-out', 'guild-b'], 'locked-out');
 
-    await scheduler.tick(NINE_ET);
+    await scheduler.tick(NOON_ET);
 
     // A 403 is a property of the channel, not of the hour: the retry must be allowed.
-    expect(keys.has('recap:locked-out:2026-10-27')).toBe(false);
-    expect(keys.has('recap:guild-b:2026-10-27')).toBe(true);
+    expect(keys.has('recap:locked-out:2026-10-26')).toBe(false);
+    expect(keys.has('recap:guild-b:2026-10-26')).toBe(true);
   });
 
   it('isolates a 403 wherever it lands in the sweep, not only at the end', async () => {
     const { scheduler } = harness(['guild-a', 'guild-b', 'locked-out'], 'locked-out');
 
-    expect((await scheduler.tick(NINE_ET)).map((outcome) => outcome.status)).toEqual([
+    expect((await scheduler.tick(NOON_ET)).map((outcome) => outcome.status)).toEqual([
       'posted',
       'posted',
       'failed',

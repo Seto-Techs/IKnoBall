@@ -78,6 +78,9 @@ export class ActivityService {
     if (!resolved.userId) {
       // Deliberately not a 401: the Discord identity is fine, the IKnoBall side
       // is missing, and the fix is a `/link` in Discord rather than a retry.
+      this.logger.warn(
+        `Activity sign-in refused: Discord ${discord.id} is not linked to an account.`,
+      );
       throw new ForbiddenException(
         'This Discord account is not linked to an IKnoBall account yet. Run /link in Discord, then reopen the activity.',
       );
@@ -85,6 +88,12 @@ export class ActivityService {
 
     const token = await this.mintSession(resolved.userId);
     const profile = await this.profile(resolved.userId);
+
+    // The one line that says the iframe got this far. A launch that the bot
+    // accepted and this never logs means Discord opened the shell and the
+    // activity itself never booted, which is a tunnel or URL-mapping problem
+    // rather than a sign-in one.
+    this.logger.log(`Activity session minted for Discord ${discord.id} → user ${profile.id}`);
 
     return {
       token,

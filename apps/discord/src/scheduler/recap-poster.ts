@@ -122,16 +122,19 @@ export class RecapPoster {
       const day = await this.repo.lebronnectRecap(guildId, etKey, etDateKey(new Date()), MAX_ROWS);
       if (!day) return null;
 
-      // One batch: five avatars and four headshots. Fetched together because they are
-      // independent, and a slow CDN should cost one timeout, not nine.
-      const images = await fetchImages([
-        ...day.rows.map((row) => row.avatarUrl),
-        headshotUrl(day.chain.from.externalId),
-        headshotUrl(day.chain.to.externalId),
-        headshotUrl(day.today.from.externalId),
-        headshotUrl(day.today.to.externalId),
+      // Two batches, run together: five avatars and four headshots. Together because
+      // they are independent, and a slow CDN should cost one timeout, not nine; apart
+      // because the two sources are framed differently and only the headshots are cut
+      // down to the face — see `normalise` in `recap-images.ts`.
+      const [avatars, headshots] = await Promise.all([
+        fetchImages(day.rows.map((row) => row.avatarUrl)),
+        fetchImages(
+          [day.chain.from, day.chain.to, day.today.from, day.today.to].map((player) =>
+            headshotUrl(player.externalId),
+          ),
+          'headshot',
+        ),
       ]);
-      const headshots = images.slice(day.rows.length);
 
       const card: RecapCard = {
         day: formatDayLabel(day.puzzleDate),
@@ -141,7 +144,7 @@ export class RecapPoster {
           name: row.name,
           players: row.players,
           blocks: row.blocks,
-          avatar: images[index] ?? null,
+          avatar: avatars[index] ?? null,
         })),
         yesterday: {
           from: { name: day.chain.from.name, headshot: headshots[0] ?? null },

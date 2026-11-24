@@ -4,6 +4,7 @@ import { PingCommand } from './ping.command';
 import { PickHandler } from './pick.handler';
 import { LinkHandler } from './link.handler';
 import { PlayHandler, PLAY_PREFIX } from './play.handler';
+import { LaunchCommand } from './iknoball.command';
 import { PicksCommand } from '../picks/picks.command';
 import { LeaderboardCommand } from '../leaderboard/leaderboard.command';
 import { SetupCommand } from '../setup/setup.command';
@@ -36,6 +37,7 @@ export const BUTTON_HANDLERS: Readonly<Record<string, Type<ButtonHandler> | unde
 
 export const COMMAND_HANDLERS: Readonly<Record<string, Type<CommandHandler> | undefined>> = {
   ping: PingCommand,
+  iknoball: LaunchCommand,
   picks: PicksCommand,
   leaderboard: LeaderboardCommand,
   setup: SetupCommand,

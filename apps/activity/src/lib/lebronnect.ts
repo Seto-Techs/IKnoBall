@@ -75,9 +75,16 @@ export type LebronnectMe = {
   stats: LebronnectStats;
 };
 
-/** Headshots come off the league CDN. The URL mapping rewrites the host inside Discord. */
-export function headshotUrl(externalId: string): string {
-  return `${CDN_ORIGIN}/headshots/nba/latest/1040x760/${externalId}.png`;
+/**
+ * Headshots come off the league CDN. The URL mapping rewrites the host inside
+ * Discord.
+ *
+ * `size` is the rendition, not a resize: the CDN serves each one at a fixed
+ * width, so a 56px face asks for the small file instead of pulling a 198KB
+ * portrait through Discord's proxy to draw it a twentieth of its size.
+ */
+export function headshotUrl(externalId: string, size: '260x190' | '1040x760' = '1040x760'): string {
+  return `${CDN_ORIGIN}/headshots/nba/latest/${size}/${externalId}.png`;
 }
 
 /* ── Calls ─────────────────────────────────────────────────────
