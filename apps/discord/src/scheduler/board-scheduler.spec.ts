@@ -16,7 +16,8 @@ import type { SlatePoster } from './slate-poster';
  * beyond the collaborators: the scheduler never touches Discord or Postgres — it asks
  * `BoardRepository` which day to use and `RecapPoster` to send it.
  *
- * The instants below are US/Eastern in late October, so EDT: noon is 16:00 UTC.
+ * The instants below are US/Eastern in late October, so EDT: midnight is 04:00 UTC and
+ * noon is 16:00 UTC. The board floors at midnight; the off-day note still waits for noon.
  */
 
 function settings(overrides: Partial<GuildSettings> = {}): GuildSettings {
@@ -39,7 +40,7 @@ const LAST_NIGHT: DayState = {
   lastFinalAt: new Date('2026-10-27T02:00:00.000Z'),
 };
 
-/** 27 October: still live at noon on the 27th, finished by noon on the 28th. */
+/** 27 October: still live when the 26th's board goes out, finished by the next midnight. */
 const TONIGHT: DayState = {
   slateKey: '2026-10-27',
   games: 2,
@@ -48,10 +49,12 @@ const TONIGHT: DayState = {
   lastFinalAt: null,
 };
 
-/** 12:00 in New York on 27 October 2026, the board's floor. */
+/** Midnight in New York on 27 October 2026, when the 26th's board falls due. */
+const MIDNIGHT_ET = new Date('2026-10-27T04:00:00.000Z');
+/** Midnight in New York on 28 October 2026, when the 27th's board falls due. */
+const MIDNIGHT_ET_NEXT = new Date('2026-10-28T04:00:00.000Z');
+/** Noon in New York on 27 October 2026: the off-day note's gate, not the board's. */
 const NOON_ET = new Date('2026-10-27T16:00:00.000Z');
-/** 12:00 in New York on 28 October 2026. */
-const NOON_ET_NEXT = new Date('2026-10-28T16:00:00.000Z');
 
 interface Harness {
   scheduler: BoardScheduler;
@@ -122,32 +125,32 @@ function harness(
 }
 
 describe('when it is due', () => {
-  it('posts last night’s board at noon ET, even though the last buzzer was hours earlier', async () => {
+  it('posts last night’s board at midnight ET, even though the last buzzer was hours earlier', async () => {
     const { scheduler, post, boardKeys } = harness([settings()]);
 
-    expect(await scheduler.tick(NOON_ET)).toEqual([
+    expect(await scheduler.tick(MIDNIGHT_ET)).toEqual([
       { guildId: 'guild-1', day: '2026-10-26', status: 'posted' },
     ]);
     expect(post).toHaveBeenCalledWith({ guildId: 'guild-1', channelId: 'channel-1' }, '2026-10-26');
     expect(boardKeys()).toEqual(['recap:guild-1:2026-10-26']);
   });
 
-  it('holds the board until noon, not until the day is finished', async () => {
-    // 11:59 in New York: the 26th has been final for ten hours and still waits.
+  it('holds the board until midnight, not until the day is finished', async () => {
+    // 23:59 in New York: the 26th has been final for two hours and still waits.
     const { scheduler, post } = harness([settings()]);
 
-    expect(await scheduler.tick(new Date('2026-10-27T15:59:00.000Z'))).toEqual([
+    expect(await scheduler.tick(new Date('2026-10-27T03:59:00.000Z'))).toEqual([
       { guildId: 'guild-1', day: '2026-10-26', status: 'not-due' },
     ]);
     expect(post).not.toHaveBeenCalled();
   });
 
-  it('waits for the last buzzer when it lands after noon', async () => {
+  it('waits for the last buzzer when it lands after midnight', async () => {
     // A delayed slate: the 26th's last game ends at 18:00 UTC on the 27th.
     const delayed: DayState = { ...LAST_NIGHT, lastFinalAt: new Date('2026-10-27T18:00:00.000Z') };
     const { scheduler, post } = harness([settings()], { days: [delayed, TONIGHT] });
 
-    expect((await scheduler.tick(NOON_ET))[0].status).toBe('not-due');
+    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('not-due');
     expect(post).not.toHaveBeenCalled();
 
     // Fifteen minutes of settlement after the buzzer, then it goes out.
@@ -161,8 +164,8 @@ describe('when it is due', () => {
       settings({ guildId: 'guild-2', channelId: 'channel-2' }),
     ]);
 
-    // 16:00 UTC is noon in New York and 3 a.m. on the 28th in Sydney; both post.
-    expect((await scheduler.tick(NOON_ET)).map((outcome) => outcome.status)).toEqual([
+    // 04:00 UTC is midnight in New York and 3 p.m. on the 27th in Sydney; both post.
+    expect((await scheduler.tick(MIDNIGHT_ET)).map((outcome) => outcome.status)).toEqual([
       'posted',
       'posted',
     ]);
@@ -173,9 +176,9 @@ describe('once a day', () => {
   it('does not post the same day twice inside the minute cron', async () => {
     const { scheduler, post } = harness([settings()]);
 
-    await scheduler.tick(NOON_ET);
+    await scheduler.tick(MIDNIGHT_ET);
 
-    expect((await scheduler.tick(new Date('2026-10-27T16:01:00.000Z')))[0].status).toBe(
+    expect((await scheduler.tick(new Date('2026-10-27T04:01:00.000Z')))[0].status).toBe(
       'already-posted',
     );
     expect(post).toHaveBeenCalledTimes(1);
@@ -184,12 +187,12 @@ describe('once a day', () => {
   it('does not remember a day the poster declined, so a late settlement still gets a board', async () => {
     const { scheduler, post, boardKeys } = harness([settings()], { result: 'skipped' });
 
-    expect((await scheduler.tick(NOON_ET))[0].status).toBe('skipped');
+    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('skipped');
     expect(boardKeys()).toEqual([]);
 
     // A settlement lands a minute later: the same tick now posts.
     const later = harness([settings()]);
-    expect((await later.scheduler.tick(new Date('2026-10-27T16:01:00.000Z')))[0].status).toBe(
+    expect((await later.scheduler.tick(new Date('2026-10-27T04:01:00.000Z')))[0].status).toBe(
       'posted',
     );
     expect(post).toHaveBeenCalledTimes(1);
@@ -200,14 +203,14 @@ describe('once a day', () => {
       result: () => Promise.reject(new Error('Missing Access')),
     });
 
-    expect((await failing.scheduler.tick(NOON_ET))[0].status).toBe('failed');
+    expect((await failing.scheduler.tick(MIDNIGHT_ET))[0].status).toBe('failed');
     expect(failing.boardKeys()).toEqual([]);
   });
 
   it('posts the new day once the old one has already gone out', async () => {
-    // The 27th is still live at noon on the 27th, and final by noon on the 28th.
+    // The 27th is still live when its own midnight comes round, and final by the next one.
     const days = (now: Date) =>
-      now < NOON_ET_NEXT
+      now < MIDNIGHT_ET_NEXT
         ? [LAST_NIGHT, TONIGHT]
         : [
             LAST_NIGHT,
@@ -215,8 +218,8 @@ describe('once a day', () => {
           ];
     const { scheduler, boardKeys } = harness([settings()], { days });
 
-    expect((await scheduler.tick(NOON_ET))[0].day).toBe('2026-10-26');
-    expect((await scheduler.tick(NOON_ET_NEXT))[0]).toEqual({
+    expect((await scheduler.tick(MIDNIGHT_ET))[0].day).toBe('2026-10-26');
+    expect((await scheduler.tick(MIDNIGHT_ET_NEXT))[0]).toEqual({
       guildId: 'guild-1',
       day: '2026-10-27',
       status: 'posted',
@@ -229,7 +232,7 @@ describe('the day', () => {
   it('posts nothing when no league day has finished', async () => {
     const { scheduler, post } = harness([settings()], { days: [TONIGHT] });
 
-    expect(await scheduler.tick(NOON_ET)).toEqual([
+    expect(await scheduler.tick(MIDNIGHT_ET)).toEqual([
       { guildId: 'guild-1', day: null, status: 'no-day' },
     ]);
     expect(post).not.toHaveBeenCalled();
@@ -301,7 +304,7 @@ describe('the sweep', () => {
       { has: async () => false, remember: async () => {} } as unknown as DayKeyGuard,
     );
 
-    await scheduler.tick(NOON_ET);
+    await scheduler.tick(MIDNIGHT_ET);
 
     expect(days).toHaveBeenCalledTimes(1);
   });
@@ -319,10 +322,10 @@ describe('the sweep', () => {
     });
 
     // The first tick is stuck inside the send when the next minute arrives.
-    const first = scheduler.tick(NOON_ET);
+    const first = scheduler.tick(MIDNIGHT_ET);
     await new Promise((resolve) => setImmediate(resolve));
 
-    expect(await scheduler.tick(NOON_ET)).toEqual([]);
+    expect(await scheduler.tick(MIDNIGHT_ET)).toEqual([]);
 
     release();
     await first;

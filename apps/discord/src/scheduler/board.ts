@@ -7,13 +7,13 @@
  * recap is what is left — it no longer rides on another post.
  *
  * That leaves one question: **which league day is the board for?** The most recent
- * day whose games are all done, so the board a guild sees at noon is the board for
- * last night. `BoardRepository` asks Postgres; this file decides, and it is pure — no
+ * day whose games are all done, so the board a guild sees at midnight is the board for
+ * the day that just ended. `BoardRepository` asks Postgres; this file decides, and it is pure — no
  * clock, no database, no gateway — so every branch is a unit test rather than a timed
  * integration.
  */
 import type { PredictionMode } from '@iknoball/predictions';
-import { etNoon, shiftDateKey } from './slate-date';
+import { etMidnight, shiftDateKey } from './slate-date';
 
 /**
  * How long after the last scheduled tip-off a league day counts as over, even if the
@@ -103,24 +103,27 @@ export function latestFinishedDay(days: readonly DayState[], now: Date): DayStat
  *
  * Two floors, and the later one wins:
  *
- * - **Noon ET the day after the slate.** The board is a morning paper. A recap that
- *   lands at 1 a.m. is read by nobody, and the league day is US/Eastern for every
- *   guild, so this is one instant for the whole fleet rather than one per server.
+ * - **Midnight ET, the day after the slate.** The board closes the league day, and the
+ *   league day is US/Eastern for every guild, so this is one instant for the whole
+ *   fleet rather than one per server. A slate that finishes at 22:15 ET posts at
+ *   00:00 ET, not the moment the last buzzer settles.
  * - **Fifteen minutes after the last final** (`RECAP_SETTLE_MS`). The floor that makes
- *   noon safe: if a slate ever ran past noon — a delayed or replayed game — the board
- *   waits for the game instead of recapping a night that was not over.
+ *   midnight safe: a west-coast game can finish at 00:30 ET, and the board waits for it
+ *   rather than recapping a night that was not over.
  *
  * A day the feed never marked final falls back to the last tip-off plus
  * `DAY_OVER_GRACE_MS`, the same backstop `isDayOver` uses, so a missing box score
  * summary costs the board its exact minute rather than the board.
  */
 export function recapDueAt(day: DayState): Date {
-  const noon = etNoon(shiftDateKey(day.slateKey, 1)).getTime();
+  const midnight = etMidnight(shiftDateKey(day.slateKey, 1)).getTime();
   const final =
     day.lastFinalAt ??
     (day.lastTipOff ? new Date(day.lastTipOff.getTime() + DAY_OVER_GRACE_MS) : null);
 
-  return new Date(final === null ? noon : Math.max(noon, final.getTime() + RECAP_SETTLE_MS));
+  return new Date(
+    final === null ? midnight : Math.max(midnight, final.getTime() + RECAP_SETTLE_MS),
+  );
 }
 
 /**

@@ -103,36 +103,46 @@ describe('latestFinishedDay', () => {
 });
 
 describe('when the board is due', () => {
-  it('is noon ET the day after the slate, even though the games ended hours earlier', () => {
-    // The 27th's last buzzer was 03:00 UTC on the 28th; noon in New York (EDT) is
-    // 16:00 UTC.
-    expect(recapDueAt(day()).toISOString()).toBe('2026-10-28T16:00:00.000Z');
+  it('is midnight ET the day after the slate, even though the games ended hours earlier', () => {
+    // The 27th's last buzzer was 03:00 UTC on the 28th; midnight in New York (EDT) is
+    // 04:00 UTC.
+    expect(recapDueAt(day()).toISOString()).toBe('2026-10-28T04:00:00.000Z');
   });
 
-  it('is noon in January too, which is 17:00 UTC once the clocks are back', () => {
+  it('is midnight in January too, which is 05:00 UTC once the clocks are back', () => {
     const winter = day({
       slateKey: '2027-01-05',
       lastTipOff: new Date('2027-01-06T00:30:00.000Z'),
       lastFinalAt: new Date('2027-01-06T03:00:00.000Z'),
     });
 
-    expect(recapDueAt(winter).toISOString()).toBe('2027-01-06T17:00:00.000Z');
+    expect(recapDueAt(winter).toISOString()).toBe('2027-01-06T05:00:00.000Z');
   });
 
-  it('waits fifteen minutes after a buzzer that lands past noon', () => {
-    const late = day({ lastFinalAt: new Date('2026-10-28T17:00:00.000Z') });
+  it('holds a 22:15 ET buzzer until midnight', () => {
+    // The worked example: a normal slate ends at 22:15 ET, the settle window would be
+    // 22:30, and the board waits for the day to close instead.
+    const normal = day({ lastFinalAt: new Date('2026-10-28T02:15:00.000Z') });
 
-    expect(recapDueAt(late).toISOString()).toBe('2026-10-28T17:15:00.000Z');
+    expect(recapDueAt(normal).toISOString()).toBe('2026-10-28T04:00:00.000Z');
   });
 
-  it('still leaves the settlement window when the buzzer is just before noon', () => {
-    // A final at 15:45 UTC would be due at 16:00 — the same instant as noon, so noon
-    // wins and nothing is lost. One minute later and the settle window is the floor.
-    const justBefore = day({ lastFinalAt: new Date('2026-10-28T15:45:00.000Z') });
-    const justAfter = day({ lastFinalAt: new Date('2026-10-28T15:46:00.000Z') });
+  it('waits fifteen minutes after a buzzer that lands past midnight', () => {
+    // A 00:30 ET final is already past the floor, so the settle window is the answer.
+    const late = day({ lastFinalAt: new Date('2026-10-28T04:30:00.000Z') });
 
-    expect(recapDueAt(justBefore).toISOString()).toBe('2026-10-28T16:00:00.000Z');
-    expect(recapDueAt(justAfter).toISOString()).toBe('2026-10-28T16:01:00.000Z');
+    expect(recapDueAt(late).toISOString()).toBe('2026-10-28T04:45:00.000Z');
+  });
+
+  it('still leaves the settlement window when the buzzer is just before midnight', () => {
+    // A final at 03:45 UTC would be due at 04:00 — the same instant as midnight, so
+    // midnight wins and nothing is lost. One minute later and the settle window is
+    // the floor.
+    const justBefore = day({ lastFinalAt: new Date('2026-10-28T03:45:00.000Z') });
+    const justAfter = day({ lastFinalAt: new Date('2026-10-28T03:46:00.000Z') });
+
+    expect(recapDueAt(justBefore).toISOString()).toBe('2026-10-28T04:00:00.000Z');
+    expect(recapDueAt(justAfter).toISOString()).toBe('2026-10-28T04:01:00.000Z');
   });
 
   it('falls back to the tip-off grace when the feed never said when the game ended', () => {
@@ -148,14 +158,14 @@ describe('when the board is due', () => {
     );
     expect(recapDueAt(quiet).toISOString()).toBe(expected.toISOString());
     expect(recapDueAt(quiet).getTime()).toBeGreaterThan(
-      new Date('2026-10-28T16:00:00.000Z').getTime(),
+      new Date('2026-10-28T04:00:00.000Z').getTime(),
     );
   });
 
-  it('is noon alone when the day has neither a buzzer nor a tip-off', () => {
+  it('is midnight alone when the day has neither a buzzer nor a tip-off', () => {
     const bare = day({ lastFinalAt: null, lastTipOff: null });
 
-    expect(recapDueAt(bare).toISOString()).toBe('2026-10-28T16:00:00.000Z');
+    expect(recapDueAt(bare).toISOString()).toBe('2026-10-28T04:00:00.000Z');
   });
 });
 

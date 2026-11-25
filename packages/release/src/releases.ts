@@ -35,6 +35,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.6',
+    date: '2026-11-25',
+    headline: 'The daily board lands at midnight ET, not at lunch the next day.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'A slate that finished at 10:15 pm ET used to wait until noon the next day. Your server’s board now posts at midnight ET — or fifteen minutes after the last game goes final, if that is later — so the night’s result is waiting when the day turns over.',
+      },
+    ],
+  },
+  {
     version: '0.5.5',
     date: '2026-11-24',
     headline:

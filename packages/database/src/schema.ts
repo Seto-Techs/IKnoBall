@@ -710,7 +710,7 @@ export const discordLinks = pgTable('discord_links', {
  *
  * **`postHour` and `timezone` are vestigial.** They were the per-guild posting
  * hour; the board now goes out on one ET schedule for every guild (15 minutes
- * after the last final, or noon ET, whichever is later), so nothing writes or
+ * after the last final, or midnight ET, whichever is later), so nothing writes or
  * reads either column. They stay because dropping them would be a migration for
  * no behaviour, and a later per-guild schedule could want them back.
  */

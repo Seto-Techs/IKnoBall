@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dateKeyIn,
   etDateKey,
+  etMidnight,
   etNoon,
   formatDayKey,
   isDateKey,
@@ -88,6 +89,32 @@ describe('the wall clock a tip-off is shown in', () => {
 
   it('pads the minutes, which a bare minute format does not', () => {
     expect(localClock(new Date('2026-10-27T13:05:00.000Z'), 'America/New_York')).toBe('09:05');
+  });
+});
+
+describe('midnight in US/Eastern', () => {
+  it('is 04:00 UTC while New York is on daylight time', () => {
+    expect(etMidnight('2026-10-27').toISOString()).toBe('2026-10-27T04:00:00.000Z');
+  });
+
+  it('is 05:00 UTC after the clocks go back', () => {
+    expect(etMidnight('2026-11-24').toISOString()).toBe('2026-11-24T05:00:00.000Z');
+  });
+
+  it('is 04:00 UTC again in July', () => {
+    expect(etMidnight('2026-07-01').toISOString()).toBe('2026-07-01T04:00:00.000Z');
+  });
+
+  it('reads the offset at the right instant on the day the clocks change', () => {
+    // 1 November 2026: the clocks go back at 2 a.m., hours after midnight, so midnight
+    // is still EDT and lands at 04:00 UTC.
+    expect(etMidnight('2026-11-01').toISOString()).toBe('2026-11-01T04:00:00.000Z');
+    // 8 March 2026: the clocks go forward at 2 a.m., so midnight is still EST — 05:00.
+    expect(etMidnight('2026-03-08').toISOString()).toBe('2026-03-08T05:00:00.000Z');
+  });
+
+  it('hands back an invalid date for a key that is not one', () => {
+    expect(Number.isNaN(etMidnight('not-a-day').getTime())).toBe(true);
   });
 });
 

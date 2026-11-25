@@ -175,7 +175,7 @@ describe('saving', () => {
 
     const text = replyText(reply);
     expect(text).toContain('15 minutes after the final game');
-    expect(text).toContain('12:00 ET');
+    expect(text).toContain('00:00 ET');
   });
 
   it('accepts a channel with just the posting permissions it needs', async () => {
@@ -204,7 +204,7 @@ describe('no arguments', () => {
 
     const text = replyText(reply);
     expect(text).toContain('<#channel-1>');
-    expect(text).toContain('12:00 ET');
+    expect(text).toContain('00:00 ET');
     expect(text).toContain('enabled');
     expect(text).toContain('Picks are made in the Activity — type `/iknoball`');
     expect(save).not.toHaveBeenCalled();

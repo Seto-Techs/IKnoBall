@@ -39,12 +39,13 @@ export interface BoardOutcome {
  * slate to roll over. What is left is the one post that is still the bot's job: the
  * board, once a day, into the channel `/setup` configured.
  *
- * **The board goes out at the later of noon ET and fifteen minutes after the last
+ * **The board goes out at the later of midnight ET and fifteen minutes after the last
  * buzzer** (`recapDueAt`). Both halves are league-wide: the slate day is US/Eastern for
  * every guild, so one instant serves the whole fleet, and a board that lands while the
- * last game is still settling would rank the night without its final picks. Noon is the
- * other floor — a recap at 1 a.m. is read by nobody. `latestFinishedDay` means a missed
- * morning catches up on the next tick instead of skipping a day.
+ * last game is still settling would rank the night without its final picks. Midnight is
+ * the other floor — a slate that ends at 22:15 ET posts at 00:00, and one that runs
+ * past midnight posts fifteen minutes after its last final. `latestFinishedDay` means a
+ * missed board catches up on the next tick instead of skipping a day.
  *
  * Per tick, cheapest first, and every step can say no:
  *
@@ -52,7 +53,7 @@ export interface BoardOutcome {
  * 2. `BoardRepository.daysSince` answers, in one query for all guilds, how the last
  *    week's league days stand. `latestFinishedDay` picks the one the board is for.
  * 3. A board that is not due yet is skipped; a minute cron means the first tick after
- *    `recapDueAt` posts, so a restart at 12:05 still gets that day's board out.
+ *    `recapDueAt` posts, so a restart at 00:05 still gets that day's board out.
  * 4. `recap:<guildId>:<day>` must be absent, so the other 59 minutes are free.
  * 5. `RecapPoster` counts the day's settled picks and declines an empty board.
  *
@@ -134,8 +135,8 @@ export class BoardScheduler {
    *
    * The board first and the off-day note second, the same order the old slate tick
    * used: the post people are waiting for must not be lost to a courtesy. The note
-   * waits for noon too — "no games today" is a morning message, and midnight is not
-   * morning — while the board waits for `recapDueAt`, which can be later.
+   * keeps its own noon gate — "no games today" is a morning message, and it does not
+   * follow the board's midnight floor — so the two can come due at different hours.
    */
   async runForGuild(guild: GuildSettings, day: DayState | null, now: Date): Promise<BoardStatus> {
     if (day !== null && now.getTime() < recapDueAt(day).getTime()) return 'not-due';

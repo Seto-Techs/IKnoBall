@@ -47,8 +47,8 @@ function finishedDay(): DayState {
   };
 }
 
-/** Noon in New York on 27 October 2026, when that board is due. */
-const NOON_ET = new Date('2026-10-27T16:00:00.000Z');
+/** Midnight in New York on 27 October 2026, when that board is due. */
+const MIDNIGHT_ET = new Date('2026-10-27T04:00:00.000Z');
 
 /** The poster, with only the calls this file cares about standing in for it. */
 function poster(): SlatePoster {
@@ -106,7 +106,7 @@ describe('the switch stops the board post', () => {
   it('posts nothing, and does not even ask which guilds are due', async () => {
     const { instance, post, listEnabled } = scheduler(false);
 
-    expect(await instance.tick(NOON_ET)).toEqual([]);
+    expect(await instance.tick(MIDNIGHT_ET)).toEqual([]);
     expect(listEnabled).not.toHaveBeenCalled();
     expect(post).not.toHaveBeenCalled();
   });
@@ -127,9 +127,9 @@ describe('the switch stops the board post', () => {
       { has: async () => false, remember: async () => {} } as unknown as DayKeyGuard,
     );
 
-    expect(await instance.tick(NOON_ET)).toEqual([]);
+    expect(await instance.tick(MIDNIGHT_ET)).toEqual([]);
     config.enabled = true;
-    expect((await instance.tick(NOON_ET))[0].status).toBe('posted');
+    expect((await instance.tick(MIDNIGHT_ET))[0].status).toBe('posted');
     expect(post).toHaveBeenCalledTimes(1);
   });
 });
