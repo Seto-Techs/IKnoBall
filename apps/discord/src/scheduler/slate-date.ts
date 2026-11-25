@@ -10,9 +10,10 @@
  *   `etDateKey`, `shiftEtDate`, `gameDateKey`), and this file derives the same
  *   keys with the same `Intl` calls, so the bot and the site cannot disagree
  *   about which day a game is on.
- * - **When the board goes out** is also ET (`etNoon`), because it recaps the league
- *   day rather than the reader's: one instant for every guild beats one per server,
- *   and noon ET is the morning after for the people who watched the games.
+ * - **When the board goes out** is also ET (`etMidnight`, with `etNoon` left for the
+ *   off-day note), because it recaps the league day rather than the reader's: one
+ *   instant for every guild beats one per server, and midnight ET closes the day the
+ *   slate belongs to.
  *
  * Nothing here reads the clock on its own: every function takes the instant it
  * should reason about, which is what makes the scheduler testable at any hour.
@@ -78,18 +79,40 @@ function etOffsetMs(instant: Date): number {
 }
 
 /**
- * Noon in US/Eastern on an ET date key, as an instant.
+ * `hour` on New York's wall clock on an ET date key, as an instant.
  *
- * The board's posting time: `2026-11-24` gives `2026-11-24T17:00:00Z` in November and
- * `2026-07-01T16:00:00Z` in July, which is 12:00 on New York's wall clock either way.
+ * The offset is applied twice because the one at the guess can sit on the far side of
+ * a DST change from the offset at the hour we actually want: on the morning the clocks
+ * go forward, 00:00 UTC reads as 19:00 the evening before, and a single correction
+ * would put midnight an hour early. Midnight and noon are both outside the 02:00
+ * transition, so the second pass always settles.
  */
-export function etNoon(dayKey: string): Date {
-  const anchor = new Date(`${dayKey}T12:00:00.000Z`);
+function etWallClock(dayKey: string, hour: number): Date {
+  const anchor = new Date(`${dayKey}T${String(hour).padStart(2, '0')}:00:00.000Z`);
   if (Number.isNaN(anchor.getTime())) return anchor;
 
-  // The offset is read at the anchor, where New York's wall clock is 07:00 or 08:00 on
-  // the same calendar day — so the reading is stable and no DST edge can land on it.
-  return new Date(anchor.getTime() - etOffsetMs(anchor));
+  const first = new Date(anchor.getTime() - etOffsetMs(anchor));
+  return new Date(anchor.getTime() - etOffsetMs(first));
+}
+
+/**
+ * Midnight in US/Eastern on an ET date key, as an instant.
+ *
+ * The board's floor: `2026-11-24` gives `2026-11-24T05:00:00Z` in November and
+ * `2026-07-01T04:00:00Z` in July, which is 00:00 on New York's wall clock either way.
+ */
+export function etMidnight(dayKey: string): Date {
+  return etWallClock(dayKey, 0);
+}
+
+/**
+ * Noon in US/Eastern on an ET date key, as an instant.
+ *
+ * The off-day note's hour — "no games today" is a morning message. `2026-11-24` gives
+ * `2026-11-24T17:00:00Z` in November and `2026-07-01T16:00:00Z` in July.
+ */
+export function etNoon(dayKey: string): Date {
+  return etWallClock(dayKey, 12);
 }
 
 /**

@@ -9,7 +9,7 @@ import { canManageServer, channelProblem } from './guild-settings';
  * `/setup` — where this server gets its daily leaderboard.
  *
  * The board is the bot's only scheduled post now that picks live in the Activity, and
- * it goes out at one instant for the whole fleet (the later of noon ET and fifteen
+ * it goes out at one instant for the whole fleet (the later of midnight ET and fifteen
  * minutes after the last buzzer — see `recapDueAt`). That leaves the channel, and only
  * the channel, for an admin to choose: an hour option would be a setting that no
  * longer moves anything.
@@ -115,10 +115,10 @@ export class SetupCommand implements CommandHandler {
  * What `/setup` says the board's timing is.
  *
  * Worded as a rule rather than a clock time, because the exact minute moves with the
- * last game of the slate: noon ET is the floor, not the schedule.
+ * last game of the slate: midnight ET is the floor, not the schedule.
  */
 const POSTS_LINE =
-  'the leaderboard for the last finished slate, 15 minutes after the final game or at 12:00 ET, whichever is later.';
+  'the leaderboard for the last finished slate, at 00:00 ET or 15 minutes after the final game, whichever is later.';
 
 function confirmation(settings: GuildSettings): string {
   return [

@@ -385,7 +385,7 @@ settlement cadence.
 `last slate post` and the `cards:` counts are history as of 0.5.1: picks are made in
 the Discord Activity, so the bot no longer posts cards and these only move when
 someone runs the `force:slate` op. What posts daily now is the **leaderboard**, once
-per guild at noon ET the day after a slate (or 15 minutes after that slate's last
+per guild at midnight ET the day after a slate (or 15 minutes after that slate's last
 final, if later) — if a guild is `configured` and `active` but no board arrived today,
 look for `Leaderboard post failed` in the log rather than at this line.
 

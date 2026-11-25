@@ -46,8 +46,8 @@ function finishedDay(): DayState {
   };
 }
 
-/** Noon in New York on 27 October 2026, when that board is due. */
-const NOON_ET = new Date('2026-10-27T16:00:00.000Z');
+/** Midnight in New York on 27 October 2026, when that board is due. */
+const MIDNIGHT_ET = new Date('2026-10-27T04:00:00.000Z');
 
 function harness(guildIds: string[], failFor: string) {
   const keys = new Set<string>();
@@ -89,7 +89,7 @@ describe('per-guild isolation', () => {
       'locked-out',
     );
 
-    expect(await scheduler.tick(NOON_ET)).toEqual([
+    expect(await scheduler.tick(MIDNIGHT_ET)).toEqual([
       { guildId: 'locked-out', day: '2026-10-26', status: 'failed' },
       { guildId: 'guild-b', day: '2026-10-26', status: 'posted' },
       { guildId: 'guild-c', day: '2026-10-26', status: 'posted' },
@@ -108,7 +108,7 @@ describe('per-guild isolation', () => {
   it('does not spend the broken guild’s day key, so it retries once the channel is fixed', async () => {
     const { scheduler, keys } = harness(['locked-out', 'guild-b'], 'locked-out');
 
-    await scheduler.tick(NOON_ET);
+    await scheduler.tick(MIDNIGHT_ET);
 
     // A 403 is a property of the channel, not of the hour: the retry must be allowed.
     expect(keys.has('recap:locked-out:2026-10-26')).toBe(false);
@@ -118,7 +118,7 @@ describe('per-guild isolation', () => {
   it('isolates a 403 wherever it lands in the sweep, not only at the end', async () => {
     const { scheduler } = harness(['guild-a', 'guild-b', 'locked-out'], 'locked-out');
 
-    expect((await scheduler.tick(NOON_ET)).map((outcome) => outcome.status)).toEqual([
+    expect((await scheduler.tick(MIDNIGHT_ET)).map((outcome) => outcome.status)).toEqual([
       'posted',
       'posted',
       'failed',
