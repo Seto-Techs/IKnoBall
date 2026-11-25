@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { Game, TeamWithLeaders } from '../../lib/api';
-import { canonicalAbbr, getGameStatus } from '../../lib/game-utils';
+import {
+  canonicalAbbr,
+  etDateKey,
+  formatTimeET,
+  gameDateKey,
+  getGameStatus,
+  shiftEtDate,
+} from '../../lib/game-utils';
 import { TeamMark } from '../TeamMark';
 
 function abbrFromFallback(tricode: string | null | undefined, fallback: string): string {
@@ -40,20 +47,16 @@ export function SevenDayStrip({
 
   const days = useMemo(() => {
     const now = new Date();
-    const arr: Date[] = [];
-    for (let d = 0; d < 7; d++) {
-      const date = new Date(now);
-      date.setDate(now.getDate() + d);
-      arr.push(date);
-    }
-    return arr;
+    // ET days, anchored at noon so the weekday and day number a column shows
+    // match the games filed under it. Derived from the local clock's UTC date,
+    // the strip's first column became tomorrow at 7pm in New York.
+    return Array.from({ length: 7 }, (_, d) => new Date(`${shiftEtDate(d, now)}T12:00:00.000Z`));
   }, []);
 
   const gamesByDate = useMemo(() => {
     const m = new Map<string, Game[]>();
     for (const g of games ?? []) {
-      const key =
-        g.gameDate ?? (g.gameDateTime ? new Date(g.gameDateTime).toISOString().slice(0, 10) : '');
+      const key = gameDateKey(g);
       if (!key) continue;
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(g);
@@ -81,12 +84,10 @@ export function SevenDayStrip({
     if (isFinal) timeOrScore = `F ${g.awayScore ?? 0}-${g.homeScore ?? 0}`;
     else if (isLive) timeOrScore = `● ${g.awayScore ?? 0}-${g.homeScore ?? 0}`;
     else {
-      try {
-        const d = new Date(g.gameDateTime);
-        timeOrScore = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' ET';
-      } catch {
-        timeOrScore = g.status ?? '';
-      }
+      // Tip-off is quoted in ET for everyone, like the rest of the app. Formatted
+      // from the viewer's zone it read "10:00 PM ET" for a 5:00 PM game.
+      const et = formatTimeET(g.gameDateTime);
+      timeOrScore = et ? `${et} ET` : (g.status ?? '');
     }
 
     return (
@@ -174,7 +175,7 @@ export function SevenDayStrip({
         {days.map((date, dayIndex) => {
           const key = date.toISOString().slice(0, 10);
           const dayGames = gamesByDate.get(key) ?? [];
-          const isToday = key === new Date().toISOString().slice(0, 10);
+          const isToday = key === etDateKey();
           const isHero = key === heroDateKey;
           const hiddenCount = Math.max(0, dayGames.length - MAX_VISIBLE_GAMES);
           const popoverOpen = openDayKey === key;

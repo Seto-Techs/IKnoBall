@@ -30,6 +30,7 @@ import {
   useLeagueLeaders,
 } from '../lib/api';
 import { picksOf, picksPerGame, usePredictions } from '../components/predict/predictions';
+import { etDateKey, shiftEtDate } from '../lib/game-utils';
 import { RAIL_LAYOUT_QUERY, useMediaQuery } from '../lib/media-query';
 import { useSession, useSignOut } from '../lib/use-auth';
 
@@ -41,12 +42,11 @@ export const Route = createFileRoute('/dashboard')({
 });
 
 function getRangeStrings(): { from: string; to: string } {
+  // ET days, because the schedule files games under them. Starting from the UTC
+  // date dropped tonight's slate from the range as soon as it was 7pm in New
+  // York, which is the hour the games tip off.
   const now = new Date();
-  const from = now.toISOString().slice(0, 10);
-  const toDate = new Date(now);
-  toDate.setDate(now.getDate() + 6);
-  const to = toDate.toISOString().slice(0, 10);
-  return { from, to };
+  return { from: etDateKey(now), to: shiftEtDate(6, now) };
 }
 
 /**

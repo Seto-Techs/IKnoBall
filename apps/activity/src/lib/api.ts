@@ -164,8 +164,17 @@ export interface Me {
 
 /* ── Calls ───────────────────────────────────────────────────── */
 
-export function fetchSlate(date: string): Promise<Game[]> {
-  return apiGet<Game[]>(`/games/range?from=${date}&to=${date}`);
+/**
+ * The next slate with a tip still to come — the same question the site's front
+ * page asks.
+ *
+ * Not "tomorrow": at 2am ET the games of the day that is starting have not been
+ * played yet, and the day after can be an off day with nothing on it. The API
+ * answers with the nearest date that still has an upcoming game, so the screens
+ * show the night a player can actually still call.
+ */
+export function fetchNextSlate(): Promise<Game[]> {
+  return apiGet<Game[]>('/games/next');
 }
 
 export function fetchPicks(): Promise<Pick[]> {

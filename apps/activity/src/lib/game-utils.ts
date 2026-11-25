@@ -97,3 +97,26 @@ export function relativeToTipoff(dateTime: string, now: number = Date.now()): st
 export function formatPoints(points: number): string {
   return `${points} ${points === 1 ? 'pt' : 'pts'}`;
 }
+
+/** The day the slate screens are showing, and the word for it. */
+export interface SlateDay {
+  /** `YYYY-MM-DD` of the night the games are on. */
+  day: string;
+  /** `Today`, `Tomorrow`, or null when the next slate is further out. */
+  near: 'Today' | 'Tomorrow' | null;
+}
+
+/**
+ * The day `/games/next` answered with.
+ *
+ * The day comes from the games' own `gameDate` — the league's calendar, not the
+ * viewer's clock — so a player in Jakarta at 2pm on the 25th is shown the 25th's
+ * slate, whose games tip that evening, rather than the 26th's. An empty answer
+ * (the off-season) falls back to today so the screens still have a date to name.
+ */
+export function slateDay(games: Game[], now: Date = new Date()): SlateDay {
+  const today = etDateKey(now);
+  const day = games[0]?.gameDate.slice(0, 10) || today;
+  const near = day === today ? 'Today' : day === shiftEtDate(1, now) ? 'Tomorrow' : null;
+  return { day, near };
+}

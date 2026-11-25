@@ -5,11 +5,14 @@ import type { Game, TeamWithLeaders } from '../../lib/api';
 import { useTopPlayers } from '../../lib/api';
 import {
   canonicalAbbr,
+  etDateKey,
   formatTimeET,
+  gameDateKey,
   getGameStatus,
   getSeasonBadge,
   hexLuminance,
   seasonLabelFor,
+  shiftEtDate,
 } from '../../lib/game-utils';
 import { TeamMark } from '../TeamMark';
 import { MatchupBackdrop } from './MatchupBackdrop';
@@ -47,16 +50,16 @@ export function computeHero(
 ): { dateKey: string; date: Date; games: Game[] } | null {
   const byDate = new Map<string, Game[]>();
   for (const g of games) {
-    const key =
-      g.gameDate ?? (g.gameDateTime ? new Date(g.gameDateTime).toISOString().slice(0, 10) : '');
+    const key = gameDateKey(g);
     if (!key) continue;
     if (!byDate.has(key)) byDate.set(key, []);
     byDate.get(key)!.push(g);
   }
+  // Days are the league's, not the viewer's: walking the ET calendar keeps a
+  // night in play while it is being played. Keyed on UTC, this loop skipped
+  // tonight's slate from 7pm ET, when the UTC date has already rolled over.
   for (let d = 0; d < maxDays; d++) {
-    const date = new Date(now);
-    date.setDate(now.getDate() + d);
-    const key = date.toISOString().slice(0, 10);
+    const key = shiftEtDate(d, now);
     const dayGames = byDate.get(key) ?? [];
     if (dayGames.length === 0) continue;
     const hasLiveOrSched = dayGames.some((g) => {
@@ -64,11 +67,11 @@ export function computeHero(
       return st === 'live' || st === 'scheduled';
     });
     if (hasLiveOrSched) {
-      return { dateKey: key, date, games: dayGames };
+      return { dateKey: key, date: new Date(`${key}T12:00:00.000Z`), games: dayGames };
     }
   }
   const sortedKeys = Array.from(byDate.keys()).sort();
-  const nowKey = now.toISOString().slice(0, 10);
+  const nowKey = etDateKey(now);
   for (const key of sortedKeys) {
     if (key < nowKey) continue;
     const dayGames = byDate.get(key) ?? [];
@@ -385,8 +388,7 @@ export function LeagueWideHeroCarousel({
     if (nextGames && nextGames.length > 0) {
       const byDate = new Map<string, Game[]>();
       for (const g of nextGames) {
-        const key =
-          g.gameDate ?? (g.gameDateTime ? new Date(g.gameDateTime).toISOString().slice(0, 10) : '');
+        const key = gameDateKey(g);
         if (!key) continue;
         if (!byDate.has(key)) byDate.set(key, []);
         byDate.get(key)!.push(g);
@@ -419,8 +421,9 @@ export function LeagueWideHeroCarousel({
     [heroGames.length],
   );
 
-  const isTodayHero = hero ? hero.dateKey === now.toISOString().slice(0, 10) : false;
-  const isFutureHero = hero ? hero.dateKey > now.toISOString().slice(0, 10) : false;
+  const todayKey = etDateKey(now);
+  const isTodayHero = hero ? hero.dateKey === todayKey : false;
+  const isFutureHero = hero ? hero.dateKey > todayKey : false;
   const offseason = !loading && (!hero || heroGames.length === 0);
   const heroSeason = useMemo(() => getHeroSeasonSummary(heroGames), [heroGames]);
   const seasonStart = new Date('2026-10-20T00:00:00Z');
