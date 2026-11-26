@@ -74,6 +74,17 @@ export interface SlateStore {
   /** Insert the card rows that do not exist yet; returns the game ids claimed. */
   claimCards(claims: readonly CardClaim[]): Promise<string[]>;
   attachCards(attachments: readonly CardAttachment[]): Promise<void>;
+  /**
+   * Drop this guild's card rows for these games, so the next claim sends them again.
+   *
+   * Only a deliberate re-post calls it (`postFor(…, { force: true })`), and the rows
+   * it can remove are safe to remove: the games come from `selectSlateGames`, which
+   * only ever yields a scheduled game that has not tipped off, so a row here can hold
+   * a message id or the `pending` marker but never a lock or settlement stamp. The
+   * messages already in the channel stay — Discord cannot un-send them — and the
+   * `attachCards` that follows points the rows at the new ones.
+   */
+  releaseCards(gameIds: readonly string[], guildId: string): Promise<number>;
 }
 
 @Injectable()
@@ -183,6 +194,19 @@ export class DrizzleSlateStore implements SlateStore {
       .returning({ gameId: discordCards.gameId });
 
     return inserted.map((row) => row.gameId);
+  }
+
+  async releaseCards(gameIds: readonly string[], guildId: string): Promise<number> {
+    if (gameIds.length === 0) return 0;
+
+    // Scoped to one guild on purpose: a re-post in one server must not release
+    // another server's cards, which is the whole point of the (gameId, guildId) key.
+    const removed = await this.infra.db
+      .delete(discordCards)
+      .where(and(inArray(discordCards.gameId, [...gameIds]), eq(discordCards.guildId, guildId)))
+      .returning({ gameId: discordCards.gameId });
+
+    return removed.length;
   }
 
   async attachCards(attachments: readonly CardAttachment[]): Promise<void> {

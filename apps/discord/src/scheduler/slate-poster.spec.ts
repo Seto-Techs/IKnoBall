@@ -119,6 +119,10 @@ function fakeStore(
       if (options.attachFails) throw new Error('connection reset');
       attachments.push([...batch]);
     },
+    async releaseCards(gameIds, guildId) {
+      order.push(`releaseCards:${guildId}:${gameIds.join('|')}`);
+      return gameIds.length;
+    },
   };
 
   return { store, order, claims, attachments };
@@ -227,6 +231,48 @@ describe('a slate that is already claimed', () => {
     expect(result.status).toBe('posted');
     expect(result.games).toBe(2);
     expect(discord.channel.send).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('a forced re-post', () => {
+  it('releases this server’s claims before claiming them again', async () => {
+    const trace: string[] = [];
+    const discord = fakeDiscord({ trace });
+    const { store } = fakeStore([game(0), game(1)], { trace });
+    const poster = new SlatePoster(store, discord.infra);
+
+    await poster.postFor(TARGET, DAY, MORNING, { force: true });
+
+    expect(trace.slice(0, 3)).toEqual([
+      'findGames:2026-10-27',
+      'releaseCards:guild-1:0022600120|0022600121',
+      'claimCards',
+    ]);
+  });
+
+  it('touches no claim when it is not forced', async () => {
+    const trace: string[] = [];
+    const discord = fakeDiscord({ trace });
+    const { store } = fakeStore([game(0)], { trace });
+    const poster = new SlatePoster(store, discord.infra);
+
+    await poster.postFor(TARGET, DAY, MORNING);
+
+    expect(trace.some((step) => step.startsWith('releaseCards'))).toBe(false);
+  });
+
+  it('releases nothing on a day with no game left to post', async () => {
+    // Every game tipped off, so the selection is empty: forcing cannot invent cards,
+    // and it must not clear the rows of a day that has nothing to send.
+    const trace: string[] = [];
+    const discord = fakeDiscord({ trace });
+    const { store } = fakeStore([], { trace });
+    const poster = new SlatePoster(store, discord.infra);
+
+    const result = await poster.postFor(TARGET, DAY, MORNING, { force: true });
+
+    expect(result.status).toBe('empty');
+    expect(trace).toEqual(['findGames:2026-10-27']);
   });
 });
 

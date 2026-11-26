@@ -425,6 +425,10 @@ function slateStore(games: SlateGame[]): SlateStore {
       return fresh.map((claim) => claim.gameId);
     },
     async attachCards() {},
+    // Not exercised here: these tests are about pacing, and none of them re-posts a day.
+    async releaseCards() {
+      return 0;
+    },
   };
 }
 

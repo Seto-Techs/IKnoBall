@@ -24,11 +24,15 @@ import {
   inArray,
   max,
   min,
+  ne,
   notInArray,
   or,
 } from 'drizzle-orm';
 
 const ABBR_MAP: Record<string, string> = { BKN: 'BRK' };
+
+/** `schedule_games.gameStatus`: 1 scheduled, 2 in progress, 3 final. */
+const STATUS_FINAL = 3;
 
 /**
  * The NBA feed reports minutes as an ISO-8601 duration ("PT34M21.00S"). Turn it
@@ -430,25 +434,32 @@ export class GamesController {
 
   @Get('next')
   @ApiOperation({
-    summary: 'Games on the nearest future date with scheduled games (opening day fallback)',
+    summary: 'Games on the nearest date that still has a game to play or in progress',
   })
   @ApiDataResponse(GameResponse, HttpStatus.OK, 'Next games.', 'Next games.', true)
   async getNext(): Promise<ApiResponse<GameResponse[]>> {
     const now = new Date();
+    // A night is still the slate while any of its games is not final: a game in
+    // progress counts, so the screen does not jump to the next date the moment
+    // the last tip-off passes and leave the players with nothing to follow.
+    //
+    // The floor is a staleness guard. A game is over within a few hours of
+    // tip-off, so a row still marked scheduled or live from more than half a day
+    // ago is a status the worker has not refreshed; treating it as a slate in
+    // play would pin the screen to a date with nothing left on it.
+    const inPlaySince = new Date(now.getTime() - 12 * 60 * 60 * 1000);
     // Include Preseason by default (differentiated via badge) — only All-Star excluded
     const nextRow = await this.db.db
-      .select({
-        gameDate: scheduleGames.gameDate,
-        gameDateTime: scheduleGames.gameDateTimeUTC,
-      })
+      .select({ gameDate: scheduleGames.gameDate })
       .from(scheduleGames)
       .where(
         and(
-          gte(scheduleGames.gameDateTimeUTC, now),
+          ne(scheduleGames.gameStatus, STATUS_FINAL),
+          gte(scheduleGames.gameDateTimeUTC, inPlaySince),
           notInArray(scheduleGames.gameLabel, ['All-Star', 'All-Star Championship']),
         ),
       )
-      .orderBy(asc(scheduleGames.gameDateTimeUTC))
+      .orderBy(asc(scheduleGames.gameDate))
       .limit(1);
 
     if (nextRow.length === 0) {

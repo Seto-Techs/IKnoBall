@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
 import type { Game, TeamWithLeaders } from '../../lib/api';
-import { canonicalAbbr } from '../../lib/game-utils';
+import { canonicalAbbr, etDateKey } from '../../lib/game-utils';
 import { buildPages } from '../../lib/pagination';
 import { TeamMark } from '../TeamMark';
 
@@ -136,7 +136,9 @@ export function PreviousGameDayCard({
   const prevDate = games[0]?.gameDate ?? '';
   const label = prevDate ? formatPreviousDateLabel(prevDate) : 'Previous Game Day';
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  // ET, so a game played tonight is not called final by the UTC date having
+  // rolled over at 7pm in New York.
+  const todayStr = etDateKey(now);
 
   const showSlider = games.length > itemsPerPage;
 

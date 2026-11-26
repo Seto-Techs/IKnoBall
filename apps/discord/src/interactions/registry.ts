@@ -9,6 +9,7 @@ import { PicksCommand } from '../picks/picks.command';
 import { LeaderboardCommand } from '../leaderboard/leaderboard.command';
 import { SetupCommand } from '../setup/setup.command';
 import { StatusCommand } from '../ops/status.command';
+import { SlateCommand } from '../ops/slate.command';
 import { LinkCommand } from '../linking/link.command';
 import { UnlinkCommand } from '../linking/unlink.command';
 
@@ -42,6 +43,7 @@ export const COMMAND_HANDLERS: Readonly<Record<string, Type<CommandHandler> | un
   leaderboard: LeaderboardCommand,
   setup: SetupCommand,
   status: StatusCommand,
+  slate: SlateCommand,
   link: LinkCommand,
   unlink: UnlinkCommand,
 };

@@ -2,8 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowRight, Check, Flame, Link2, Sparkles, Target } from 'lucide-react';
 import {
   fetchLeaderboard,
+  fetchNextSlate,
   fetchPicks,
-  fetchSlate,
   fetchTeams,
   useResource,
   type Game,
@@ -17,6 +17,7 @@ import {
   formatPoints,
   formatTimeET,
   shiftEtDate,
+  slateDay,
 } from '../lib/game-utils';
 import { fetchLebronnectMe, fetchPuzzle, headshotUrl, playerLabel } from '../lib/lebronnect';
 import { Avatar, ErrorNote, Skeleton, TeamMark } from '../components/kit';
@@ -81,9 +82,8 @@ function mine(rows: LeaderboardRow[] | undefined, userId: string): LeaderboardRo
 }
 
 export function Home({ me, onOpen }: { me: Me; onOpen: (screen: Screen) => void }) {
-  const tomorrow = shiftEtDate(1);
   const yesterday = shiftEtDate(-1);
-  const slate = useResource(() => fetchSlate(tomorrow), tomorrow);
+  const slate = useResource(fetchNextSlate);
   const picks = useResource(fetchPicks);
   const puzzle = useResource(fetchPuzzle);
   const lebronnect = useResource(fetchLebronnectMe);
@@ -97,6 +97,11 @@ export function Home({ me, onOpen }: { me: Me; onOpen: (screen: Screen) => void 
   const games = [...(slate.data ?? [])].sort(
     (a, b) => new Date(a.gameDateTime).getTime() - new Date(b.gameDateTime).getTime(),
   );
+
+  // Which night these games are on, taken from the games themselves: the next
+  // slate is today's for most of the day, and tomorrow's only once tonight has
+  // tipped off.
+  const { day, near } = slateDay(games);
 
   const pickedIds = new Set((picks.data ?? []).map((pick) => pick.gameId));
   const picked = games.filter((game) => pickedIds.has(game.id)).length;
@@ -143,9 +148,9 @@ export function Home({ me, onOpen }: { me: Me; onOpen: (screen: Screen) => void 
 
   const headline =
     count === null
-      ? 'Tomorrow’s slate'
+      ? 'The next slate'
       : count === 0
-        ? 'No games tomorrow'
+        ? 'No games on the slate'
         : `${count} ${count === 1 ? 'game' : 'games'} to call`;
 
   const subline =
@@ -173,7 +178,7 @@ export function Home({ me, onOpen }: { me: Me; onOpen: (screen: Screen) => void 
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2.5">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/55">
-                Tomorrow · {formatDateLabel(tomorrow)}
+                {near ? `${near} · ${formatDateLabel(day)}` : formatDateLabel(day)}
               </p>
               <h1 className="mt-1.5 font-heading text-[28px] font-semibold uppercase leading-none tracking-[0.02em] [@media(max-height:559px)]:text-[24px] sm:text-[32px]">
                 {headline}
@@ -214,7 +219,7 @@ export function Home({ me, onOpen }: { me: Me; onOpen: (screen: Screen) => void 
             title="Predictions"
             aside={
               count === null ? (
-                'Tomorrow'
+                (near ?? formatDateLabel(day))
               ) : (
                 <span className="inline-flex flex-wrap items-baseline gap-x-1.5">
                   <span>{`${count} ${count === 1 ? 'game' : 'games'}`}</span>

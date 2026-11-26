@@ -66,7 +66,14 @@ function harness(overrides: Partial<ForceDeps> = {}): Harness {
 }
 
 function args(overrides: Partial<Args> = {}): Args {
-  return { all: false, dryRun: false, help: false, guild: GUILD.guildId, ...overrides };
+  return {
+    all: false,
+    dryRun: false,
+    force: false,
+    help: false,
+    guild: GUILD.guildId,
+    ...overrides,
+  };
 }
 
 describe('parseArgs', () => {
@@ -76,12 +83,17 @@ describe('parseArgs', () => {
       all: false,
       day: '2026-10-31',
       dryRun: false,
+      force: false,
       help: false,
     });
   });
 
   it('reads --all', () => {
     expect(parseArgs(['--all', '--dry-run'])).toMatchObject({ all: true, dryRun: true });
+  });
+
+  it('reads --force', () => {
+    expect(parseArgs(['--guild', '123', '--force'])).toMatchObject({ force: true });
   });
 
   it('refuses to guess which servers to post to', () => {
@@ -95,7 +107,7 @@ describe('parseArgs', () => {
   });
 
   it('refuses an unknown flag', () => {
-    expect(() => parseArgs(['--guild', '123', '--force'])).toThrow(/Unknown argument "--force"/);
+    expect(() => parseArgs(['--guild', '123', '--forc'])).toThrow(/Unknown argument "--forc"/);
   });
 
   it('answers --help even from a half-written command', () => {
@@ -110,7 +122,7 @@ describe('forceSlate', () => {
 
     await expect(forceSlate(args(), deps, NOW)).resolves.toBe(0);
 
-    expect(depsOf.postFor).toHaveBeenCalledWith(GUILD, '2026-10-31', NOW);
+    expect(depsOf.postFor).toHaveBeenCalledWith(GUILD, '2026-10-31', NOW, { force: false });
     expect(depsOf.hydrate).toHaveBeenCalledWith(GUILD.guildId);
     expect(said[0]).toBe('Slate — Oct 31 (ET)');
     expect(said.join('\n')).toContain(
@@ -119,6 +131,14 @@ describe('forceSlate', () => {
     expect(said.join('\n')).toContain(
       `https://discord.com/channels/${GUILD.guildId}/${GUILD.channelId}/444444444444444444`,
     );
+  });
+
+  it('passes --force through, so an already-posted day can go out again', async () => {
+    const { deps, depsOf } = harness();
+
+    await expect(forceSlate(args({ force: true }), deps, NOW)).resolves.toBe(0);
+
+    expect(depsOf.postFor).toHaveBeenCalledWith(GUILD, '2026-10-31', NOW, { force: true });
   });
 
   it('defaults the day to the ET day of the instant it is given', async () => {
@@ -131,7 +151,9 @@ describe('forceSlate', () => {
       new Date('2026-11-01T02:00:00.000Z'),
     );
 
-    expect(depsOf.postFor).toHaveBeenCalledWith(GUILD, '2026-10-31', expect.any(Date));
+    expect(depsOf.postFor).toHaveBeenCalledWith(GUILD, '2026-10-31', expect.any(Date), {
+      force: false,
+    });
   });
 
   it('refuses a day that is not a real calendar day, before touching anything', async () => {
@@ -176,7 +198,7 @@ describe('forceSlate', () => {
 
     const printed = said.join('\n');
     expect(printed).toContain('already claimed for this server');
-    expect(printed).toContain('discord_cards');
+    expect(printed).toContain('--force');
     expect(printed).not.toContain('https://discord.com/channels');
   });
 

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { Check, Loader2, Lock, X } from 'lucide-react';
 import {
   ApiError,
+  fetchNextSlate,
   fetchOdds,
   fetchPicks,
-  fetchSlate,
   fetchStandings,
   fetchTeams,
   messageOf,
@@ -22,14 +22,15 @@ import {
   formatTimeET,
   gamePhase,
   relativeToTipoff,
-  shiftEtDate,
+  slateDay,
 } from '../lib/game-utils';
 import { buildClubIndex, resolveClub, type Club, type ClubIndex } from '../lib/teams';
 import { EmptyNote, ErrorNote, Spinner, TeamMark } from '../components/kit';
 
 /**
- * Tomorrow's slate — the same games the bot posts, because the bot's evening
- * message and this screen are the same product seen twice. The date is in the
+ * The next slate — the same games the site's front page leads with. The night
+ * shown is the one with a tip still to come, so it is tonight's slate for most
+ * of the day and tomorrow's once tonight has tipped off. The date is in the
  * header so nobody has to wonder which night they are looking at.
  *
  * One pick per game: the API locks the flat and weighted rows together on one
@@ -54,8 +55,7 @@ type Outcome = 'hit' | 'miss' | null;
 type Pending = { gameId: string; side: PickSide | 'clear' };
 
 export function Predictions() {
-  const tomorrow = shiftEtDate(1);
-  const slate = useResource(() => fetchSlate(tomorrow), tomorrow);
+  const slate = useResource(fetchNextSlate);
   const picks = useResource(fetchPicks);
   const teams = useResource(fetchTeams);
   const standings = useResource(fetchStandings);
@@ -97,6 +97,8 @@ export function Predictions() {
       ),
     [slate.data],
   );
+
+  const { day, near } = slateDay(games);
 
   const picked = games.filter((game) => (picksByGame.get(game.id)?.length ?? 0) > 0).length;
 
@@ -144,9 +146,13 @@ export function Predictions() {
           )}
         </div>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-          <span className="text-brand-orange">Tomorrow</span>
-          <span aria-hidden>·</span>
-          <span>{formatDateLabel(tomorrow)}</span>
+          <span className="text-brand-orange">{near ?? formatDateLabel(day)}</span>
+          {near && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{formatDateLabel(day)}</span>
+            </>
+          )}
           <span aria-hidden>·</span>
           <span className="normal-case tracking-normal text-stone-500">
             Tap a team to call the winner — points if correct
@@ -158,11 +164,11 @@ export function Predictions() {
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3 pt-2 sm:px-4">
         <section className="overflow-hidden rounded-xl border border-brand-line bg-white shadow-sm">
           {slate.loading ? (
-            <Spinner label="Loading tomorrow’s slate" />
+            <Spinner label="Loading the slate" />
           ) : slate.error ? (
             <ErrorNote message={slate.error} />
           ) : games.length === 0 ? (
-            <EmptyNote message="No games on tomorrow’s slate. Check back once the schedule is out." />
+            <EmptyNote message="No games on the slate. Check back once the schedule is out." />
           ) : (
             <ul className="divide-y divide-brand-line">
               {games.map((game) => {
