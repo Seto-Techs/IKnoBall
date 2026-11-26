@@ -35,6 +35,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.8',
+    date: '2026-11-26',
+    headline: 'The morning recap keeps its card, even on a quiet night.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'The Lebronnect recap card went missing whenever the board landed at midnight ET, because the next day’s puzzle had not been opened yet, and on any night nobody in the server played. The card is drawn either way now — without a chain to point at when there is not one, and saying so when nobody played.',
+      },
+    ],
+  },
+  {
     version: '0.5.7',
     date: '2026-11-26',
     headline: 'Tonight’s slate stays on screen until the night is over.',

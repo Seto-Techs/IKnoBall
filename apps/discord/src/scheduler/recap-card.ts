@@ -77,16 +77,28 @@ export interface RecapPlayer {
 export interface RecapCard {
   /** The day the rows are for, as it should read on the card. */
   day: string;
-  /** Intermediaries on the shortest route, frozen on the rows when they were solved. */
-  par: number;
+  /**
+   * Intermediaries on the shortest route, or null on a day nobody played.
+   *
+   * A day with no results has no par: the number is frozen on a result row, and the
+   * activity only reveals it to someone who finished. Null drops it from the header
+   * line rather than printing a guess.
+   */
+  par: number | null;
   /** Already ordered: closest to par first, then earliest submitted. Capped here. */
   rows: RecapRow[];
   /** How many played, which may exceed the rows shown. */
   played: number;
   /** The pair the rows are results for. */
   yesterday: { from: RecapPlayer; to: RecapPlayer };
-  /** The pair today's puzzle is about. */
-  today: { from: RecapPlayer; to: RecapPlayer };
+  /**
+   * The pair today's puzzle is about, or null when it has not been published yet.
+   *
+   * The board posts at midnight ET and the next day's puzzle row is only written on the
+   * first request for it, so the footer is genuinely absent on a well-timed post. A null
+   * here drops the footer rather than the card.
+   */
+  today: { from: RecapPlayer; to: RecapPlayer } | null;
   /** The line that sells today's puzzle. */
   pitch: string;
 }
@@ -112,10 +124,19 @@ const OVERFLOW_H = 22;
  * adds one line's worth of height. It is a parameter rather than derived from
  * `rowCount`, because the cut hides the difference: five rows and nine players is
  * still five rows.
+ *
+ * Zero rows still reserves one row's worth of body: a day nobody played draws the line
+ * that says so in that space, and a card that shrank to its header would put the footer
+ * through the text.
+ *
+ * `footer` is whether today's chain is drawn at all. It is absent on a post that lands
+ * before the next day's puzzle row exists — see `RecapCard.today`.
  */
-export function cardHeight(rowCount: number, overflow = false): number {
-  const shown = Math.min(rowCount, MAX_ROWS);
-  return PAD + HEADER_H + 16 + shown * ROW_H + 18 + (overflow ? OVERFLOW_H : 0) + FOOTER_H;
+export function cardHeight(rowCount: number, overflow = false, footer = true): number {
+  const shown = Math.max(1, Math.min(rowCount, MAX_ROWS));
+  return (
+    PAD + HEADER_H + 16 + shown * ROW_H + 18 + (overflow ? OVERFLOW_H : 0) + (footer ? FOOTER_H : 0)
+  );
 }
 
 /** One row of the recap, as the embed field needs it — the card's rows, minus pictures. */
@@ -143,8 +164,13 @@ export interface RecapFieldInput {
  * disagree. Text as well as a picture because a card is a PNG: unsearchable,
  * unreadable to a screen reader, and gone if the render fails. This field is built
  * before any image is fetched, so that failure costs the picture only.
+ *
+ * A day nobody played gets a line rather than an empty field: an embed field with no
+ * value is a blank band under the board, which reads as a rendering fault.
  */
 export function recapField(recap: RecapFieldInput): string {
+  if (recap.rows.length === 0) return '*Nobody in this server played this one.*';
+
   const rows = recap.rows.slice(0, MAX_ROWS);
   const lines = rows.map(
     (row, index) =>
@@ -291,8 +317,12 @@ export async function renderRecapCard(card: RecapCard): Promise<Buffer> {
   // played, but five rows over nine players reads as a bug unless it is spelled out.
   const others = card.played - shown.length;
   const rowsTop = PAD + HEADER_H + 16;
-  const footerTop = rowsTop + shown.length * ROW_H + 18 + (others > 0 ? OVERFLOW_H : 0);
-  const height = cardHeight(shown.length, others > 0);
+  // The body is the drawn rows, or one reserved row on a day nobody played — the same
+  // floor `cardHeight` applies, so the footer lands below the "nobody played" line
+  // instead of on top of it.
+  const bodyRows = Math.max(1, shown.length);
+  const footerTop = rowsTop + bodyRows * ROW_H + 18 + (others > 0 ? OVERFLOW_H : 0);
+  const height = cardHeight(shown.length, others > 0, card.today !== null);
   const parts: string[] = [];
 
   // ── Header: the wordmark left, yesterday's pair right ──
@@ -303,8 +333,18 @@ export async function renderRecapCard(card: RecapCard): Promise<Buffer> {
     `<g transform="translate(${PAD} ${PAD - 6}) scale(${(wordH / 128).toFixed(5)}) translate(34 14)">${await wordmark()}</g>`,
   );
   const played = card.played === 1 ? '1 played' : `${card.played} played`;
+  // `par` is dropped rather than zeroed on a day nobody played: the header has no
+  // honest number to print, and "par 0" would read as a bug.
+  const meta = [
+    'Lebronnect daily recap',
+    card.day,
+    card.par === null ? null : `par ${card.par}`,
+    played,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' \u00b7 ');
   parts.push(
-    `<text x="${PAD + 2}" y="${PAD + 46}" font-family="${FONT_FAMILIES.medium}" font-size="13" fill="${MUTED}">Lebronnect daily recap \u00b7 ${esc(card.day)} \u00b7 par ${card.par} \u00b7 ${played}</text>`,
+    `<text x="${PAD + 2}" y="${PAD + 46}" font-family="${FONT_FAMILIES.medium}" font-size="13" fill="${MUTED}">${esc(meta)}</text>`,
   );
 
   const R = 27;
@@ -350,6 +390,15 @@ export async function renderRecapCard(card: RecapCard): Promise<Buffer> {
     );
   }
 
+  // Nobody played: the board still went out, so the card says so rather than
+  // showing a header above empty space. One line, at the height a single row would
+  // have taken — the layout is already reserved for it by `cardHeight(0)`.
+  if (shown.length === 0) {
+    parts.push(
+      `<text x="${PAD}" y="${rowsTop + 30}" font-family="${FONT_FAMILIES.regular}" font-size="17" fill="${MUTED}">Nobody in this server played this one.</text>`,
+    );
+  }
+
   // ── The cut, said out loud: how many played who are not drawn above ──
   if (others > 0) {
     const label = others === 1 ? '1 other player' : `${others} other players`;
@@ -359,16 +408,21 @@ export async function renderRecapCard(card: RecapCard): Promise<Buffer> {
   }
 
   // ── Footer: today's chain, pictured and named, then the ask. The button below the
-  //    card does the launching, so the card never has to explain a command.
-  parts.push(
-    `<line x1="${PAD}" y1="${footerTop}" x2="${CARD_WIDTH - PAD}" y2="${footerTop}" stroke="${LINE}"/>`,
-    `<text x="${PAD}" y="${footerTop + 26}" font-family="${FONT_FAMILIES.semibold}" font-size="11" letter-spacing="2.4" fill="${MUTED}">TODAY'S CHAIN</text>`,
-  );
-  const fitted = await fitNames(card.today.from.name, card.today.to.name);
-  parts.push(pair(card.today.from, card.today.to, footerTop + 66, 19, fitted.size, fitted.widths));
-  parts.push(
-    `<text x="${PAD}" y="${footerTop + 112}" font-family="${FONT_FAMILIES.regular}" font-size="15" fill="${INK}">${esc(card.pitch)}</text>`,
-  );
+  //    card does the launching, so the card never has to explain a command. Absent
+  //    before the next day's puzzle is published — the recap stands without it.
+  if (card.today) {
+    parts.push(
+      `<line x1="${PAD}" y1="${footerTop}" x2="${CARD_WIDTH - PAD}" y2="${footerTop}" stroke="${LINE}"/>`,
+      `<text x="${PAD}" y="${footerTop + 26}" font-family="${FONT_FAMILIES.semibold}" font-size="11" letter-spacing="2.4" fill="${MUTED}">TODAY'S CHAIN</text>`,
+    );
+    const fitted = await fitNames(card.today.from.name, card.today.to.name);
+    parts.push(
+      pair(card.today.from, card.today.to, footerTop + 66, 19, fitted.size, fitted.widths),
+    );
+    parts.push(
+      `<text x="${PAD}" y="${footerTop + 112}" font-family="${FONT_FAMILIES.regular}" font-size="15" fill="${INK}">${esc(card.pitch)}</text>`,
+    );
+  }
 
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_WIDTH}" height="${height}" viewBox="0 0 ${CARD_WIDTH} ${height}">`,
