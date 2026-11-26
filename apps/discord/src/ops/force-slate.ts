@@ -15,16 +15,19 @@
  * 2. **It cannot double-post.** The cards are claimed in `discord_cards` with
  *    `on conflict do nothing` before anything is sent, so a day that is already
  *    out answers `already-posted` instead of posting twice. No Redis key is
- *    involved: the durable guard is the claim.
- * 3. **It is an operator tool, not a feature.** No slash command, nothing in the
- *    command picker, no help copy, no changelog entry — in 0.3.2 or later. Adding
- *    it to any of those is a product decision, not a docs tidy-up.
+ *    involved: the durable guard is the claim. `--force` is the deliberate
+ *    exception — it releases this server's claims for the games still on the slate
+ *    first, which is how an operator sends a day again.
+ * 3. **It is an operator tool, not a feature.** No help copy, nothing in the
+ *    changelog. The same post is reachable from Discord as the operator-only
+ *    `/slate` command (`slate.command.ts`), which is not a player-facing feature
+ *    either. Promoting it to one is a product decision, not a docs tidy-up.
  *
  * This half is the part worth testing: arguments, day validation, target
  * resolution, and one line of output per guild. `force-slate.cli.ts` is the
  * container wiring around it, and there is nothing there but plumbing.
  */
-import type { PostResult, SlateTarget } from '../scheduler/slate-poster';
+import type { PostOptions, PostResult, SlateTarget } from '../scheduler/slate-poster';
 import { type SlateGame } from '../scheduler/slate';
 import {
   ET_TIME_ZONE,
@@ -44,20 +47,23 @@ export interface Args {
   day?: string;
   /** Print the games that would go out; claim and send nothing. */
   dryRun: boolean;
+  /** Release this server's claims for the day first, so an already-posted day goes again. */
+  force: boolean;
   help: boolean;
 }
 
 export const USAGE = `Post a slate day's cards now, through the same poster the bot's crons use.
 
 Usage:
-  bun run force:slate --guild <guild id> [--day YYYY-MM-DD] [--dry-run]
-  bun run force:slate --all [--day YYYY-MM-DD] [--dry-run]
+  bun run force:slate --guild <guild id> [--day YYYY-MM-DD] [--dry-run] [--force]
+  bun run force:slate --all [--day YYYY-MM-DD] [--dry-run] [--force]
 
 Options:
   --guild <id>  Post for this one server.
   --all         Post for every server /setup has enabled.
   --day <date>  Slate day, US/Eastern, YYYY-MM-DD. Defaults to today (ET).
   --dry-run     List the games that would go out. Claims and sends nothing.
+  --force       Post again even if the day's cards are already claimed for the server.
   --help        This text.
 
 Exit code: 0 when every target posted or had nothing left to send, 1 when a target
@@ -74,7 +80,12 @@ export interface ForceDeps {
   };
   poster: {
     plan(etKey: string, now: Date): Promise<SlateGame[]>;
-    postFor(target: SlateTarget, etKey: string, now: Date): Promise<PostResult>;
+    postFor(
+      target: SlateTarget,
+      etKey: string,
+      now: Date,
+      options?: PostOptions,
+    ): Promise<PostResult>;
   };
   /**
    * Put the guild into the client's cache before the poster runs.
@@ -97,7 +108,7 @@ export interface ForceDeps {
  * guild id would post to nobody), and both are cheaper to fix as errors.
  */
 export function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { all: false, dryRun: false, help: false };
+  const args: Args = { all: false, dryRun: false, force: false, help: false };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -113,6 +124,9 @@ export function parseArgs(argv: readonly string[]): Args {
         break;
       case '--dry-run':
         args.dryRun = true;
+        break;
+      case '--force':
+        args.force = true;
         break;
       case '--help':
       case '-h':
@@ -172,6 +186,7 @@ export async function forceSlate(args: Args, deps: ForceDeps, now: Date): Promis
         { guildId: target.guildId, channelId: target.channelId },
         etKey,
         now,
+        { force: args.force },
       );
       for (const line of report(result, target)) deps.out(line);
     } catch (error) {
@@ -231,8 +246,8 @@ function report(result: PostResult, target: Target): string[] {
   if (result.status === 'already-posted') {
     return [
       `${where}nothing sent, every card that day is already claimed for this server,`,
-      '    so it was posted before or a run stopped before sending. Clear that day’s',
-      '    discord_cards rows for this guild to post it again.',
+      '    so it was posted before or a run stopped before sending. Run it again with',
+      '    --force to post it a second time.',
     ];
   }
 

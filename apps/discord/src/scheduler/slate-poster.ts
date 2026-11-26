@@ -37,6 +37,19 @@ export interface PostResult {
   messageIds: string[];
 }
 
+/** What a post can be asked to do beyond its default. */
+export interface PostOptions {
+  /**
+   * Post the day again, even though this guild's cards are already claimed.
+   *
+   * The claim is the double-post guard, so a deliberate re-post has to release it
+   * first — `releaseCards`, then claim as usual. Only the games still on the slate
+   * are released, so a game that has tipped off is neither duplicated nor stripped
+   * of its lock stamp, and the messages already in the channel are left alone.
+   */
+  force?: boolean;
+}
+
 /**
  * Sends one guild's slate for one ET day.
  *
@@ -127,19 +140,34 @@ export class SlatePoster {
   /**
    * The slate for a named ET day.
    *
-   * No cron calls this any more — picks live in the Activity — so the caller is
-   * `bun run force:slate`, an operator re-posting a day by hand. It takes the day as
-   * an argument for that reason.
+   * No cron calls this any more — picks live in the Activity — so the callers are
+   * `bun run force:slate` and `/slate`, an operator posting a day by hand. It takes
+   * the day as an argument for that reason.
    *
    * `now` still bounds the selection: a game that has already tipped off is not
    * pickable, so a late post sends what is left of the day rather than a slate of
    * dead cards.
+   *
+   * `options.force` is for the case the claim guard makes impossible on purpose: a
+   * day already in the channel that has to go out again. See `PostOptions`.
    */
-  async postFor(target: SlateTarget, etKey: string, now: Date = new Date()): Promise<PostResult> {
+  async postFor(
+    target: SlateTarget,
+    etKey: string,
+    now: Date = new Date(),
+    options: PostOptions = {},
+  ): Promise<PostResult> {
     const games = await this.slateGames(etKey, now);
 
     if (games.length === 0) {
       return { status: 'empty', etKey, games: 0, messageIds: [] };
+    }
+
+    if (options.force) {
+      await this.store.releaseCards(
+        games.map((game) => game.gameId),
+        target.guildId,
+      );
     }
 
     const claimed = await this.store.claimCards(

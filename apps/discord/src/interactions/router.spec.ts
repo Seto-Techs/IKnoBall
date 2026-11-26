@@ -121,6 +121,7 @@ describe('InteractionRouter', () => {
       'picks',
       'ping',
       'setup',
+      'slate',
       'status',
       'unlink',
     ]);

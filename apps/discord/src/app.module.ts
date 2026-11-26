@@ -16,6 +16,7 @@ import { PicksCommand } from './picks/picks.command';
 import { LeaderboardCommand } from './leaderboard/leaderboard.command';
 import { SetupCommand } from './setup/setup.command';
 import { StatusCommand } from './ops/status.command';
+import { SlateCommand } from './ops/slate.command';
 import { LinkCommand } from './linking/link.command';
 import { UnlinkCommand } from './linking/unlink.command';
 import { LockModule } from './lock/lock.module';
@@ -50,6 +51,7 @@ import { MembersModule } from './members/members.module';
     LeaderboardCommand,
     SetupCommand,
     StatusCommand,
+    SlateCommand,
     LinkCommand,
     UnlinkCommand,
   ],
