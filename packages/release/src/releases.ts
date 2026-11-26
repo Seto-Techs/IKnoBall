@@ -35,6 +35,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.8',
+    date: '2026-11-26',
+    headline: 'The night’s picks are back in your channel.',
+    changes: [
+      {
+        kind: 'added',
+        text: 'Your server’s channel gets tonight’s pick cards again, one per game, in the same post as the daily board — and it gets them on a night nobody picked too, because that is the night a card is worth having.',
+      },
+    ],
+  },
+  {
     version: '0.5.7',
     date: '2026-11-26',
     headline: 'Tonight’s slate stays on screen until the night is over.',

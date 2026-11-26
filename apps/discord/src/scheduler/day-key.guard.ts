@@ -41,6 +41,21 @@ export function noteKey(guildId: string, etKey: string): string {
 }
 
 /**
+ * `cards:guildId:YYYY-MM-DD` — one key per guild per ET day it has had its card post.
+ *
+ * The date is the day the post went out, not the slate it named: the midnight post
+ * sends the *next* slate, and a catch-up post made late at night can name a day that
+ * has already had one. Either way a guild gets one card post a day, which is what this
+ * key is for.
+ *
+ * No durable twin, and none needed: `discord_cards` holds the real claim, so a Redis
+ * flush costs one attempt that finds every card taken and sends nothing.
+ */
+export function cardsKey(guildId: string, etKey: string): string {
+  return `cards:${guildId}:${etKey}`;
+}
+
+/**
  * The "already posted today" check.
  *
  * This exists so a minute cron does not re-query the board 1,439 times a day for a

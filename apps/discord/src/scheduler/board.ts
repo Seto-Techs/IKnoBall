@@ -1,10 +1,11 @@
 /**
- * The bot's one scheduled post: the daily leaderboard (0.5.1).
+ * The bot's daily post: the leaderboard.
  *
  * The bot used to post two things: the pick cards at each guild's local hour, and a
  * recap of the finished slate the moment the next day's cards rolled out. Picks moved
- * into the Activity, so the cards are gone, the rollover is gone with them, and the
- * recap is what is left — it no longer rides on another post.
+ * into the Activity, so the per-guild local hour and the rollover are gone; the cards
+ * now ride with the board at midnight ET, and the recap no longer depends on another
+ * post to carry it.
  *
  * That leaves one question: **which league day is the board for?** The most recent
  * day whose games are all done, so the board a guild sees at midnight is the board for
