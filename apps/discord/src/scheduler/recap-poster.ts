@@ -161,16 +161,20 @@ export class RecapPoster {
     etKey: string,
   ): Promise<Buffer | null> {
     try {
-      // Two batches, run together: five avatars and four headshots. Together because
+      // Two batches, run together: five avatars and the headshots. Together because
       // they are independent, and a slow CDN should cost one timeout, not nine; apart
       // because the two sources are framed differently and only the headshots are cut
       // down to the face — see `normalise` in `recap-images.ts`.
+      //
+      // Today's pair is optional: before the next puzzle is published there are no
+      // names to fetch for it, and the card draws without that footer.
+      const pairs = day.today
+        ? [day.chain.from, day.chain.to, day.today.from, day.today.to]
+        : [day.chain.from, day.chain.to];
       const [avatars, headshots] = await Promise.all([
         fetchImages(day.rows.map((row) => row.avatarUrl)),
         fetchImages(
-          [day.chain.from, day.chain.to, day.today.from, day.today.to].map((player) =>
-            headshotUrl(player.externalId),
-          ),
+          pairs.map((player) => headshotUrl(player.externalId)),
           'headshot',
         ),
       ]);
@@ -189,10 +193,12 @@ export class RecapPoster {
           from: { name: day.chain.from.name, headshot: headshots[0] ?? null },
           to: { name: day.chain.to.name, headshot: headshots[1] ?? null },
         },
-        today: {
-          from: { name: day.today.from.name, headshot: headshots[2] ?? null },
-          to: { name: day.today.to.name, headshot: headshots[3] ?? null },
-        },
+        today: day.today
+          ? {
+              from: { name: day.today.from.name, headshot: headshots[2] ?? null },
+              to: { name: day.today.to.name, headshot: headshots[3] ?? null },
+            }
+          : null,
         pitch: PITCH,
       };
 

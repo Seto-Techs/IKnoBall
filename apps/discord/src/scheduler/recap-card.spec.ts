@@ -96,11 +96,17 @@ describe('recapField', () => {
 
     expect(lines).toHaveLength(MAX_ROWS);
   });
+
+  it('says so on a day nobody played, instead of leaving a blank field', () => {
+    expect(recapField({ day: 'Mon 23 Nov', played: 0, rows: [] })).toBe(
+      '*Nobody in this server played this one.*',
+    );
+  });
 });
 
 describe('cardHeight', () => {
-  it('grows by one row per player', () => {
-    expect(cardHeight(2) - cardHeight(1)).toBe(cardHeight(1) - cardHeight(0));
+  it('grows by one row per player above the floor', () => {
+    expect(cardHeight(3) - cardHeight(2)).toBe(cardHeight(2) - cardHeight(1));
   });
 
   it('stops growing at the five-row cut', () => {
@@ -109,6 +115,11 @@ describe('cardHeight', () => {
 
   it('reserves a line for the players the cut left out', () => {
     expect(cardHeight(MAX_ROWS, true) - cardHeight(MAX_ROWS, false)).toBeGreaterThan(0);
+  });
+
+  it('keeps a body on a day nobody played, so the footer is not on top of the text', () => {
+    // Zero rows still gets one row's worth: the "nobody played" line lives there.
+    expect(cardHeight(0)).toBe(cardHeight(1));
   });
 });
 
@@ -138,6 +149,31 @@ describe('renderRecapCard', () => {
 
     expect((await pngMetadata(exact)).height).toBe(cardHeight(MAX_ROWS, false));
     expect((await pngMetadata(cut)).height).toBe(cardHeight(MAX_ROWS, true));
+  }, 30_000);
+
+  it('still draws a card on a day nobody played, with no par to print', async () => {
+    const png = await renderRecapCard({ ...card([]), par: null, played: 0 });
+    const meta = await pngMetadata(png);
+
+    expect(meta.format).toBe('png');
+    expect(meta.width).toBe(CARD_WIDTH);
+    // A body is reserved for the "nobody played" line (see the `cardHeight` case), so the
+    // footer is not drawn on top of it.
+    expect(meta.height).toBe(cardHeight(0));
+  }, 30_000);
+
+  it('draws the day without a footer when the next puzzle is not published yet', async () => {
+    // The midnight case: results are in, but today's puzzle row is written on the first
+    // request for it, so at 00:43 ET there is no footer to draw. This used to drop the
+    // whole card — on exactly the night the board was scheduled for.
+    const rows = [1, 2, 3].map((n) => row(`P${n}`, 4));
+    const png = await renderRecapCard({ ...card(rows), played: 3, today: null });
+    const meta = await pngMetadata(png);
+
+    expect(meta.format).toBe('png');
+    expect(meta.height).toBe(cardHeight(rows.length, false, false));
+    // The footer is what is missing, not the body.
+    expect(meta.height).toBeLessThan(cardHeight(rows.length));
   }, 30_000);
 });
 

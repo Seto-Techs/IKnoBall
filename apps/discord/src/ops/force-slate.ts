@@ -1,10 +1,10 @@
 /**
  * `bun run force:slate` — post one slate day's cards now, from a shell.
  *
- * A cron posts the next slate alongside the nightly board, so this is not the only
- * way a slate goes into a channel — but it is the only way to post a *named* day on
- * demand, which is the case it exists for: an operator who needs a day's cards in
- * front of people now, or a day that has already gone out and has to go again.
+ * Since 0.5.1 no cron posts cards at all — picks are made in the Activity — so this
+ * is the *only* way a slate goes into a channel, and it exists for the case it always
+ * did: an operator who needs a day's cards in front of people, now, without waiting
+ * for a schedule that no longer posts them.
  *
  * Three properties, because a manual post is the one that can quietly diverge from
  * the automatic ones:

@@ -75,14 +75,28 @@ export interface RecapPlayerRef {
 /** Everything the recap card needs for one guild and one puzzle day. */
 export interface LebronnectRecapDay {
   puzzleDate: string;
-  par: number;
+  /**
+   * Intermediaries on the shortest route, or null on a day nobody played.
+   *
+   * `par` is frozen on a result row and the API never reveals it before a solve, so a
+   * day with no results has no par to print. Null says "do not print one" rather than
+   * inventing a number.
+   */
+  par: number | null;
   /** How many guild members played, which is usually more than the rows returned. */
   played: number;
   rows: RecapEntry[];
   /** The pair the rows are results for. */
   chain: { from: RecapPlayerRef; to: RecapPlayerRef };
-  /** The pair today's puzzle is about. */
-  today: { from: RecapPlayerRef; to: RecapPlayerRef };
+  /**
+   * The pair today's puzzle is about, or null when today's puzzle has not been published.
+   *
+   * **The board posts at midnight ET, and the puzzle row for the new day is written on
+   * the first request for it** — so at 00:43 nobody has opened the app and the row does
+   * not exist yet. Requiring it here dropped the card on exactly the night it was
+   * scheduled for; the footer's ask is worth less than the day's results.
+   */
+  today: { from: RecapPlayerRef; to: RecapPlayerRef } | null;
 }
 
 @Injectable()
@@ -217,9 +231,14 @@ export class BoardRepository {
    * by who got there first. `limit` bounds the rows drawn while `played` still counts
    * everyone, because "7 played" over five rows is the point of a top five.
    *
-   * Answers null rather than throwing when the day cannot be drawn — no results, or no
-   * puzzle published for today. The card is an addition to the board post and must not
-   * be able to cost it, so every "no" here means "send the board alone".
+   * Answers null rather than throwing when the day cannot be drawn at all — no puzzle
+   * row for the day itself, or a player the chain names is missing from the graph. The
+   * card is an addition to the board post and must not be able to cost it.
+   *
+   * Two absences are **not** reasons to answer null, because both are normal on a
+   * midnight post: nobody in the guild played, and the next day's puzzle has not been
+   * published yet (that row is written on the first request for it). The first draws an
+   * empty board, the second drops the footer.
    */
   async lebronnectRecap(
     guildId: string,
@@ -257,15 +276,18 @@ export class BoardRepository {
       )
       .limit(limit);
 
-    if (rows.length === 0) return null;
+    if (rows.length === 0) {
+      // Nobody in this guild played, but the board still goes out and the day still has
+      // a chain. Drawing it with an empty row list is the difference between "nobody
+      // played" and a broken bot — and the card's whole job on that day is the footer's
+      // ask to play the next one.
+      return this.emptyRecap(puzzleDate, todayDate);
+    }
 
     const [yesterday, today] = await Promise.all([
       this.puzzlePair(puzzleDate),
       this.puzzlePair(todayDate),
     ]);
-    // Today's puzzle is the footer's whole purpose; without it there is nothing to
-    // persuade anyone to play, so the card is not drawn at all.
-    if (!today) return null;
 
     // Results carry the pair they were played on, which is the fallback for a day
     // whose puzzle row predates `puzzleId` — the column is nullable for exactly that.
@@ -274,20 +296,14 @@ export class BoardRepository {
       targetPlayerId: rows[0].targetPlayerId,
     };
 
-    const refs = await this.playerRefs([
-      chain.startPlayerId,
-      chain.targetPlayerId,
-      today.startPlayerId,
-      today.targetPlayerId,
-    ]);
+    const { from, to } = await this.pairRefs(chain);
+    if (!from || !to) return null;
 
-    const from = refs.get(chain.startPlayerId);
-    const to = refs.get(chain.targetPlayerId);
-    const todayFrom = refs.get(today.startPlayerId);
-    const todayTo = refs.get(today.targetPlayerId);
-    // A player row that is not there means the graph was rebuilt under a live puzzle;
-    // the card would have to draw a blank name, so it does not draw.
-    if (!from || !to || !todayFrom || !todayTo) return null;
+    // Today's pair is the footer's ask, not the recap. At midnight ET the new day's
+    // puzzle row has not been published yet (it is written on the first request for
+    // it), so a missing one drops the footer and keeps the day's results.
+    const next = today ? await this.pairRefs(today) : null;
+    const nextPair = next && next.from && next.to ? { from: next.from, to: next.to } : null;
 
     return {
       puzzleDate,
@@ -304,7 +320,58 @@ export class BoardRepository {
         submittedAt: row.submittedAt,
       })),
       chain: { from, to },
-      today: { from: todayFrom, to: todayTo },
+      today: nextPair,
+    };
+  }
+
+  /**
+   * A day nobody in the guild played, drawn as an empty board.
+   *
+   * The rows are empty on purpose: the card's header says how many played (zero), the
+   * body has no rows, and the footer still sells today's chain. That is a truthful
+   * recap and, more to the point, it is not silence.
+   *
+   * `par` is null — see `LebronnectRecapDay.par`. Today's pair is required, as it is
+   * for a played day: without it the footer has nothing to point at, and a card whose
+   * only job is the ask has no job at all.
+   */
+  private async emptyRecap(
+    puzzleDate: string,
+    todayDate: string,
+  ): Promise<LebronnectRecapDay | null> {
+    const [yesterday, today] = await Promise.all([
+      this.puzzlePair(puzzleDate),
+      this.puzzlePair(todayDate),
+    ]);
+    // Without the day's own chain there is no recap to draw: the header alone is not a
+    // card. Today's pair is optional for the same reason it is on a played day.
+    if (!yesterday) return null;
+
+    const chain = await this.pairRefs(yesterday);
+    if (!chain.from || !chain.to) return null;
+
+    const next = today ? await this.pairRefs(today) : null;
+    const nextPair = next && next.from && next.to ? { from: next.from, to: next.to } : null;
+
+    return {
+      puzzleDate,
+      par: null,
+      played: 0,
+      rows: [],
+      chain: { from: chain.from, to: chain.to },
+      today: nextPair,
+    };
+  }
+
+  /** Both ends of one chain, each null when the player row is not there. */
+  private async pairRefs(pair: {
+    startPlayerId: string;
+    targetPlayerId: string;
+  }): Promise<{ from: RecapPlayerRef | null; to: RecapPlayerRef | null }> {
+    const refs = await this.playerRefs([pair.startPlayerId, pair.targetPlayerId]);
+    return {
+      from: refs.get(pair.startPlayerId) ?? null,
+      to: refs.get(pair.targetPlayerId) ?? null,
     };
   }
 

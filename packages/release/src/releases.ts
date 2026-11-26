@@ -37,11 +37,11 @@ export const RELEASES: Release[] = [
   {
     version: '0.5.8',
     date: '2026-11-26',
-    headline: 'The night’s picks are back in your channel.',
+    headline: 'The morning recap keeps its card, even on a quiet night.',
     changes: [
       {
-        kind: 'added',
-        text: 'Your server’s channel gets tonight’s pick cards again, one per game, in the same post as the daily board — and it gets them on a night nobody picked too, because that is the night a card is worth having.',
+        kind: 'fixed',
+        text: 'The Lebronnect recap card went missing whenever the board landed at midnight ET, because the next day’s puzzle had not been opened yet, and on any night nobody in the server played. The card is drawn either way now — without a chain to point at when there is not one, and saying so when nobody played.',
       },
     ],
   },
