@@ -1,6 +1,6 @@
 {
   "name": "@iknoball/database",
-  "version": "0.5.8",
+  "version": "0.5.7",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -140,9 +140,9 @@ export class SlatePoster {
   /**
    * The slate for a named ET day.
    *
-   * Two callers: `BoardScheduler`, which posts the next slate alongside the nightly
-   * board, and the operator ops — `bun run force:slate` and `/slate` — which post a
-   * named day by hand, including one that has already gone out (`options.force`).
+   * No cron calls this any more — picks live in the Activity — so the callers are
+   * `bun run force:slate` and `/slate`, an operator posting a day by hand. It takes
+   * the day as an argument for that reason.
    *
    * `now` still bounds the selection: a game that has already tipped off is not
    * pickable, so a late post sends what is left of the day rather than a slate of

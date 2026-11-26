@@ -7,7 +7,7 @@ import { BoardScheduler } from './board-scheduler';
 import type { DayKeyGuard } from './day-key.guard';
 import type { RecapPoster } from './recap-poster';
 import { etDateKey } from './slate-date';
-import type { SlatePoster, PostStatus, SlateTarget } from './slate-poster';
+import type { SlatePoster } from './slate-poster';
 
 /**
  * The minute cron that posts the daily board.
@@ -60,15 +60,11 @@ interface Harness {
   scheduler: BoardScheduler;
   post: ReturnType<typeof vi.fn>;
   postOffDay: ReturnType<typeof vi.fn>;
-  postFor: ReturnType<typeof vi.fn>;
-  nextSlateDay: ReturnType<typeof vi.fn>;
   hasGames: ReturnType<typeof vi.fn>;
   listEnabled: ReturnType<typeof vi.fn>;
   keys: Set<string>;
   /** The board keys only: the off-day note keeps its own keyspace. */
   boardKeys: () => string[];
-  /** The card keys only. */
-  cardKeys: () => string[];
 }
 
 function harness(
@@ -81,10 +77,6 @@ function harness(
     /** Whether the schedule has any game at all today. */
     games?: boolean;
     noteFails?: boolean;
-    /** What the card post answers, or a function of the slate day it was asked for. */
-    cards?: PostStatus | ((etKey: string) => PostStatus);
-    /** What `nextSlateDay` names. */
-    slateDay?: string | ((now: Date) => string);
   } = {},
 ): Harness {
   const keys = new Set<string>();
@@ -95,20 +87,6 @@ function harness(
   const postOffDay = vi.fn(async () => {
     if (options.noteFails) throw new Error('Unknown Channel');
   });
-  const postFor = vi.fn(async (_target: SlateTarget, etKey: string) => {
-    const result = options.cards ?? 'posted';
-    return {
-      status: typeof result === 'function' ? result(etKey) : result,
-      etKey,
-      games: 0,
-      messageIds: [],
-    };
-  });
-  const nextSlateDay = vi.fn(async (now: Date) =>
-    typeof options.slateDay === 'function'
-      ? options.slateDay(now)
-      : (options.slateDay ?? etDateKey(now)),
-  );
   const hasGames = vi.fn(async () => options.games ?? true);
   const listEnabled = vi.fn(async () => guildList);
 
@@ -125,8 +103,7 @@ function harness(
     {
       postOffDay,
       hasGames,
-      nextSlateDay,
-      postFor,
+      nextSlateDay: vi.fn(async (now: Date) => etDateKey(now)),
     } as unknown as SlatePoster,
     {
       has: async (key: string) => keys.has(key),
@@ -140,13 +117,10 @@ function harness(
     scheduler,
     post,
     postOffDay,
-    postFor,
-    nextSlateDay,
     hasGames,
     listEnabled,
     keys,
     boardKeys: () => [...keys].filter((key) => key.startsWith('recap:')).sort(),
-    cardKeys: () => [...keys].filter((key) => key.startsWith('cards:')).sort(),
   };
 }
 
@@ -265,98 +239,6 @@ describe('the day', () => {
   });
 });
 
-describe('the cards', () => {
-  it('posts the next slate’s cards alongside the board, at the same instant', async () => {
-    const { scheduler, postFor, cardKeys } = harness([settings()]);
-
-    await scheduler.tick(MIDNIGHT_ET);
-
-    expect(postFor).toHaveBeenCalledWith(
-      { guildId: 'guild-1', channelId: 'channel-1' },
-      '2026-10-27',
-      MIDNIGHT_ET,
-    );
-    expect(cardKeys()).toEqual(['cards:guild-1:2026-10-27']);
-  });
-
-  it('posts them even when the board is skipped for having no settled picks', async () => {
-    const { scheduler, postFor, post } = harness([settings()], { result: 'skipped' });
-
-    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('skipped');
-    expect(post).toHaveBeenCalledTimes(1);
-    expect(postFor).toHaveBeenCalledTimes(1);
-  });
-
-  it('posts them once, not every minute', async () => {
-    const { scheduler, postFor } = harness([settings()]);
-
-    await scheduler.tick(MIDNIGHT_ET);
-    await scheduler.tick(new Date('2026-10-27T04:01:00.000Z'));
-    await scheduler.tick(new Date('2026-10-27T04:02:00.000Z'));
-
-    expect(postFor).toHaveBeenCalledTimes(1);
-  });
-
-  it('waits for the board’s gate, not for a clock of its own', async () => {
-    // 23:59 ET: the 26th has been final for hours, and the cards wait with the board.
-    const { scheduler, postFor } = harness([settings()]);
-
-    expect((await scheduler.tick(new Date('2026-10-27T03:59:00.000Z')))[0].status).toBe('not-due');
-    expect(postFor).not.toHaveBeenCalled();
-  });
-
-  it('does not spend the day on an empty slate, so a later crawl still gets cards', async () => {
-    // The night of the 26th: nothing crawled for the 27th yet.
-    const { scheduler, postFor, cardKeys } = harness([settings()], { cards: 'empty' });
-
-    await scheduler.tick(MIDNIGHT_ET);
-
-    expect(postFor).toHaveBeenCalledTimes(1);
-    expect(cardKeys()).toEqual([]);
-  });
-
-  it('remembers a slate the poster says is already in the channel', async () => {
-    const { scheduler, cardKeys } = harness([settings()], { cards: 'already-posted' });
-
-    await scheduler.tick(MIDNIGHT_ET);
-
-    expect(cardKeys()).toEqual(['cards:guild-1:2026-10-27']);
-  });
-
-  it('retries after a failure without losing the board', async () => {
-    let attempts = 0;
-    const { scheduler, postFor, cardKeys } = harness([settings()], {
-      cards: () => {
-        attempts += 1;
-        if (attempts === 1) throw new Error('Missing Access');
-        return 'posted';
-      },
-    });
-
-    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('posted');
-    expect(cardKeys()).toEqual([]);
-
-    // The next minute asks again, because the day key was never spent.
-    await scheduler.tick(new Date('2026-10-27T04:01:00.000Z'));
-
-    expect(postFor).toHaveBeenCalledTimes(2);
-    expect(cardKeys()).toEqual(['cards:guild-1:2026-10-27']);
-  });
-
-  it('names the next pickable slate, not today, when the tick lands in the ET evening', async () => {
-    // A catch-up post at 22:00 ET on the 27th: the 27th's games have all tipped off.
-    const { scheduler, postFor } = harness([settings()], { slateDay: '2026-10-28' });
-
-    await scheduler.tick(new Date('2026-10-28T02:00:00.000Z'));
-
-    expect(postFor).toHaveBeenCalledWith(
-      { guildId: 'guild-1', channelId: 'channel-1' },
-      '2026-10-28',
-      new Date('2026-10-28T02:00:00.000Z'),
-    );
-  });
-});
-
 describe('the off-day note', () => {
   it('tells a guild its day is off, keyed on today rather than the board’s day', async () => {
     const { scheduler, postOffDay, keys } = harness([settings()], { games: false });
@@ -418,12 +300,6 @@ describe('the sweep', () => {
         postOffDay: async () => {},
         hasGames: async () => true,
         nextSlateDay: async (now: Date) => etDateKey(now),
-        postFor: async (_target: SlateTarget, etKey: string) => ({
-          status: 'posted' as const,
-          etKey,
-          games: 0,
-          messageIds: [],
-        }),
       } as unknown as SlatePoster,
       { has: async () => false, remember: async () => {} } as unknown as DayKeyGuard,
     );
