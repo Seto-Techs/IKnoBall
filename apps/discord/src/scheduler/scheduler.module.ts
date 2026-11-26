@@ -50,7 +50,7 @@ function bindPace(moduleRef: ModuleRef) {
  * - `GuildConfigService` — the `discord_guilds` row: channel, local hour, zone.
  * - `BoardScheduler` — the minute cron, which decides *whether* it is time.
  * - `BoardRepository` — how the recent league days stand, and the settled-pick count.
- * - `RedisDayKeyGuard` — `recap:guildId:YYYY-MM-DD`, so the other 59 minutes are free.
+ * - `RedisDayKeyGuard` — one key per post, so the other 59 minutes are free.
  *
  * `Infrastructure` is the single place that resolves `DatabaseService`,
  * `RedisService`, and `DiscordClientService`: `app.module.ts` owns those providers
@@ -58,9 +58,13 @@ function bindPace(moduleRef: ModuleRef) {
  * takes its database, Redis, and client through it.
  *
  * `SlatePoster` stays because the board still needs two answers only it can give — is
- * there a slate today, and which day is next — plus the off-day note. Its card post is
- * now reached only by `bun run force:slate`; picks are made in the Activity, so no
- * cron sends cards any more.
+ * there a slate today, and which day is next — plus the off-day note, and because it
+ * posts the next slate's cards in the same tick as the board. Only the *operator* ops
+ * (`/slate`, `bun run force:slate`) post a named day by hand.
+ *
+ * `RedisDayKeyGuard` holds one key per post: `recap:guildId:YYYY-MM-DD` for the board,
+ * `cards:guildId:YYYY-MM-DD` for the cards, and `note:guildId:YYYY-MM-DD` for the
+ * off-day note. Three keyspaces, because each is about a different day.
  *
  * `GuildConfigService` is also bound to the token `GUILD_CONFIG` and exported, because
  * `SetupCommand` is a provider of `AppModule` and injects it: `/setup` writes the row

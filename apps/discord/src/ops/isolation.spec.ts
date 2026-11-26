@@ -6,7 +6,7 @@ import { BoardScheduler } from '../scheduler/board-scheduler';
 import type { DayKeyGuard } from '../scheduler/day-key.guard';
 import type { RecapPoster } from '../scheduler/recap-poster';
 import { etDateKey } from '../scheduler/slate-date';
-import type { SlatePoster } from '../scheduler/slate-poster';
+import type { SlatePoster, SlateTarget } from '../scheduler/slate-poster';
 import type { GuildConfigService, GuildSettings } from '../setup/guild-config.service';
 
 /**
@@ -65,6 +65,12 @@ function harness(guildIds: string[], failFor: string) {
       hasGames: vi.fn(async () => true),
       nextSlateDay: vi.fn(async (now: Date) => etDateKey(now)),
       postOffDay: vi.fn(async () => {}),
+      postFor: vi.fn(async (_target: SlateTarget, etKey: string) => ({
+        status: 'posted' as const,
+        etKey,
+        games: 0,
+        messageIds: [],
+      })),
     } as unknown as SlatePoster,
     {
       has: async (key: string) => keys.has(key),

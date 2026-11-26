@@ -5,7 +5,7 @@ import { paused } from '../ops/kill-switch';
 import { GuildConfigService, type GuildSettings } from '../setup/guild-config.service';
 import { latestFinishedDay, recapDueAt, type DayState } from './board';
 import { BoardRepository } from './board-repository';
-import { DAY_KEY_GUARD, noteKey, recapKey, type DayKeyGuard } from './day-key.guard';
+import { cardsKey, DAY_KEY_GUARD, noteKey, recapKey, type DayKeyGuard } from './day-key.guard';
 import { RecapPoster } from './recap-poster';
 import { etDateKey, etNoon } from './slate-date';
 import { SlatePoster, type SlateTarget } from './slate-poster';
@@ -33,19 +33,25 @@ export interface BoardOutcome {
 }
 
 /**
- * The minute cron that posts each guild its daily leaderboard (0.5.1).
+ * The minute cron that posts each guild its daily leaderboard, and the next slate's
+ * cards alongside it.
  *
- * Picks live in the Activity now, so the bot no longer posts cards and there is no
- * slate to roll over. What is left is the one post that is still the bot's job: the
- * board, once a day, into the channel `/setup` configured.
+ * Picks live in the Activity now, so there is no per-guild local hour and no slate to
+ * roll over. What is left is the one post that is still the bot's job — the board, once
+ * a day, into the channel `/setup` configured — and the cards for the slate ahead, which
+ * ride in the same tick: one card per game, one instant for the fleet.
  *
- * **The board goes out at the later of midnight ET and fifteen minutes after the last
- * buzzer** (`recapDueAt`). Both halves are league-wide: the slate day is US/Eastern for
- * every guild, so one instant serves the whole fleet, and a board that lands while the
- * last game is still settling would rank the night without its final picks. Midnight is
- * the other floor — a slate that ends at 22:15 ET posts at 00:00, and one that runs
- * past midnight posts fifteen minutes after its last final. `latestFinishedDay` means a
+ * **Both go out at the later of midnight ET and fifteen minutes after the last buzzer**
+ * (`recapDueAt`). Both halves are league-wide: the slate day is US/Eastern for every
+ * guild, so one instant serves the whole fleet, and a board that lands while the last
+ * game is still settling would rank the night without its final picks. Midnight is the
+ * other floor — a slate that ends at 22:15 ET posts at 00:00, and one that runs past
+ * midnight posts fifteen minutes after its last final. `latestFinishedDay` means a
  * missed board catches up on the next tick instead of skipping a day.
+ *
+ * The cards are not the board's business, though: a night nobody picked still gets its
+ * cards, because a card's whole job is to invite a pick. So they post after the board
+ * whatever it returned, and only the due gate is shared.
  *
  * Per tick, cheapest first, and every step can say no:
  *
@@ -56,6 +62,8 @@ export interface BoardOutcome {
  *    `recapDueAt` posts, so a restart at 00:05 still gets that day's board out.
  * 4. `recap:<guildId>:<day>` must be absent, so the other 59 minutes are free.
  * 5. `RecapPoster` counts the day's settled picks and declines an empty board.
+ * 6. `cards:<guildId>:<today>` must be absent, then `SlatePoster` claims the next
+ *    slate's cards before it sends them — the claim, not the key, is the guard.
  *
  * A guild that throws is logged and skipped, so one server's broken channel cannot
  * stop the rest of the sweep.
@@ -133,15 +141,17 @@ export class BoardScheduler {
   /**
    * One guild, one instant.
    *
-   * The board first and the off-day note second, the same order the old slate tick
-   * used: the post people are waiting for must not be lost to a courtesy. The note
-   * keeps its own noon gate — "no games today" is a morning message, and it does not
-   * follow the board's midnight floor — so the two can come due at different hours.
+   * The board first, the cards second, the off-day note last: the post people are
+   * waiting for must not be lost to a courtesy. The cards follow the board whatever it
+   * returned — a night nobody picked is exactly the night a card is worth sending — and
+   * the note keeps its own noon gate, because "no games today" is a morning message and
+   * does not follow the board's midnight floor.
    */
   async runForGuild(guild: GuildSettings, day: DayState | null, now: Date): Promise<BoardStatus> {
     if (day !== null && now.getTime() < recapDueAt(day).getTime()) return 'not-due';
 
     const status = await this.postBoard(guild, day);
+    await this.postCards(guild, now);
     if (this.morningReached(now)) await this.noteOffDay(guild, now);
 
     return status;
@@ -176,12 +186,49 @@ export class BoardScheduler {
   }
 
   /**
+   * The next slate's cards, once a day, in the same tick as the board.
+   *
+   * `nextSlateDay` rather than `etDateKey(now)`: a catch-up post that lands in the ET
+   * evening would otherwise name a slate whose games have all tipped off, and send
+   * nothing. The poster's own selection drops any game that has already started, so a
+   * late post sends what is left of the day instead of a wall of dead cards.
+   *
+   * The Redis key is the cheap check and `discord_cards` is the real one — the claim is
+   * what makes a second send impossible. So the key is remembered for both `posted` and
+   * `already-posted`, and left unremembered for `empty`: a slate crawled after midnight
+   * still gets its cards on a later tick.
+   *
+   * A failure is logged and swallowed, like the off-day note: a card that could not go
+   * out must not take the board's status with it, and the next minute retries it.
+   */
+  private async postCards(guild: GuildSettings, now: Date): Promise<void> {
+    const today = etDateKey(now);
+    const key = cardsKey(guild.guildId, today);
+    if (await this.guard.has(key)) return;
+
+    const target: SlateTarget = { guildId: guild.guildId, channelId: guild.channelId };
+    try {
+      const etKey = await this.poster.nextSlateDay(now);
+      const result = await this.poster.postFor(target, etKey, now);
+      if (result.status === 'empty') return;
+
+      await this.guard.remember(key);
+    } catch (error) {
+      this.logger.warn(
+        `Slate post failed for guild ${guild.guildId} on ${today}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  /**
    * Tell a guild its day has no games, once, with the next slate named.
    *
    * The board covers a day that had games; a day that had none is silence, which is
-   * why this note outlived the cards it used to sit beside. It is about *today*, so it
-   * keys on `today` and not on the board's day, and it is swallowed on failure: a
-   * missing note is a quiet channel, a thrown one would take the tick's status with it.
+   * why this note sits beside it. It is about *today*, so it keys on `today` and not on
+   * the board's day, and it is swallowed on failure: a missing note is a quiet channel,
+   * a thrown one would take the tick's status with it.
    */
   private async noteOffDay(guild: GuildSettings, now: Date): Promise<void> {
     const today = etDateKey(now);

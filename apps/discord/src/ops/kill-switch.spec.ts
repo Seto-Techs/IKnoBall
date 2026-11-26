@@ -14,7 +14,7 @@ import type { GuildConfigService, GuildSettings } from '../setup/guild-config.se
 import type { DayKeyGuard } from '../scheduler/day-key.guard';
 import type { RecapPoster } from '../scheduler/recap-poster';
 import { etDateKey } from '../scheduler/slate-date';
-import type { SlatePoster } from '../scheduler/slate-poster';
+import type { SlatePoster, SlateTarget } from '../scheduler/slate-poster';
 import { SettlementSweepService } from '../settlement/settlement-sweep.service';
 import { interactionLog } from './interaction-log';
 import { PAUSED_REPLY, paused, refusePaused, type PausedInteraction } from './kill-switch';
@@ -56,6 +56,12 @@ function poster(): SlatePoster {
     postOffDay: vi.fn(async () => {}),
     hasGames: vi.fn(async () => true),
     nextSlateDay: vi.fn(async (now: Date) => etDateKey(now)),
+    postFor: vi.fn(async (_target: SlateTarget, etKey: string) => ({
+      status: 'posted' as const,
+      etKey,
+      games: 0,
+      messageIds: [],
+    })),
   } as unknown as SlatePoster;
 }
 
