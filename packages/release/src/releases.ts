@@ -35,6 +35,21 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.5.7',
+    date: '2026-11-26',
+    headline: 'Tonight’s slate stays on screen until the night is over.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'After about seven in the evening, the app had already moved on to the next day: the league-wide page skipped ahead to a later date, and the Activity showed a slate that had not started yet while the games you were watching were still going. The night you are in stays up now until its last game is final.',
+      },
+      {
+        kind: 'fixed',
+        text: 'The next seven days gave a tip-off time that was hours out for anyone not on the east coast, while still calling it ET. Every tip-off now reads the east-coast time it says it is.',
+      },
+    ],
+  },
+  {
     version: '0.5.6',
     date: '2026-11-25',
     headline: 'The daily board lands at midnight ET, not at lunch the next day.',
