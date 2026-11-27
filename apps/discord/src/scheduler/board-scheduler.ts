@@ -5,9 +5,9 @@ import { paused } from '../ops/kill-switch';
 import { GuildConfigService, type GuildSettings } from '../setup/guild-config.service';
 import { latestFinishedDay, recapDueAt, type DayState } from './board';
 import { BoardRepository } from './board-repository';
-import { DAY_KEY_GUARD, noteKey, recapKey, type DayKeyGuard } from './day-key.guard';
+import { DAY_KEY_GUARD, noteKey, offDayKey, recapKey, type DayKeyGuard } from './day-key.guard';
 import { RecapPoster } from './recap-poster';
-import { etDateKey, etNoon } from './slate-date';
+import { etDateKey, etNoon, shiftDateKey } from './slate-date';
 import { SlatePoster, type SlateTarget } from './slate-poster';
 
 /** What one guild did in one tick. */
@@ -33,11 +33,16 @@ export interface BoardOutcome {
 }
 
 /**
- * The minute cron that posts each guild its daily leaderboard (0.5.1).
+ * The minute cron that posts each guild its daily leaderboard, and the Lebronnect card
+ * that goes with it.
  *
- * Picks live in the Activity now, so the bot no longer posts cards and there is no
- * slate to roll over. What is left is the one post that is still the bot's job: the
- * board, once a day, into the channel `/setup` configured.
+ * Picks live in the Activity now, so the bot does not post pick cards and there is no
+ * slate to roll over. Two posts are still its job, both into the channel `/setup`
+ * configured:
+ *
+ * - **The board**, for the last finished slate, once a day.
+ * - **The off-day card**, on a day the league does not play: the chain still ran, so the
+ *   card goes out alone rather than the channel going quiet until the next slate.
  *
  * **The board goes out at the later of midnight ET and fifteen minutes after the last
  * buzzer** (`recapDueAt`). Both halves are league-wide: the slate day is US/Eastern for
@@ -56,6 +61,9 @@ export interface BoardOutcome {
  *    `recapDueAt` posts, so a restart at 00:05 still gets that day's board out.
  * 4. `recap:<guildId>:<day>` must be absent, so the other 59 minutes are free.
  * 5. `RecapPoster` counts the day's settled picks and declines an empty board.
+ * 6. Independently, `offday:<guildId>:<yesterday>` must be absent and today must have no
+ *    games at all, and then the card goes out on its own. This is the one path that
+ *    still posts when the board is skipped or already done.
  *
  * A guild that throws is logged and skipped, so one server's broken channel cannot
  * stop the rest of the sweep.
@@ -133,18 +141,82 @@ export class BoardScheduler {
   /**
    * One guild, one instant.
    *
-   * The board first and the off-day note second, the same order the old slate tick
-   * used: the post people are waiting for must not be lost to a courtesy. The note
-   * keeps its own noon gate — "no games today" is a morning message, and it does not
-   * follow the board's midnight floor — so the two can come due at different hours.
+   * Two posts can be due in the same tick and they are independent:
+   *
+   * - **The board** for the latest finished slate, once its `recapDueAt` has passed.
+   * - **The off-day card** when today has no games at all. Lebronnect runs every day, so
+   *   the day the league is off is still a day the chain ran.
+   *
+   * The board is attempted first — it is the post people are waiting for — and its
+   * status is what this returns. The card is attempted after it, whatever the board did,
+   * because `already-posted` for the board is exactly the common off-day case: the
+   * slate's board went out at its own midnight, and today is the quiet day after.
+   *
+   * The off-day note keeps its own noon gate — "no games today" is a morning message,
+   * and it does not follow the board's midnight floor.
    */
   async runForGuild(guild: GuildSettings, day: DayState | null, now: Date): Promise<BoardStatus> {
-    if (day !== null && now.getTime() < recapDueAt(day).getTime()) return 'not-due';
-
-    const status = await this.postBoard(guild, day);
+    const status = await this.postBoardIfDue(guild, day, now);
+    await this.postOffDayCard(guild, now);
     if (this.morningReached(now)) await this.noteOffDay(guild, now);
 
     return status;
+  }
+
+  /** The board, when there is one due. */
+  private async postBoardIfDue(
+    guild: GuildSettings,
+    day: DayState | null,
+    now: Date,
+  ): Promise<BoardStatus> {
+    if (day === null) return 'no-day';
+    if (now.getTime() < recapDueAt(day).getTime()) return 'not-due';
+
+    return this.postBoard(guild, day);
+  }
+
+  /**
+   * The card for a day the league did not play.
+   *
+   * One thing has to be true: **today has no games.** `hasGames` is the same rule the
+   * off-day note uses, so the two cannot disagree about what an off day is. A day with
+   * games is the board's business — its card rides with the board.
+   *
+   * No clock gate, because there is nothing to wait for: the card recaps *yesterday's*
+   * chain, and yesterday is over by the time today starts. The key below is what makes
+   * it once-a-day; a bot that was down at midnight catches up on its next tick, the same
+   * way the board does.
+   *
+   * Keyed on the day the card is *for* — `offday:<guild>:<yesterday>` — not on today, so
+   * a post that lands either side of midnight cannot send the same chain twice.
+   *
+   * Failures are logged and swallowed: the board's status is not the card's to lose.
+   */
+  private async postOffDayCard(guild: GuildSettings, now: Date): Promise<void> {
+    const today = etDateKey(now);
+    if (await this.poster.hasGames(today)) return;
+
+    // The chain that just ran: an off day is the day after the last slate.
+    const recapDay = shiftDateKey(today, -1);
+    const key = offDayKey(guild.guildId, recapDay);
+    if (await this.guard.has(key)) return;
+
+    const target: SlateTarget = { guildId: guild.guildId, channelId: guild.channelId };
+    try {
+      const status = await this.recaps.post(target, recapDay, 'off-day');
+      if (status !== 'posted') return;
+
+      this.logger.log(
+        `Off-day card posted for guild ${guild.guildId} on ${today}, recapping ${recapDay}.`,
+      );
+      await this.guard.remember(key);
+    } catch (error) {
+      this.logger.warn(
+        `Off-day card failed for guild ${guild.guildId} on ${today}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /** Has noon come round in US/Eastern today? */

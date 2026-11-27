@@ -41,6 +41,22 @@ export function noteKey(guildId: string, etKey: string): string {
 }
 
 /**
+ * `offday:guildId:YYYY-MM-DD` — one key per guild per off-day card it has been sent.
+ *
+ * The date is the **day the card recaps**, not the day it went out. An off-day post
+ * made just after midnight is about yesterday's chain, so keying it on yesterday means
+ * a catch-up tick later the same day still finds it spent, and a post that lands either
+ * side of midnight cannot send the same chain twice.
+ *
+ * Its own keyspace for the same reason `noteKey` has one: the board, the note and the
+ * off-day card are each about a different day, and one key suppressing another would be
+ * a silent skip.
+ */
+export function offDayKey(guildId: string, etKey: string): string {
+  return `offday:${guildId}:${etKey}`;
+}
+
+/**
  * The "already posted today" check.
  *
  * This exists so a minute cron does not re-query the board 1,439 times a day for a

@@ -160,6 +160,20 @@ export function recapIntro(day: string, settledPicks: number): string {
   return `**${day} is final** — ${picks} settled. How the server finished:`;
 }
 
+/**
+ * The line that introduces an off-day card.
+ *
+ * The league was off but Lebronnect ran, so the post is about the puzzle rather than a
+ * board — and it says the league was off, because a channel that normally gets a
+ * leaderboard needs to know why this one is different.
+ */
+export function offDayIntro(day: string, played: number): string {
+  const label = formatDayLabel(day);
+  return played === 0
+    ? `**No NBA games on ${label}** — but the chain still ran. Nobody in this server played it:`
+    : `**No NBA games on ${label}** — but the chain still ran. How the server did:`;
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 const MONTHS = [
   'Jan',

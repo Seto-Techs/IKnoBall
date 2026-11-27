@@ -43,6 +43,10 @@ export const RELEASES: Release[] = [
         kind: 'fixed',
         text: 'The Lebronnect recap card went missing whenever the board landed at midnight ET, because the next day’s puzzle had not been opened yet, and on any night nobody in the server played. The card is drawn either way now — without a chain to point at when there is not one, and saying so when nobody played.',
       },
+      {
+        kind: 'added',
+        text: 'On a day the NBA does not play, the chain still runs — and its card now reaches your server too, instead of the channel going quiet until the next slate.',
+      },
     ],
   },
   {

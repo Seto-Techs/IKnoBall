@@ -1,10 +1,10 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { ButtonStyle, ComponentType, type SendableChannels } from 'discord.js';
+import { ButtonStyle, ComponentType, type APIEmbed, type SendableChannels } from 'discord.js';
 import type { Pace } from '../infrastructure/rate-limiter';
 import { leaderboardEmbed } from '../leaderboard/leaderboard.embed';
 import { PLAY_NOW_ID } from '../interactions/play.handler';
 import { Infrastructure } from './infrastructure';
-import { formatDayLabel, recapIntro, recapModes, shouldPostRecap } from './board';
+import { formatDayLabel, offDayIntro, recapIntro, recapModes, shouldPostRecap } from './board';
 import { BoardRepository, type LebronnectRecapDay } from './board-repository';
 import { MAX_ROWS, recapField, renderRecapCard, type RecapCard } from './recap-card';
 import { fetchImages, headshotUrl } from './recap-images';
@@ -13,6 +13,9 @@ import { etDateKey } from './slate-date';
 
 /** What a recap attempt did, for the scheduler's log line. */
 export type RecapStatus = 'posted' | 'skipped';
+
+/** What a post is for: a finished slate, or a day the league was off. */
+export type RecapKind = 'board' | 'off-day';
 
 /** The card's attachment name. Referenced by the embed, so the two must agree. */
 const CARD_FILE = 'lebronnect-recap.png';
@@ -71,8 +74,21 @@ export class RecapPoster {
     this.pace = pace ?? ((task) => task());
   }
 
-  /** Posts one guild's board for one finished ET slate day. */
-  async post(target: SlateTarget, etKey: string): Promise<RecapStatus> {
+  /**
+   * Posts one guild's board for one finished ET slate day.
+   *
+   * `kind` picks the shape: `board` is the leaderboard embed with the day's Lebronnect
+   * field and card; `off-day` is the card alone, for a day the league did not play. The
+   * league's calendar is not Lebronnect's — the puzzle runs every day — so an off day
+   * with no board used to mean the day's results reached nobody.
+   *
+   * An off-day post has no leaderboard to gate on: `shouldPostRecap` counts settled
+   * picks, and there are none by definition. Its only gate is whether the day can be
+   * drawn at all.
+   */
+  async post(target: SlateTarget, etKey: string, kind: RecapKind = 'board'): Promise<RecapStatus> {
+    if (kind === 'off-day') return this.postCardOnly(target, etKey);
+
     const settled = await this.repo.settledPickCount(target.guildId, etKey);
     if (!shouldPostRecap(settled)) return 'skipped';
 
@@ -126,6 +142,51 @@ export class RecapPoster {
       `Recap posted for guild ${target.guildId}: ${settled} settled pick(s) on ${etKey}${
         card ? ', with the Lebronnect card' : ', without a Lebronnect card'
       }.`,
+    );
+    return 'posted';
+  }
+
+  /**
+   * The card alone, for a day the league did not play.
+   *
+   * A board for an off day would be a leaderboard with nothing new on it — the same
+   * numbers as yesterday, under a date with no games — so this sends the recap without
+   * one. It is a card, its text, and the Play Now button.
+   *
+   * `skipped` when the day cannot be drawn: no puzzle row for it, or a player the chain
+   * names is missing. Silence on an off day is what this exists to end, but a card with
+   * a blank name would be worse than silence, so a "no" is honest.
+   */
+  private async postCardOnly(target: SlateTarget, etKey: string): Promise<RecapStatus> {
+    const day = await this.recapDay(target.guildId, etKey);
+    if (!day) return 'skipped';
+
+    const card = await this.card(day, target.guildId, etKey);
+    if (!card) return 'skipped';
+
+    const channel = await this.sendableChannel(target.channelId);
+    const label = formatDayLabel(day.puzzleDate);
+    const embed: APIEmbed = {
+      author: { name: 'IKnoBall' },
+      title: `Lebronnect · ${label}`,
+      description: recapField({ day: label, played: day.played, rows: day.rows }),
+      image: { url: `attachment://${CARD_FILE}` },
+      footer: { text: 'No NBA games that day — the chain still ran.' },
+    };
+
+    await this.pace<unknown>(
+      () =>
+        channel.send({
+          content: offDayIntro(day.puzzleDate, day.played),
+          embeds: [embed],
+          files: [{ attachment: card, name: CARD_FILE }],
+          components: [playNowRow()],
+        }),
+      `POST /channels/${channel.id}/messages`,
+    );
+
+    this.logger.log(
+      `Off-day Lebronnect card posted for guild ${target.guildId} on ${etKey}: ${day.played} played.`,
     );
     return 'posted';
   }
