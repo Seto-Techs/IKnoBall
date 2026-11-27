@@ -383,11 +383,17 @@ guild that invited the bot and never finished setup. `locked` should be close to
 settlement cadence.
 
 `last slate post` and the `cards:` counts are history as of 0.5.1: picks are made in
-the Discord Activity, so the bot no longer posts cards and these only move when
-someone runs the `force:slate` op. What posts daily now is the **leaderboard**, once
-per guild at midnight ET the day after a slate (or 15 minutes after that slate's last
+the Discord Activity, so the bot does not post pick cards and these only move when
+someone runs the `force:slate` op. What posts daily is the **leaderboard**, once per
+guild at midnight ET the day after a slate (or 15 minutes after that slate's last
 final, if later) — if a guild is `configured` and `active` but no board arrived today,
 look for `Leaderboard post failed` in the log rather than at this line.
+
+**On a day the league does not play**, there is no board — but Lebronnect still ran, so
+the bot posts the **Lebronnect recap card alone** for the previous day's chain, keyed
+`offday:<guildId>:<recapDay>`. Its failures are logged as `Off-day card failed` and do
+not affect the board. A day with games never takes this path: the card rides with the
+board instead.
 
 ### 7.4 Token rotation
 
@@ -457,21 +463,21 @@ without a restart does nothing — that is the one way to get this wrong.
 
 What it stops:
 
-| Stopped          | Where                                                                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Slate posts      | the minute scheduler returns before it looks at any guild, and warns once: `DISCORD_ENABLED=false: no slate is being posted in any guild.` |
-| Tip-off locks    | the lock sweep returns before `run()`, so no card is edited and no `lockedAt` is stamped                                                   |
-| Settlement edits | the settlement sweep, same                                                                                                                 |
-| Points edits     | the stake sweep, same — a card posted before its price existed keeps the line it has                                                       |
-| Picks            | a click is acknowledged and answered with "Picks are paused right now… nothing was saved"; nothing reaches the api                         |
+| Stopped          | Where                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Board and cards  | the minute scheduler returns before it looks at any guild, and warns once: `DISCORD_ENABLED=false: no leaderboard is being posted in any guild.` |
+| Tip-off locks    | the lock sweep returns before `run()`, so no card is edited and no `lockedAt` is stamped                                                         |
+| Settlement edits | the settlement sweep, same                                                                                                                       |
+| Points edits     | the stake sweep, same — a card posted before its price existed keeps the line it has                                                             |
+| Picks            | a click is acknowledged and answered with "Picks are paused right now… nothing was saved"; nothing reaches the api                               |
 
 What it does not stop: the gateway connection, slash-command registration, and the
 read-only commands (`/picks`, `/leaderboard`, `/status`). The bot stays invited and
 connected, so turning the switch back on needs no re-invite.
 
-Turning it back on: set `true` and redeploy. If it is still inside a guild's post
-hour, the next minute posts the slate (a paused tick never spends the day key, so
-nothing is skipped); otherwise the next day's slate is the next post.
+Turning it back on: set `true` and redeploy. The next minute posts whatever is due — a
+board the last finished slate has not had yet, or the off-day card for a day with no
+games (a paused tick never spends a day key, so nothing is skipped).
 
 ### 7.6 Reading the logs
 

@@ -5,9 +5,9 @@ import type { DayState } from './board';
 import type { BoardRepository } from './board-repository';
 import { BoardScheduler } from './board-scheduler';
 import type { DayKeyGuard } from './day-key.guard';
-import type { RecapPoster } from './recap-poster';
+import type { RecapKind, RecapPoster } from './recap-poster';
 import { etDateKey } from './slate-date';
-import type { SlatePoster } from './slate-poster';
+import type { SlatePoster, SlateTarget } from './slate-poster';
 
 /**
  * The minute cron that posts the daily board.
@@ -65,6 +65,8 @@ interface Harness {
   keys: Set<string>;
   /** The board keys only: the off-day note keeps its own keyspace. */
   boardKeys: () => string[];
+  /** The off-day card keys only. */
+  offDayKeys: () => string[];
 }
 
 function harness(
@@ -77,10 +79,15 @@ function harness(
     /** Whether the schedule has any game at all today. */
     games?: boolean;
     noteFails?: boolean;
+    /** What the off-day card post answers. */
+    offDayResult?: 'posted' | 'skipped';
   } = {},
 ): Harness {
   const keys = new Set<string>();
-  const post = vi.fn(async () => {
+  const post = vi.fn(async (_target: SlateTarget, _etKey: string, kind?: RecapKind) => {
+    // The off-day post has its own answer so a test can say the card failed without
+    // also making the board fail.
+    if (kind === 'off-day') return options.offDayResult ?? 'posted';
     const result = options.result ?? 'posted';
     return typeof result === 'function' ? await result() : result;
   });
@@ -121,6 +128,7 @@ function harness(
     listEnabled,
     keys,
     boardKeys: () => [...keys].filter((key) => key.startsWith('recap:')).sort(),
+    offDayKeys: () => [...keys].filter((key) => key.startsWith('offday:')).sort(),
   };
 }
 
@@ -236,6 +244,86 @@ describe('the day', () => {
       { guildId: 'guild-1', day: null, status: 'no-day' },
     ]);
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+describe('the off-day card', () => {
+  /**
+   * Thanksgiving, in the harness's October: the 27th has no games at all, so it has no
+   * `DayState` row either, and the board's own gate can never fire for it. The chain the
+   * card recaps is the 26th's.
+   */
+  const OFF_DAY = { days: [] as DayState[], games: false };
+
+  it('posts yesterday’s chain on a day the league did not play', async () => {
+    const { scheduler, post, offDayKeys } = harness([settings()], OFF_DAY);
+
+    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('no-day');
+    expect(post).toHaveBeenCalledWith(
+      { guildId: 'guild-1', channelId: 'channel-1' },
+      '2026-10-26',
+      'off-day',
+    );
+    expect(offDayKeys()).toEqual(['offday:guild-1:2026-10-26']);
+  });
+
+  it('posts it even when the last slate’s board already went out', async () => {
+    // The common case: the board went out at its own midnight, and today is the quiet
+    // day after. `already-posted` must not swallow the card.
+    const { scheduler, post, offDayKeys, keys } = harness([settings()], {
+      days: [LAST_NIGHT],
+      games: false,
+    });
+    keys.add('recap:guild-1:2026-10-26');
+
+    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('already-posted');
+    expect(post).toHaveBeenCalledWith(
+      { guildId: 'guild-1', channelId: 'channel-1' },
+      '2026-10-26',
+      'off-day',
+    );
+    expect(offDayKeys()).toEqual(['offday:guild-1:2026-10-26']);
+  });
+
+  it('says it once, not every minute after midnight', async () => {
+    const { scheduler, post } = harness([settings()], OFF_DAY);
+
+    await scheduler.tick(MIDNIGHT_ET);
+    await scheduler.tick(new Date('2026-10-27T04:01:00.000Z'));
+    await scheduler.tick(new Date('2026-10-27T04:02:00.000Z'));
+
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet on a day that has games', async () => {
+    // A day with games is the board's business: its card rides with the board, so there
+    // is no card-only post here.
+    const { scheduler, post } = harness([settings()], { days: [], games: true });
+
+    expect((await scheduler.tick(MIDNIGHT_ET))[0].status).toBe('no-day');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('retries after a failure, and does not remember the day', async () => {
+    const { scheduler, post, offDayKeys } = harness([settings()], {
+      ...OFF_DAY,
+      offDayResult: 'skipped',
+    });
+
+    await scheduler.tick(MIDNIGHT_ET);
+    expect(offDayKeys()).toEqual([]);
+
+    await scheduler.tick(new Date('2026-10-27T04:01:00.000Z'));
+    expect(post).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps its own keyspace, so an off-day card cannot suppress a board', async () => {
+    const { scheduler, keys } = harness([settings()], OFF_DAY);
+
+    await scheduler.tick(MIDNIGHT_ET);
+
+    expect(keys.has('recap:guild-1:2026-10-26')).toBe(false);
+    expect(keys.has('offday:guild-1:2026-10-26')).toBe(true);
   });
 });
 
